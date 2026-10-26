@@ -28,7 +28,8 @@ $('btnSave').addEventListener('click', () => {
   const data = {
     app: 'noise-poc', version: VERSION, saved: new Date().toISOString(), origin: state.origin,
     dem: state.terrain ? state.terrain.name : null, settings: state.settings, view: state.view,
-    sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, h: s.h, x: s.x, y: s.y })),
+    sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, on: s.on, pen: s.pen, mit: s.mit, h: s.h, x: s.x, y: s.y })),
+    library: state.libraryEdited ? LIBRARY : undefined,
     buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype, pts: b.pts })),
     hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts }))
   };
@@ -46,6 +47,27 @@ function readJSONFile(input, cb) {
     r.readAsText(f);
   });
 }
+/* Merge saved settings over the current ones, keeping only known keys with
+   valid values. v0.4 files stored ground as 'hard'/'soft'; that maps to 0 or
+   100 % soft ground. */
+function sanitizeSettings(raw, cur) {
+  const out = Object.assign({}, cur);
+  if (!raw || typeof raw !== 'object') return out;
+  const pick = (k, ok) => { if (k in raw && ok(raw[k])) out[k] = raw[k]; else if (k in raw) log(`Scenario setting “${k}” ignored (invalid value ${JSON.stringify(raw[k])}).`, 'warn'); };
+  const inR = (a, b) => v => typeof v === 'number' && isFinite(v) && v >= a && v <= b;
+  const oneOf = (...vals) => v => vals.includes(v);
+  const bool = v => typeof v === 'boolean';
+  pick('method', oneOf('tfnsw', 'iso')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
+  pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
+  pick('air', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
+  pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
+  pick('newH', inR(0.5, 300)); pick('newHo', inR(0.3, 20));
+  if (!('soft' in raw) && (raw.ground === 'soft' || raw.ground === 'hard')) {
+    out.soft = raw.ground === 'soft' ? 1 : 0;
+    log(`Scenario from an older version: ground “${raw.ground}” → ${out.soft * 100} % soft ground. Levels now use the ${out.method === 'iso' ? 'ISO' : 'TfNSW'} basis and will differ from v0.4.`, 'warn');
+  }
+  return out;
+}
 function validPts(pts, min) {
   if (!Array.isArray(pts)) return null;
   const out = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).map(p => [+p[0], +p[1]]);
@@ -59,11 +81,18 @@ readJSONFile($('fileLoad'), (d, name) => {
     else state.origin = d.origin;
   }
   const sh = p => [+p[0] + dx, +p[1] + dy];
-  state.settings = Object.assign({}, state.settings, d.settings || {});
+  state.settings = sanitizeSettings(d.settings, state.settings);
+  if (d.library) {
+    try { LIBRARY = cleanLibrary(d.library); state.libraryEdited = true; updateLibInfo(); log(`Scenario carries its own equipment library (${LIBRARY.length} items).`); }
+    catch (e) { log(`Scenario library ignored: ${e.message}`, 'warn'); }
+  }
   state.sources = d.sources.filter(s => isFinite(s.x) && isFinite(s.y)).map(s => {
     const [x, y] = sh([s.x, s.y]);
-    const o = makeSource(x, y, Number.isInteger(s.eq) && EQUIP[s.eq] ? s.eq : CUSTOM_EQ);
-    o.name = String(s.name || o.name).slice(0, 40); o.lw = num(s.lw, 40, 150) ?? o.lw; o.h = num(s.h, 0, 200) ?? 1.5; return o;
+    const o = makeSource(x, y, typeof s.eq === 'string' ? s.eq : 'custom');   // v0.4 stored a numeric index
+    if (typeof s.eq === 'string' && o.eq !== s.eq) log(`Source “${s.name}”: library item “${s.eq}” not found – kept its saved level as Custom.`, 'warn');
+    o.name = String(s.name || o.name).slice(0, 40); o.lw = num(s.lw, 40, 150) ?? o.lw; o.h = num(s.h, 0, 200) ?? 1.5;
+    o.on = num(s.on, 1, 100) ?? 100; o.pen = num(s.pen, 0, 10) ?? (typeof s.eq === 'string' ? o.pen : 0); o.mit = num(s.mit, 0, 30) ?? 0;
+    return o;
   });
   state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null }) : null; }).filter(Boolean);
   state.hoardings = (d.hoardings || []).map(h => { const p = validPts(h.pts, 2); return p ? makeHoarding(p.map(sh), num(h.h, 0.3, 20) ?? 2.4, String(h.name || '').slice(0, 40) || undefined) : null; }).filter(Boolean);
@@ -175,9 +204,9 @@ function loadDemo() {
     makeBuilding(rect(-30, 45, 10, 60), 5, 'Shops')
   ];
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
-  state.sources = [makeSource(0, 0, 0)];
+  state.sources = [makeSource(0, 0, DEFAULT_EQ)];
   geomChanged(); select(null);
-  log('Demo loaded: 1 excavator (Lw 105), 5 buildings, 1 hoarding (2.4 m).');
+  log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
   requestCompute(false);
 }
 

@@ -47,7 +47,7 @@ async function waitLog(page, re, timeout = 60000) {
     const st = await page.evaluate(() => window.__noise.selftest);
     for (const r of st.results) {
       const detail = r.error ? r.error : `got ${Number(r.got).toFixed(3)}, expected ${Number(r.exp).toFixed(3)} ± ${r.tol}`;
-      if (!filter || r.name.includes(filter)) report(r.ok, 'self-test: ' + r.name, detail);
+      if (!filter || ('self-test: ' + r.name).includes(filter)) report(r.ok, 'self-test: ' + r.name, detail);
     }
     report(page._errors.length === 0, 'page loads without errors', page._errors.join(' | '));
     await page.close();

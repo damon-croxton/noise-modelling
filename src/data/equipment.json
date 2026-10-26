@@ -1,0 +1,1471 @@
+{
+ "_about": "Plant sound power levels, dBA. 'CNVG-PTI Table 19' = highest permissible SWL from TfNSW EMF-NV-GD-0060 v4.6 (Mar 2026) Appendix C; 'TfNSW estimator' = plant list in the TfNSW Construction Noise Estimator (EMF-NV-TT-0068), with its built-in +5 dB special-audible-characteristics correction removed from lw and recorded as sac. Source: Transport for NSW, reproduced for non-commercial use with acknowledgement. Verify against the current client strategy.",
+ "items": [
+  {
+   "id": "t19-asphalt-truck-and-sprayer",
+   "name": "Asphalt truck and sprayer",
+   "lw": 106,
+   "maxLw": 106,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-backhoe",
+   "name": "Backhoe",
+   "lw": 111,
+   "maxLw": 111,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-chainsaw-petrol-4-5-hp",
+   "name": "Chainsaw – petrol (4–5 hp)",
+   "lw": 114,
+   "maxLw": 114,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-compactor",
+   "name": "Compactor",
+   "lw": 106,
+   "maxLw": 106,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-compressor",
+   "name": "Compressor",
+   "lw": 109,
+   "maxLw": 109,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-crane-fixed",
+   "name": "Crane – fixed",
+   "lw": 113,
+   "maxLw": 113,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-crane-franna-20-t",
+   "name": "Crane – Franna (20 t)",
+   "lw": 98,
+   "maxLw": 98,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-crane-mobile",
+   "name": "Crane – mobile",
+   "lw": 113,
+   "maxLw": 113,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-crane-truck-mounted-20-60-t",
+   "name": "Crane – truck mounted (20–60 t)",
+   "lw": 108,
+   "maxLw": 108,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-crusher-rock",
+   "name": "Crusher – rock",
+   "lw": 118,
+   "maxLw": 118,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-dozer-cat-d9",
+   "name": "Dozer (CAT D9)",
+   "lw": 116,
+   "maxLw": 116,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-dozer-cat-d10",
+   "name": "Dozer (CAT D10)",
+   "lw": 121,
+   "maxLw": 121,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-elevated-work-platform-scissor-lift",
+   "name": "Elevated work platform – scissor lift",
+   "lw": 98,
+   "maxLw": 98,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-elevated-work-platform",
+   "name": "Elevated work platform",
+   "lw": 97,
+   "maxLw": 97,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-3-t",
+   "name": "Excavator – tracked (3 t)",
+   "lw": 90,
+   "maxLw": 90,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-6-t",
+   "name": "Excavator – tracked (6 t)",
+   "lw": 95,
+   "maxLw": 95,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-hydraulic-hammer-6-t",
+   "name": "Excavator – tracked + hydraulic hammer (6 t)",
+   "lw": 115,
+   "maxLw": 115,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-10-t",
+   "name": "Excavator – tracked (10 t)",
+   "lw": 100,
+   "maxLw": 100,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-hydraulic-hammer-10-t",
+   "name": "Excavator – tracked + hydraulic hammer (10 t)",
+   "lw": 118,
+   "maxLw": 118,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-20-t",
+   "name": "Excavator – tracked (20 t)",
+   "lw": 105,
+   "maxLw": 105,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-30-t",
+   "name": "Excavator – tracked (30 t)",
+   "lw": 110,
+   "maxLw": 110,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-hydraulic-hammer-30-t",
+   "name": "Excavator – tracked + hydraulic hammer (30 t)",
+   "lw": 122,
+   "maxLw": 122,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-excavator-tracked-40-t",
+   "name": "Excavator – tracked (40 t)",
+   "lw": 115,
+   "maxLw": 115,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-grader",
+   "name": "Grader",
+   "lw": 113,
+   "maxLw": 113,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-generator-diesel-petrol-6-kw",
+   "name": "Generator – diesel/petrol (6 kW)",
+   "lw": 103,
+   "maxLw": 103,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-generator-attenuated-30-kw",
+   "name": "Generator – attenuated (30 kW)",
+   "lw": 92,
+   "maxLw": 92,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-grinder",
+   "name": "Grinder",
+   "lw": 105,
+   "maxLw": 105,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-jackhammer",
+   "name": "Jackhammer",
+   "lw": 113,
+   "maxLw": 113,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-lighting-tower",
+   "name": "Lighting tower",
+   "lw": 80,
+   "maxLw": 80,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-lighting-daymakers",
+   "name": "Lighting – daymakers",
+   "lw": 98,
+   "maxLw": 98,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-light-vehicle-4wd",
+   "name": "Light vehicle – 4WD",
+   "lw": 103,
+   "maxLw": 103,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-line-marking-truck",
+   "name": "Line-marking truck",
+   "lw": 108,
+   "maxLw": 108,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-loader-front-end-wheeled-23-t",
+   "name": "Loader – front-end (wheeled) (23 t)",
+   "lw": 112,
+   "maxLw": 112,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-loader-skidsteer-t",
+   "name": "Loader – skidsteer (½ t)",
+   "lw": 107,
+   "maxLw": 107,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-loader-skidsteer-1-t",
+   "name": "Loader – skidsteer (1 t)",
+   "lw": 110,
+   "maxLw": 110,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-loader-tracked-0-50-kw",
+   "name": "Loader – tracked (0–50 kW)",
+   "lw": 115,
+   "maxLw": 115,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-loader-tracked-200-300-kw",
+   "name": "Loader – tracked (200–300 kW)",
+   "lw": 121,
+   "maxLw": 121,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-pavement-laying-machine",
+   "name": "Pavement laying machine",
+   "lw": 114,
+   "maxLw": 114,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-pavement-profiler",
+   "name": "Pavement profiler",
+   "lw": 117,
+   "maxLw": 117,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-pile-driver-vibratory",
+   "name": "Pile driver – vibratory",
+   "lw": 121,
+   "maxLw": 121,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-piling-rig-bored",
+   "name": "Piling rig – bored",
+   "lw": 112,
+   "maxLw": 112,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-piling-rig-impact",
+   "name": "Piling rig – impact",
+   "lw": 134,
+   "maxLw": 134,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-pump-concrete",
+   "name": "Pump – concrete",
+   "lw": 109,
+   "maxLw": 109,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-rattle-gun-handheld",
+   "name": "Rattle gun (handheld)",
+   "lw": 104,
+   "maxLw": 104,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-roller-smooth-drum",
+   "name": "Roller – smooth drum",
+   "lw": 107,
+   "maxLw": 107,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-roller-large-pad-foot",
+   "name": "Roller – large pad foot",
+   "lw": 109,
+   "maxLw": 109,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-roller-vibratory-10-t",
+   "name": "Roller – vibratory (10 t)",
+   "lw": 109,
+   "maxLw": 109,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-saw-concrete",
+   "name": "Saw – concrete",
+   "lw": 118,
+   "maxLw": 118,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-scraper",
+   "name": "Scraper",
+   "lw": 113,
+   "maxLw": 113,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-truck-concrete",
+   "name": "Truck – concrete",
+   "lw": 109,
+   "maxLw": 109,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-truck-dump-15-t",
+   "name": "Truck – dump (15 t)",
+   "lw": 110,
+   "maxLw": 110,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-truck-medium-rigid-20-t",
+   "name": "Truck – medium rigid (20 t)",
+   "lw": 103,
+   "maxLw": 103,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-truck-road-truck-truck-and-dog-30-t",
+   "name": "Truck – road truck / truck and dog (30 t)",
+   "lw": 108,
+   "maxLw": 108,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-truck-vacuum-ndd",
+   "name": "Truck – vacuum (NDD)",
+   "lw": 109,
+   "maxLw": 109,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-tub-grinder-mulcher-40-50-hp",
+   "name": "Tub grinder / mulcher (40–50 hp)",
+   "lw": 116,
+   "maxLw": 116,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-vibrator-concrete",
+   "name": "Vibrator – concrete",
+   "lw": 113,
+   "maxLw": 113,
+   "sac": true,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-water-cart",
+   "name": "Water cart",
+   "lw": 107,
+   "maxLw": 107,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-welding-equipment",
+   "name": "Welding equipment",
+   "lw": 110,
+   "maxLw": 110,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "t19-wrench-impact",
+   "name": "Wrench – impact",
+   "lw": 111,
+   "maxLw": 111,
+   "sac": false,
+   "group": "CNVG-PTI Table 19"
+  },
+  {
+   "id": "est-abrassive-blasting-nozzle",
+   "name": "Abrassive blasting (nozzle)",
+   "lw": 117,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-air-compressor",
+   "name": "Air Compressor",
+   "lw": 102,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-air-track-drill",
+   "name": "Air track drill",
+   "lw": 124,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-asphalt-paver",
+   "name": "Asphalt paver",
+   "lw": 108,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-asphalt-truck-sprayer",
+   "name": "Asphalt Truck & Sprayer",
+   "lw": 106,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-auger-drill-rig",
+   "name": "Auger/Drill Rig",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-backhoe",
+   "name": "Backhoe",
+   "lw": 108,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-ballast-clean",
+   "name": "Ballast clean",
+   "lw": 115,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-ballast-pour",
+   "name": "Ballast pour",
+   "lw": 111,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-ballast-regulator",
+   "name": "Ballast regulator",
+   "lw": 115,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-blower-battery",
+   "name": "Blower (battery)",
+   "lw": 98,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-blower-petrol",
+   "name": "Blower (petrol)",
+   "lw": 106,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-bobcat",
+   "name": "Bobcat",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-bobcat-with-planer",
+   "name": "Bobcat with Planer",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-breaker-electric-hydraulic-36kg",
+   "name": "Breaker, electric / hydraulic, 36kg",
+   "lw": 112,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-breaker-petrol-36kg",
+   "name": "Breaker, petrol, 36kg",
+   "lw": 103,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-breaker-pneumatic-14kg-silenced",
+   "name": "Breaker, pneumatic, 14kg silenced",
+   "lw": 108,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-breaker-pneumatic-14kg-standard",
+   "name": "Breaker, pneumatic, 14kg standard",
+   "lw": 116,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-brushcutter",
+   "name": "Brushcutter",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-bucket-crusher",
+   "name": "Bucket Crusher",
+   "lw": 111,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-chainsaw-electric",
+   "name": "Chainsaw (electric)",
+   "lw": 95,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-chainsaw-hydraulic",
+   "name": "Chainsaw (hydraulic)",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-chainsaw-petrol",
+   "name": "Chainsaw (petrol)",
+   "lw": 114,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-cherry-picker",
+   "name": "Cherry Picker",
+   "lw": 102,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-circular-saw",
+   "name": "Circular Saw",
+   "lw": 106,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-compactor",
+   "name": "Compactor",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-compressor-approx-1500-cfm",
+   "name": "Compressor (approx. 1500 CFM)",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-compressor-approx-600-cfm",
+   "name": "Compressor (approx. 600 CFM)",
+   "lw": 100,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-compressor-towable-lawn-mower",
+   "name": "Compressor (Towable) / Lawn Mower",
+   "lw": 100,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-concrete-pencil-vibrator",
+   "name": "Concrete Pencil Vibrator",
+   "lw": 103,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-concrete-pump",
+   "name": "Concrete Pump",
+   "lw": 109,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-concrete-saw-corer",
+   "name": "Concrete saw/corer",
+   "lw": 118,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-concrete-truck-agitator",
+   "name": "Concrete Truck / Agitator",
+   "lw": 109,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-concrete-vibrator",
+   "name": "Concrete Vibrator",
+   "lw": 113,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-daymakers",
+   "name": "Daymakers",
+   "lw": 98,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-diamond-grinding",
+   "name": "Diamond Grinding",
+   "lw": 126,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-directional-driller-approx-10-tonne",
+   "name": "Directional Driller (approx. 10 tonne)",
+   "lw": 104,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-directional-driller-approx-18-tonne",
+   "name": "Directional Driller (approx. 18 tonne)",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-dozer-d10",
+   "name": "Dozer D10",
+   "lw": 121,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-dozer-d9",
+   "name": "Dozer D9",
+   "lw": 116,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-drill-electric",
+   "name": "Drill, electric",
+   "lw": 91,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-drill-hammer-4kg",
+   "name": "Drill, Hammer 4kg",
+   "lw": 104,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-drill-hammer-7kg",
+   "name": "Drill, Hammer 7kg",
+   "lw": 110,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-dump-truck-approx-15-tonne",
+   "name": "Dump Truck (approx. 15 tonne)",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-dump-truck-tipping-fill",
+   "name": "Dump Truck, tipping fill",
+   "lw": 117,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-dynamic-track-stabiliser",
+   "name": "Dynamic track stabiliser",
+   "lw": 108,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-earthmover-drott",
+   "name": "Earthmover (Drott)",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-elevated-work-platform",
+   "name": "Elevated Work Platform",
+   "lw": 95,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-10-tonne",
+   "name": "Excavator (10 tonne)",
+   "lw": 100,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-20-tonne",
+   "name": "Excavator (20 tonne)",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-3-tonne",
+   "name": "Excavator (3 tonne)",
+   "lw": 90,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-30-tonne",
+   "name": "Excavator (30 tonne)",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-40-tonne",
+   "name": "Excavator (40 tonne)",
+   "lw": 115,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-6-tonne",
+   "name": "Excavator (6 tonne)",
+   "lw": 95,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-large-rock-breaker",
+   "name": "Excavator (large) + rock breaker",
+   "lw": 122,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-tracked",
+   "name": "Excavator (tracked)",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-excavator-rock-saw",
+   "name": "Excavator Rock Saw",
+   "lw": 114,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-fence-post-driver",
+   "name": "Fence post driver",
+   "lw": 100,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-fixed-crane",
+   "name": "Fixed crane",
+   "lw": 113,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-flatbed-or-mobile-crane-truck",
+   "name": "Flatbed or mobile crane truck",
+   "lw": 108,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-flood-lights-lighting-tower-daymaker",
+   "name": "Flood Lights / Lighting Tower (Daymaker)",
+   "lw": 90,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-forklift",
+   "name": "Forklift",
+   "lw": 106,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-front-end-wheeled-loader",
+   "name": "Front End / Wheeled Loader",
+   "lw": 111,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-generator-4-stroke-portable-petrol",
+   "name": "Generator - 4 stroke portable petrol",
+   "lw": 103,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-generator-attenuated",
+   "name": "Generator - Attenuated",
+   "lw": 92,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-generator-diesel",
+   "name": "Generator - Diesel",
+   "lw": 113,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-grader-scraper",
+   "name": "Grader/Scraper",
+   "lw": 113,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-grinder-small-up-to-7-inch",
+   "name": "Grinder (small - up to 7 inch)",
+   "lw": 109,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-hand-power-tool",
+   "name": "Hand Power Tool",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-hand-power-tools-2-3-items",
+   "name": "Hand Power Tools (2-3 Items)",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-high-pressure-washer",
+   "name": "High pressure washer",
+   "lw": 93,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-hi-rail-vehicle",
+   "name": "Hi-rail vehicle",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-impact-drill",
+   "name": "Impact drill",
+   "lw": 116,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-impact-wrench",
+   "name": "Impact wrench",
+   "lw": 111,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-jackhammer",
+   "name": "Jackhammer",
+   "lw": 113,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-light-vehicles",
+   "name": "Light vehicles",
+   "lw": 88,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-light-vehicles-eg-4wd",
+   "name": "Light vehicles (eg 4WD)",
+   "lw": 103,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-line-marking-plant",
+   "name": "Line Marking Plant",
+   "lw": 108,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-loader-front-end-telehander",
+   "name": "Loader - Front End/Telehander",
+   "lw": 112,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-manitou",
+   "name": "Manitou",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-microdrilling-rig-soilmec-sm-14",
+   "name": "Microdrilling Rig (Soilmec SM-14)",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-microdrilling-rig-soilmec-sm-5",
+   "name": "Microdrilling Rig (Soilmec SM-5)",
+   "lw": 115,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-mobile-crane-20-tonne",
+   "name": "Mobile Crane (20 tonne)",
+   "lw": 108,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-mobile-crane-60-tonne",
+   "name": "Mobile Crane (60 tonne)",
+   "lw": 108,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-mobile-crane-all-terrain",
+   "name": "Mobile crane (all terrain)",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-mobile-crane-franna",
+   "name": "Mobile Crane (Franna)",
+   "lw": 98,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-mulching-machine",
+   "name": "Mulching machine",
+   "lw": 108,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-pad-foot-roller",
+   "name": "Pad Foot Roller",
+   "lw": 109,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-pavement-profiler",
+   "name": "Pavement Profiler",
+   "lw": 117,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-paving-machine-asphalt",
+   "name": "Paving machine (Asphalt)",
+   "lw": 114,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-piling-rig-bored",
+   "name": "Piling Rig - Bored",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-piling-rig-driven",
+   "name": "Piling Rig - Driven",
+   "lw": 116,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-piling-rig-impact",
+   "name": "Piling Rig - Impact",
+   "lw": 131,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-piling-rig-vibratory",
+   "name": "Piling Rig - Vibratory",
+   "lw": 118,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-pin-puller-hammer-manual",
+   "name": "Pin puller / hammer, manual",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-planer",
+   "name": "Planer",
+   "lw": 96,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-pump-concrete-shotcrete-dewater",
+   "name": "Pump, Concrete / Shotcrete / Dewater",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-rail-grinder-hand-held-profile",
+   "name": "Rail grinder, hand held profile",
+   "lw": 116,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-rail-grinder-rr36-main-line-grinder",
+   "name": "Rail grinder, RR36 (main line grinder)",
+   "lw": 118,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-rail-grinder-rr64-turnout-grinder",
+   "name": "Rail grinder, RR64 (turnout grinder)",
+   "lw": 114,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-rail-regulator-tamper",
+   "name": "Rail Regulator/Tamper",
+   "lw": 98,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-rail-saw-handheld",
+   "name": "Rail Saw, handheld",
+   "lw": 117,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-rail-wooden-sleeper-drill",
+   "name": "Rail wooden sleeper drill",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-rock-crusher",
+   "name": "Rock crusher",
+   "lw": 118,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-rockbreaker-hydraulic",
+   "name": "Rockbreaker, hydraulic",
+   "lw": 118,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-roller-non-vibratory",
+   "name": "Roller (non vibratory)",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-roller-2-5t-smoothdrum",
+   "name": "Roller 2.5T Smoothdrum",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-scissor-lift",
+   "name": "Scissor Lift",
+   "lw": 98,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-scraper",
+   "name": "Scraper",
+   "lw": 116,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-semi-tralier",
+   "name": "Semi tralier",
+   "lw": 103,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-skidsteer-loader-1-t",
+   "name": "Skidsteer Loader 1 T",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-skidsteer-loader-1-2-t",
+   "name": "Skidsteer Loader 1/2 T",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-smooth-drum-roller",
+   "name": "Smooth drum roller",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-spreader",
+   "name": "Spreader",
+   "lw": 95,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-stump-grinder",
+   "name": "Stump Grinder",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-sucker-truck-road-sweeper",
+   "name": "Sucker Truck/Road Sweeper",
+   "lw": 109,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-tamper-handheld",
+   "name": "Tamper, handheld",
+   "lw": 125,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-tamper-handheld-petrol-powered",
+   "name": "Tamper, handheld petrol powered",
+   "lw": 114,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-tamping-machine-mainline",
+   "name": "Tamping machine, mainline",
+   "lw": 113,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-tipper-truck-with-dog",
+   "name": "Tipper truck with dog",
+   "lw": 108,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-truck-10-tonne",
+   "name": "Truck (10 tonne)",
+   "lw": 103,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-truck-semi-trailer",
+   "name": "Truck (Semi trailer)",
+   "lw": 103,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-truck-compressor",
+   "name": "Truck compressor",
+   "lw": 75,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-truck-mounted-borer",
+   "name": "Truck Mounted Borer",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-tub-grinder-mulcher",
+   "name": "Tub Grinder/Mulcher",
+   "lw": 116,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-tunnel-boring-machine",
+   "name": "Tunnel boring machine",
+   "lw": 111,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-ute-4wd",
+   "name": "Ute/4WD",
+   "lw": 103,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-vacuum-truck-sweeper",
+   "name": "Vacuum Truck/Sweeper",
+   "lw": 109,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-vibratory-roller-smooth-wheels",
+   "name": "Vibratory Roller (smooth wheels)",
+   "lw": 107,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-vibratory-roller",
+   "name": "Vibratory Roller",
+   "lw": 109,
+   "sac": true,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-vibratory-screen",
+   "name": "Vibratory Screen",
+   "lw": 103,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-wacker-packer",
+   "name": "Wacker Packer",
+   "lw": 98,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-wacker-rammer",
+   "name": "Wacker rammer",
+   "lw": 106,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-water-tanker-8000-litre",
+   "name": "Water Tanker (8000 litre)",
+   "lw": 107,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-welder",
+   "name": "Welder",
+   "lw": 105,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-welding-equipment-thermit",
+   "name": "Welding Equipment (Thermit)",
+   "lw": 110,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-wood-chipper",
+   "name": "Wood Chipper",
+   "lw": 115,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-work-train-idling-locomotive",
+   "name": "Work train - idling locomotive",
+   "lw": 115,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-work-train-moving",
+   "name": "Work train - moving",
+   "lw": 112,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-cobra-petrol-powered-tamper",
+   "name": "Cobra Petrol Powered Tamper",
+   "lw": 109,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "est-electric-handheld-jackhammer",
+   "name": "Electric Handheld Jackhammer",
+   "lw": 104,
+   "sac": false,
+   "group": "TfNSW estimator"
+  },
+  {
+   "id": "custom",
+   "name": "Custom",
+   "lw": 100,
+   "sac": false,
+   "group": "Custom"
+  }
+ ]
+}

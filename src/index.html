@@ -12,7 +12,7 @@
 <div id="app">
   <aside id="side">
     <h1>Construction Noise POC <span id="ver"></span></h1>
-    <p class="sub">ISO 9613-2 screening · A-weighted · terrain + buildings + hoarding</p>
+    <p class="sub">Screening aid · L<sub>Aeq,15min</sub> dB(A) · TfNSW estimator basis or ISO 9613-2 · terrain, buildings, hoarding</p>
 
     <section>
       <h2>Mode</h2>
@@ -32,6 +32,17 @@
     <section>
       <h2>Selection</h2>
       <div id="selBody"></div>
+    </section>
+
+    <section>
+      <h2>Equipment library</h2>
+      <div class="btns">
+        <button type="button" id="btnLibExport">Export library</button>
+        <button type="button" id="btnLibImport">Import library</button>
+        <button type="button" id="btnLibReset" class="danger">Reset to built-in</button>
+      </div>
+      <input type="file" id="fileLib" accept=".json,application/json" hidden>
+      <p id="libInfo" class="kv muted"></p>
     </section>
 
     <section>
@@ -74,10 +85,17 @@
 
     <section>
       <h2>Model</h2>
+      <div class="row"><label for="setMethod">Method</label>
+        <select id="setMethod"><option value="tfnsw">TfNSW estimator</option><option value="iso">ISO 9613-2</option></select></div>
+      <p class="kv muted" id="methodNote"></p>
+      <div class="row"><label for="setPeriod">Time period</label>
+        <select id="setPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2night">OOHW Period 2 – night</option></select></div>
+      <div class="row"><label for="setSeason">Season (air absorption)</label>
+        <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
+      <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
+      <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
       <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
-      <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (1.9 dB/km @ 500 Hz)</label>
-      <div class="row"><label for="setGround">Ground</label>
-        <select id="setGround"><option value="hard">Hard (Agr = 0)</option><option value="soft">Soft (ISO eq. 10)</option></select></div>
+      <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
       <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
       <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
       <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>

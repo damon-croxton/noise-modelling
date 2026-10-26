@@ -57,7 +57,7 @@
 <div id="app">
   <aside id="side">
     <h1>Construction Noise POC <span id="ver"></span></h1>
-    <p class="sub">ISO 9613-2 screening · A-weighted · terrain + buildings + hoarding</p>
+    <p class="sub">Screening aid · L<sub>Aeq,15min</sub> dB(A) · TfNSW estimator basis or ISO 9613-2 · terrain, buildings, hoarding</p>
 
     <section>
       <h2>Mode</h2>
@@ -77,6 +77,17 @@
     <section>
       <h2>Selection</h2>
       <div id="selBody"></div>
+    </section>
+
+    <section>
+      <h2>Equipment library</h2>
+      <div class="btns">
+        <button type="button" id="btnLibExport">Export library</button>
+        <button type="button" id="btnLibImport">Import library</button>
+        <button type="button" id="btnLibReset" class="danger">Reset to built-in</button>
+      </div>
+      <input type="file" id="fileLib" accept=".json,application/json" hidden>
+      <p id="libInfo" class="kv muted"></p>
     </section>
 
     <section>
@@ -119,10 +130,17 @@
 
     <section>
       <h2>Model</h2>
+      <div class="row"><label for="setMethod">Method</label>
+        <select id="setMethod"><option value="tfnsw">TfNSW estimator</option><option value="iso">ISO 9613-2</option></select></div>
+      <p class="kv muted" id="methodNote"></p>
+      <div class="row"><label for="setPeriod">Time period</label>
+        <select id="setPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2night">OOHW Period 2 – night</option></select></div>
+      <div class="row"><label for="setSeason">Season (air absorption)</label>
+        <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
+      <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
+      <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
       <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
-      <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (1.9 dB/km @ 500 Hz)</label>
-      <div class="row"><label for="setGround">Ground</label>
-        <select id="setGround"><option value="hard">Hard (Agr = 0)</option><option value="soft">Soft (ISO eq. 10)</option></select></div>
+      <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
       <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
       <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
       <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
@@ -175,10 +193,1498 @@
 (function () {
 'use strict';
 
+/* ================================ DATA ================================= */
+const DATA = {
+ "equipment": {
+  "_about": "Plant sound power levels, dBA. 'CNVG-PTI Table 19' = highest permissible SWL from TfNSW EMF-NV-GD-0060 v4.6 (Mar 2026) Appendix C; 'TfNSW estimator' = plant list in the TfNSW Construction Noise Estimator (EMF-NV-TT-0068), with its built-in +5 dB special-audible-characteristics correction removed from lw and recorded as sac. Source: Transport for NSW, reproduced for non-commercial use with acknowledgement. Verify against the current client strategy.",
+  "items": [
+   {
+    "id": "t19-asphalt-truck-and-sprayer",
+    "name": "Asphalt truck and sprayer",
+    "lw": 106,
+    "maxLw": 106,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-backhoe",
+    "name": "Backhoe",
+    "lw": 111,
+    "maxLw": 111,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-chainsaw-petrol-4-5-hp",
+    "name": "Chainsaw – petrol (4–5 hp)",
+    "lw": 114,
+    "maxLw": 114,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-compactor",
+    "name": "Compactor",
+    "lw": 106,
+    "maxLw": 106,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-compressor",
+    "name": "Compressor",
+    "lw": 109,
+    "maxLw": 109,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-crane-fixed",
+    "name": "Crane – fixed",
+    "lw": 113,
+    "maxLw": 113,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-crane-franna-20-t",
+    "name": "Crane – Franna (20 t)",
+    "lw": 98,
+    "maxLw": 98,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-crane-mobile",
+    "name": "Crane – mobile",
+    "lw": 113,
+    "maxLw": 113,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-crane-truck-mounted-20-60-t",
+    "name": "Crane – truck mounted (20–60 t)",
+    "lw": 108,
+    "maxLw": 108,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-crusher-rock",
+    "name": "Crusher – rock",
+    "lw": 118,
+    "maxLw": 118,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-dozer-cat-d9",
+    "name": "Dozer (CAT D9)",
+    "lw": 116,
+    "maxLw": 116,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-dozer-cat-d10",
+    "name": "Dozer (CAT D10)",
+    "lw": 121,
+    "maxLw": 121,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-elevated-work-platform-scissor-lift",
+    "name": "Elevated work platform – scissor lift",
+    "lw": 98,
+    "maxLw": 98,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-elevated-work-platform",
+    "name": "Elevated work platform",
+    "lw": 97,
+    "maxLw": 97,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-3-t",
+    "name": "Excavator – tracked (3 t)",
+    "lw": 90,
+    "maxLw": 90,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-6-t",
+    "name": "Excavator – tracked (6 t)",
+    "lw": 95,
+    "maxLw": 95,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-hydraulic-hammer-6-t",
+    "name": "Excavator – tracked + hydraulic hammer (6 t)",
+    "lw": 115,
+    "maxLw": 115,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-10-t",
+    "name": "Excavator – tracked (10 t)",
+    "lw": 100,
+    "maxLw": 100,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-hydraulic-hammer-10-t",
+    "name": "Excavator – tracked + hydraulic hammer (10 t)",
+    "lw": 118,
+    "maxLw": 118,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-20-t",
+    "name": "Excavator – tracked (20 t)",
+    "lw": 105,
+    "maxLw": 105,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-30-t",
+    "name": "Excavator – tracked (30 t)",
+    "lw": 110,
+    "maxLw": 110,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-hydraulic-hammer-30-t",
+    "name": "Excavator – tracked + hydraulic hammer (30 t)",
+    "lw": 122,
+    "maxLw": 122,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-excavator-tracked-40-t",
+    "name": "Excavator – tracked (40 t)",
+    "lw": 115,
+    "maxLw": 115,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-grader",
+    "name": "Grader",
+    "lw": 113,
+    "maxLw": 113,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-generator-diesel-petrol-6-kw",
+    "name": "Generator – diesel/petrol (6 kW)",
+    "lw": 103,
+    "maxLw": 103,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-generator-attenuated-30-kw",
+    "name": "Generator – attenuated (30 kW)",
+    "lw": 92,
+    "maxLw": 92,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-grinder",
+    "name": "Grinder",
+    "lw": 105,
+    "maxLw": 105,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-jackhammer",
+    "name": "Jackhammer",
+    "lw": 113,
+    "maxLw": 113,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-lighting-tower",
+    "name": "Lighting tower",
+    "lw": 80,
+    "maxLw": 80,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-lighting-daymakers",
+    "name": "Lighting – daymakers",
+    "lw": 98,
+    "maxLw": 98,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-light-vehicle-4wd",
+    "name": "Light vehicle – 4WD",
+    "lw": 103,
+    "maxLw": 103,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-line-marking-truck",
+    "name": "Line-marking truck",
+    "lw": 108,
+    "maxLw": 108,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-loader-front-end-wheeled-23-t",
+    "name": "Loader – front-end (wheeled) (23 t)",
+    "lw": 112,
+    "maxLw": 112,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-loader-skidsteer-t",
+    "name": "Loader – skidsteer (½ t)",
+    "lw": 107,
+    "maxLw": 107,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-loader-skidsteer-1-t",
+    "name": "Loader – skidsteer (1 t)",
+    "lw": 110,
+    "maxLw": 110,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-loader-tracked-0-50-kw",
+    "name": "Loader – tracked (0–50 kW)",
+    "lw": 115,
+    "maxLw": 115,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-loader-tracked-200-300-kw",
+    "name": "Loader – tracked (200–300 kW)",
+    "lw": 121,
+    "maxLw": 121,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-pavement-laying-machine",
+    "name": "Pavement laying machine",
+    "lw": 114,
+    "maxLw": 114,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-pavement-profiler",
+    "name": "Pavement profiler",
+    "lw": 117,
+    "maxLw": 117,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-pile-driver-vibratory",
+    "name": "Pile driver – vibratory",
+    "lw": 121,
+    "maxLw": 121,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-piling-rig-bored",
+    "name": "Piling rig – bored",
+    "lw": 112,
+    "maxLw": 112,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-piling-rig-impact",
+    "name": "Piling rig – impact",
+    "lw": 134,
+    "maxLw": 134,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-pump-concrete",
+    "name": "Pump – concrete",
+    "lw": 109,
+    "maxLw": 109,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-rattle-gun-handheld",
+    "name": "Rattle gun (handheld)",
+    "lw": 104,
+    "maxLw": 104,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-roller-smooth-drum",
+    "name": "Roller – smooth drum",
+    "lw": 107,
+    "maxLw": 107,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-roller-large-pad-foot",
+    "name": "Roller – large pad foot",
+    "lw": 109,
+    "maxLw": 109,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-roller-vibratory-10-t",
+    "name": "Roller – vibratory (10 t)",
+    "lw": 109,
+    "maxLw": 109,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-saw-concrete",
+    "name": "Saw – concrete",
+    "lw": 118,
+    "maxLw": 118,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-scraper",
+    "name": "Scraper",
+    "lw": 113,
+    "maxLw": 113,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-truck-concrete",
+    "name": "Truck – concrete",
+    "lw": 109,
+    "maxLw": 109,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-truck-dump-15-t",
+    "name": "Truck – dump (15 t)",
+    "lw": 110,
+    "maxLw": 110,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-truck-medium-rigid-20-t",
+    "name": "Truck – medium rigid (20 t)",
+    "lw": 103,
+    "maxLw": 103,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-truck-road-truck-truck-and-dog-30-t",
+    "name": "Truck – road truck / truck and dog (30 t)",
+    "lw": 108,
+    "maxLw": 108,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-truck-vacuum-ndd",
+    "name": "Truck – vacuum (NDD)",
+    "lw": 109,
+    "maxLw": 109,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-tub-grinder-mulcher-40-50-hp",
+    "name": "Tub grinder / mulcher (40–50 hp)",
+    "lw": 116,
+    "maxLw": 116,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-vibrator-concrete",
+    "name": "Vibrator – concrete",
+    "lw": 113,
+    "maxLw": 113,
+    "sac": true,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-water-cart",
+    "name": "Water cart",
+    "lw": 107,
+    "maxLw": 107,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-welding-equipment",
+    "name": "Welding equipment",
+    "lw": 110,
+    "maxLw": 110,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "t19-wrench-impact",
+    "name": "Wrench – impact",
+    "lw": 111,
+    "maxLw": 111,
+    "sac": false,
+    "group": "CNVG-PTI Table 19"
+   },
+   {
+    "id": "est-abrassive-blasting-nozzle",
+    "name": "Abrassive blasting (nozzle)",
+    "lw": 117,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-air-compressor",
+    "name": "Air Compressor",
+    "lw": 102,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-air-track-drill",
+    "name": "Air track drill",
+    "lw": 124,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-asphalt-paver",
+    "name": "Asphalt paver",
+    "lw": 108,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-asphalt-truck-sprayer",
+    "name": "Asphalt Truck & Sprayer",
+    "lw": 106,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-auger-drill-rig",
+    "name": "Auger/Drill Rig",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-backhoe",
+    "name": "Backhoe",
+    "lw": 108,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-ballast-clean",
+    "name": "Ballast clean",
+    "lw": 115,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-ballast-pour",
+    "name": "Ballast pour",
+    "lw": 111,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-ballast-regulator",
+    "name": "Ballast regulator",
+    "lw": 115,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-blower-battery",
+    "name": "Blower (battery)",
+    "lw": 98,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-blower-petrol",
+    "name": "Blower (petrol)",
+    "lw": 106,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-bobcat",
+    "name": "Bobcat",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-bobcat-with-planer",
+    "name": "Bobcat with Planer",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-breaker-electric-hydraulic-36kg",
+    "name": "Breaker, electric / hydraulic, 36kg",
+    "lw": 112,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-breaker-petrol-36kg",
+    "name": "Breaker, petrol, 36kg",
+    "lw": 103,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-breaker-pneumatic-14kg-silenced",
+    "name": "Breaker, pneumatic, 14kg silenced",
+    "lw": 108,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-breaker-pneumatic-14kg-standard",
+    "name": "Breaker, pneumatic, 14kg standard",
+    "lw": 116,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-brushcutter",
+    "name": "Brushcutter",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-bucket-crusher",
+    "name": "Bucket Crusher",
+    "lw": 111,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-chainsaw-electric",
+    "name": "Chainsaw (electric)",
+    "lw": 95,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-chainsaw-hydraulic",
+    "name": "Chainsaw (hydraulic)",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-chainsaw-petrol",
+    "name": "Chainsaw (petrol)",
+    "lw": 114,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-cherry-picker",
+    "name": "Cherry Picker",
+    "lw": 102,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-circular-saw",
+    "name": "Circular Saw",
+    "lw": 106,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-compactor",
+    "name": "Compactor",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-compressor-approx-1500-cfm",
+    "name": "Compressor (approx. 1500 CFM)",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-compressor-approx-600-cfm",
+    "name": "Compressor (approx. 600 CFM)",
+    "lw": 100,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-compressor-towable-lawn-mower",
+    "name": "Compressor (Towable) / Lawn Mower",
+    "lw": 100,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-concrete-pencil-vibrator",
+    "name": "Concrete Pencil Vibrator",
+    "lw": 103,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-concrete-pump",
+    "name": "Concrete Pump",
+    "lw": 109,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-concrete-saw-corer",
+    "name": "Concrete saw/corer",
+    "lw": 118,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-concrete-truck-agitator",
+    "name": "Concrete Truck / Agitator",
+    "lw": 109,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-concrete-vibrator",
+    "name": "Concrete Vibrator",
+    "lw": 113,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-daymakers",
+    "name": "Daymakers",
+    "lw": 98,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-diamond-grinding",
+    "name": "Diamond Grinding",
+    "lw": 126,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-directional-driller-approx-10-tonne",
+    "name": "Directional Driller (approx. 10 tonne)",
+    "lw": 104,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-directional-driller-approx-18-tonne",
+    "name": "Directional Driller (approx. 18 tonne)",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-dozer-d10",
+    "name": "Dozer D10",
+    "lw": 121,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-dozer-d9",
+    "name": "Dozer D9",
+    "lw": 116,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-drill-electric",
+    "name": "Drill, electric",
+    "lw": 91,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-drill-hammer-4kg",
+    "name": "Drill, Hammer 4kg",
+    "lw": 104,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-drill-hammer-7kg",
+    "name": "Drill, Hammer 7kg",
+    "lw": 110,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-dump-truck-approx-15-tonne",
+    "name": "Dump Truck (approx. 15 tonne)",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-dump-truck-tipping-fill",
+    "name": "Dump Truck, tipping fill",
+    "lw": 117,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-dynamic-track-stabiliser",
+    "name": "Dynamic track stabiliser",
+    "lw": 108,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-earthmover-drott",
+    "name": "Earthmover (Drott)",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-elevated-work-platform",
+    "name": "Elevated Work Platform",
+    "lw": 95,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-10-tonne",
+    "name": "Excavator (10 tonne)",
+    "lw": 100,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-20-tonne",
+    "name": "Excavator (20 tonne)",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-3-tonne",
+    "name": "Excavator (3 tonne)",
+    "lw": 90,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-30-tonne",
+    "name": "Excavator (30 tonne)",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-40-tonne",
+    "name": "Excavator (40 tonne)",
+    "lw": 115,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-6-tonne",
+    "name": "Excavator (6 tonne)",
+    "lw": 95,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-large-rock-breaker",
+    "name": "Excavator (large) + rock breaker",
+    "lw": 122,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-tracked",
+    "name": "Excavator (tracked)",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-excavator-rock-saw",
+    "name": "Excavator Rock Saw",
+    "lw": 114,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-fence-post-driver",
+    "name": "Fence post driver",
+    "lw": 100,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-fixed-crane",
+    "name": "Fixed crane",
+    "lw": 113,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-flatbed-or-mobile-crane-truck",
+    "name": "Flatbed or mobile crane truck",
+    "lw": 108,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-flood-lights-lighting-tower-daymaker",
+    "name": "Flood Lights / Lighting Tower (Daymaker)",
+    "lw": 90,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-forklift",
+    "name": "Forklift",
+    "lw": 106,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-front-end-wheeled-loader",
+    "name": "Front End / Wheeled Loader",
+    "lw": 111,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-generator-4-stroke-portable-petrol",
+    "name": "Generator - 4 stroke portable petrol",
+    "lw": 103,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-generator-attenuated",
+    "name": "Generator - Attenuated",
+    "lw": 92,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-generator-diesel",
+    "name": "Generator - Diesel",
+    "lw": 113,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-grader-scraper",
+    "name": "Grader/Scraper",
+    "lw": 113,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-grinder-small-up-to-7-inch",
+    "name": "Grinder (small - up to 7 inch)",
+    "lw": 109,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-hand-power-tool",
+    "name": "Hand Power Tool",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-hand-power-tools-2-3-items",
+    "name": "Hand Power Tools (2-3 Items)",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-high-pressure-washer",
+    "name": "High pressure washer",
+    "lw": 93,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-hi-rail-vehicle",
+    "name": "Hi-rail vehicle",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-impact-drill",
+    "name": "Impact drill",
+    "lw": 116,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-impact-wrench",
+    "name": "Impact wrench",
+    "lw": 111,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-jackhammer",
+    "name": "Jackhammer",
+    "lw": 113,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-light-vehicles",
+    "name": "Light vehicles",
+    "lw": 88,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-light-vehicles-eg-4wd",
+    "name": "Light vehicles (eg 4WD)",
+    "lw": 103,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-line-marking-plant",
+    "name": "Line Marking Plant",
+    "lw": 108,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-loader-front-end-telehander",
+    "name": "Loader - Front End/Telehander",
+    "lw": 112,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-manitou",
+    "name": "Manitou",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-microdrilling-rig-soilmec-sm-14",
+    "name": "Microdrilling Rig (Soilmec SM-14)",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-microdrilling-rig-soilmec-sm-5",
+    "name": "Microdrilling Rig (Soilmec SM-5)",
+    "lw": 115,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-mobile-crane-20-tonne",
+    "name": "Mobile Crane (20 tonne)",
+    "lw": 108,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-mobile-crane-60-tonne",
+    "name": "Mobile Crane (60 tonne)",
+    "lw": 108,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-mobile-crane-all-terrain",
+    "name": "Mobile crane (all terrain)",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-mobile-crane-franna",
+    "name": "Mobile Crane (Franna)",
+    "lw": 98,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-mulching-machine",
+    "name": "Mulching machine",
+    "lw": 108,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-pad-foot-roller",
+    "name": "Pad Foot Roller",
+    "lw": 109,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-pavement-profiler",
+    "name": "Pavement Profiler",
+    "lw": 117,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-paving-machine-asphalt",
+    "name": "Paving machine (Asphalt)",
+    "lw": 114,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-piling-rig-bored",
+    "name": "Piling Rig - Bored",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-piling-rig-driven",
+    "name": "Piling Rig - Driven",
+    "lw": 116,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-piling-rig-impact",
+    "name": "Piling Rig - Impact",
+    "lw": 131,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-piling-rig-vibratory",
+    "name": "Piling Rig - Vibratory",
+    "lw": 118,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-pin-puller-hammer-manual",
+    "name": "Pin puller / hammer, manual",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-planer",
+    "name": "Planer",
+    "lw": 96,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-pump-concrete-shotcrete-dewater",
+    "name": "Pump, Concrete / Shotcrete / Dewater",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-rail-grinder-hand-held-profile",
+    "name": "Rail grinder, hand held profile",
+    "lw": 116,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-rail-grinder-rr36-main-line-grinder",
+    "name": "Rail grinder, RR36 (main line grinder)",
+    "lw": 118,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-rail-grinder-rr64-turnout-grinder",
+    "name": "Rail grinder, RR64 (turnout grinder)",
+    "lw": 114,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-rail-regulator-tamper",
+    "name": "Rail Regulator/Tamper",
+    "lw": 98,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-rail-saw-handheld",
+    "name": "Rail Saw, handheld",
+    "lw": 117,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-rail-wooden-sleeper-drill",
+    "name": "Rail wooden sleeper drill",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-rock-crusher",
+    "name": "Rock crusher",
+    "lw": 118,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-rockbreaker-hydraulic",
+    "name": "Rockbreaker, hydraulic",
+    "lw": 118,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-roller-non-vibratory",
+    "name": "Roller (non vibratory)",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-roller-2-5t-smoothdrum",
+    "name": "Roller 2.5T Smoothdrum",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-scissor-lift",
+    "name": "Scissor Lift",
+    "lw": 98,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-scraper",
+    "name": "Scraper",
+    "lw": 116,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-semi-tralier",
+    "name": "Semi tralier",
+    "lw": 103,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-skidsteer-loader-1-t",
+    "name": "Skidsteer Loader 1 T",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-skidsteer-loader-1-2-t",
+    "name": "Skidsteer Loader 1/2 T",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-smooth-drum-roller",
+    "name": "Smooth drum roller",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-spreader",
+    "name": "Spreader",
+    "lw": 95,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-stump-grinder",
+    "name": "Stump Grinder",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-sucker-truck-road-sweeper",
+    "name": "Sucker Truck/Road Sweeper",
+    "lw": 109,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-tamper-handheld",
+    "name": "Tamper, handheld",
+    "lw": 125,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-tamper-handheld-petrol-powered",
+    "name": "Tamper, handheld petrol powered",
+    "lw": 114,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-tamping-machine-mainline",
+    "name": "Tamping machine, mainline",
+    "lw": 113,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-tipper-truck-with-dog",
+    "name": "Tipper truck with dog",
+    "lw": 108,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-truck-10-tonne",
+    "name": "Truck (10 tonne)",
+    "lw": 103,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-truck-semi-trailer",
+    "name": "Truck (Semi trailer)",
+    "lw": 103,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-truck-compressor",
+    "name": "Truck compressor",
+    "lw": 75,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-truck-mounted-borer",
+    "name": "Truck Mounted Borer",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-tub-grinder-mulcher",
+    "name": "Tub Grinder/Mulcher",
+    "lw": 116,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-tunnel-boring-machine",
+    "name": "Tunnel boring machine",
+    "lw": 111,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-ute-4wd",
+    "name": "Ute/4WD",
+    "lw": 103,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-vacuum-truck-sweeper",
+    "name": "Vacuum Truck/Sweeper",
+    "lw": 109,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-vibratory-roller-smooth-wheels",
+    "name": "Vibratory Roller (smooth wheels)",
+    "lw": 107,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-vibratory-roller",
+    "name": "Vibratory Roller",
+    "lw": 109,
+    "sac": true,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-vibratory-screen",
+    "name": "Vibratory Screen",
+    "lw": 103,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-wacker-packer",
+    "name": "Wacker Packer",
+    "lw": 98,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-wacker-rammer",
+    "name": "Wacker rammer",
+    "lw": 106,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-water-tanker-8000-litre",
+    "name": "Water Tanker (8000 litre)",
+    "lw": 107,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-welder",
+    "name": "Welder",
+    "lw": 105,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-welding-equipment-thermit",
+    "name": "Welding Equipment (Thermit)",
+    "lw": 110,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-wood-chipper",
+    "name": "Wood Chipper",
+    "lw": 115,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-work-train-idling-locomotive",
+    "name": "Work train - idling locomotive",
+    "lw": 115,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-work-train-moving",
+    "name": "Work train - moving",
+    "lw": 112,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-cobra-petrol-powered-tamper",
+    "name": "Cobra Petrol Powered Tamper",
+    "lw": 109,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "est-electric-handheld-jackhammer",
+    "name": "Electric Handheld Jackhammer",
+    "lw": 104,
+    "sac": false,
+    "group": "TfNSW estimator"
+   },
+   {
+    "id": "custom",
+    "name": "Custom",
+    "lw": 100,
+    "sac": false,
+    "group": "Custom"
+   }
+  ]
+ }
+};
 /* ============================== CONSTANTS ============================== */
 const VERSION = '0.4.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
-const ALPHA_DBKM = 1.9;
+/* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
+   the three bands – the same values and conditions as the TfNSW Construction
+   Noise Estimator ("Air Atten calcs"). warm = Oct–Apr (day 20 °C/80 %,
+   night 15 °C/80 %), cool = May–Sep (day 15 °C/70 %, night 5 °C/70 %). */
+const AIR_ATTEN = {
+  warm: { day: [1.04, 2.77, 5.15], night: [1.07, 2.4, 4.15] },
+  cool: { day: [1.13, 2.36, 4.08], night: [0.897, 1.64, 3.8] }
+};
+/* CONCAWE ground attenuation for meteorological category 4 (neutral), cubic
+   fits in log10(d) at 250 / 500 / 1000 Hz, each including the +3 dB correction
+   the TfNSW estimator applies so they sit on top of hemispherical spreading. */
+const CONCAWE_CAT4 = [[-61.2, 48.6, -9.53, 0.634], [-71.9, 82.23, -26.921, 2.9258], [-97.1, 104.68, -34.693, 3.8068]];
+const PERIODS = {
+  std: 'Standard hours', p1day: 'OOHW Period 1 – day', p1eve: 'OOHW Period 1 – evening', p2night: 'OOHW Period 2 – night'
+};
 const MAX_TERRAIN_SAMPLES = 160;
 const MAX_DEM_CELLS = 4.5e6;
 
@@ -189,23 +1695,22 @@ const BANDS = [
 ];
 const BAND_RGB = BANDS.map(b => hexToRgb(b[1]));
 
-const EQUIP = [
-  ['Excavator (~20 t)', 105], ['Excavator + hydraulic hammer', 118], ['Bored piling rig', 111],
-  ['Concrete saw', 117], ['Jackhammer', 113], ['Concrete pump', 108], ['Concrete agitator truck', 109],
-  ['Dump truck', 108], ['Mobile crane', 104], ['Skid steer loader', 104], ['Vibratory roller', 109],
-  ['Generator', 99], ['Hand tools (electric)', 102], ['Custom', null]
-];
-const CUSTOM_EQ = EQUIP.length - 1;
+/* Equipment library: src/data/equipment.json, editable in the app and
+   exported/imported as JSON. lw is the sound power without the special
+   audible characteristics correction; sac items get SAC_PENALTY by default. */
+let LIBRARY = DATA.equipment.items.map(o => Object.assign({}, o));
+const DEFAULT_EQ = 't19-excavator-tracked-20-t', SAC_PENALTY = 5;
+function libItem(id) { return LIBRARY.find(o => o.id === id) || LIBRARY.find(o => o.id === 'custom'); }
 
 /* ================================ STATE ================================ */
 const state = {
   sources: [], buildings: [], hoardings: [],
   sel: null, mode: 'select', draft: [],
-  view: { cx: 0, cy: 0, scale: 3 }, mouse: null, lastEq: 0,
+  view: { cx: 0, cy: 0, scale: 3 }, mouse: null, lastEq: DEFAULT_EQ,
   origin: null,            // {type:'projected', x0, y0, zone, epsg}  (MGA / GDA)
   dsm: null,
   terrain: null,
-  settings: { hr: 1.5, ground: 'hard', air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
+  settings: { method: 'tfnsw', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
 };
 let nextId = 1, grid = null;
 
@@ -336,10 +1841,26 @@ function updateBase(b) {
   if (b.roofRL != null) b.h = Math.max(0.5, b.roofRL - b.base);
 }
 function topOf(b) { return b.base + b.h; }
-function makeSource(x, y, eqIdx) {
-  const e = EQUIP[eqIdx] || EQUIP[0], id = nextId++;
-  return { id, name: e[0].replace(/ \(.*\)$/, ''), eq: eqIdx, lw: e[1] == null ? 100 : e[1], h: 1.5, x, y };
+/* A source: lw = sound power dB(A); on = % of each 15 min the plant operates;
+   pen = annoyance / special audible characteristics penalty (dB); mit =
+   mitigation at the plant, e.g. local screening or an enclosure (dB). */
+function makeSource(x, y, libId) {
+  const e = libItem(libId), id = nextId++;
+  return { id, name: e.name.replace(/ \(.*\)$/, ''), eq: e.id, lw: e.lw, on: 100, pen: e.sac ? SAC_PENALTY : 0, mit: 0, h: 2, x, y };
 }
+/* Leq correction for operating time: 10·lg(on/100). The TfNSW estimator uses a
+   flat −3 dB for plant running under 7 min in 15 (10·lg(7/15) = −3.3). */
+function onTimeCorr(s) { return 10 * Math.log10(Math.max(1, Math.min(100, s.on == null ? 100 : s.on)) / 100); }
+function effectiveLw(s) { return s.lw + onTimeCorr(s) + (s.pen || 0) - (s.mit || 0); }
+function lwBreakdown(s) {
+  const parts = [`Lw ${fmt(s.lw, 1)}`];
+  if (s.on != null && s.on < 100) parts.push(`${fmt(onTimeCorr(s), 1)} (${fmt(s.on, 0)} % on)`);
+  if (s.pen) parts.push(`+${fmt(s.pen, 0)} penalty`);
+  if (s.mit) parts.push(`−${fmt(s.mit, 1)} mitigation`);
+  return parts.length > 1 ? `${parts.join(' ')} = ${fmt(effectiveLw(s), 1)}` : parts[0];
+}
+/* CNVG-PTI Appendix C maximum for the source's library item, if exceeded. */
+function overMax(s) { const e = libItem(s.eq); return e && e.id === s.eq && e.maxLw != null && s.lw > e.maxLw ? e.maxLw : null; }
 function makeHoarding(pts, h, name) {
   const id = nextId++;
   return { id, name: name || ('Hoarding ' + id), h, pts, bbox: bboxOf(pts) };
@@ -443,6 +1964,7 @@ function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
   const e = hyp(H[1], H[n]) > 0 ? (function () { let s = 0; for (let k = 1; k < n; k++) s += hyp(H[k], H[k + 1]); return s; })() : 0;
   let C3 = 1, cap = 20;
   if (n >= 2) { cap = 25; if (e > 1e-6) { const q = Math.pow(5 * LAMBDA / e, 2); C3 = (1 + q) / (1 / 3 + q); } }
+  if (S.method !== 'iso' && S.barCap > 0) cap = Math.min(cap, S.barCap);
   const Kmet = Math.exp(-(1 / 2000) * Math.sqrt(dss * dsr * direct / (2 * delta)));
   let Dz = 10 * Math.log10(3 + (20 / LAMBDA) * C3 * delta * Kmet);
   const capped = Dz > cap; if (capped) Dz = cap;
@@ -450,22 +1972,70 @@ function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
   return { Dz, delta, n, e, Kmet, C3, capped, kinds };
 }
 
+/* Air absorption coefficient (dB/km) for the season and time period. */
+function airAlpha(S) {
+  const t = (AIR_ATTEN[S.season] || AIR_ATTEN.warm)[S.period === 'p2night' ? 'night' : 'day'];
+  return (t[0] + t[1] + t[2]) / 3;
+}
+/* CONCAWE category-4 ground attenuation for fully soft ground, mean of the
+   250 / 500 / 1000 Hz fits, each floored at 0 (as in the TfNSW estimator). */
+function concaweGround(d) {
+  const L = Math.log10(Math.max(d, 1));
+  let s = 0;
+  for (const c of CONCAWE_CAT4) s += Math.max(0, c[0] + c[1] * L + c[2] * L * L + c[3] * L * L * L);
+  return s / 3;
+}
+/* Ground attenuation kept alongside screening, TfNSW convention. The estimator
+   keeps ground absorption with 5 dB screening and drops it with 10 or 15 dB
+   (enclosed works / receivers behind buildings). A continuous screening value
+   is tapered linearly between 5 and 10 dB so the result matches the estimator
+   at 0, 5, 10 and 15 dB without a step in the map. */
+function groundUnderScreening(agr, abar) {
+  if (abar <= 5) return agr;
+  if (abar >= 10) return 0;
+  return agr * (10 - abar) / 5;
+}
+
+/* Contribution of one source at one receiver, dB(A).
+   method 'tfnsw' (default, reconciles with the TfNSW Construction Noise
+   Estimator):  Lp = Lw − (20·lg d + 8) − Aatm − Agr − Abar
+     20·lg d + 8 is hemispherical spreading over hard ground, Agr = %soft ×
+     CONCAWE cat 4 (horizontal distance), Abar = Dz capped at S.barCap.
+   method 'iso' (ISO 9613-2 detailed):  Lp = Lw + DΩ − (20·lg d + 11) − Aatm − Agr − Abar
+     hard ground: Agr = As + Ar + Am = −1.5 − 1.5 − 3q (G = 0, §7.3.1);
+     soft ground: eq. 10 with DΩ (§7.3.2); mixed: linear blend by %soft;
+     Abar = Dz − Agr ≥ 0 with the 20/25 dB caps.
+   Lw is the effective level from prep(): time-on, penalty and mitigation applied. */
 function contrib(src, rx, ry, S, buildings, detail, gr) {
-  const hs = src.h, hr = S.hr;
+  const hs = src.h, hr = S.hr, iso = S.method === 'iso', soft = Math.max(0, Math.min(1, S.soft || 0));
   const zs = src._z, zr = (gr == null ? ground(rx, ry) : gr) + hr;
   const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
   const d = Math.max(Math.hypot(d2, zs - zr), 1);
-  const Adiv = 20 * Math.log10(d) + 11;
-  const Aatm = S.air ? ALPHA_DBKM * d / 1000 : 0;
-  let Agr = 0;
-  if (S.ground === 'soft') { const hm = (hs + hr) / 2, dg = Math.max(d2, 1); Agr = Math.max(0, 4.8 - (2 * hm / dg) * (17 + 300 / dg)); }
+  const Adiv = 20 * Math.log10(d) + (iso ? 11 : 8);
+  const Aatm = S.air ? airAlpha(S) * d / 1000 : 0;
+  let Agr = 0, Domega = 0;
+  if (iso) {
+    const dp = Math.max(d2, 1), hsum = hs + hr, q = dp <= 30 * hsum ? 0 : 1 - 30 * hsum / dp;
+    const hard = -3 - 3 * q;
+    let sft = 0, dOm = 0;
+    if (soft > 0) {
+      const hm = (hs + hr) / 2;
+      sft = Math.max(0, 4.8 - (2 * hm / dp) * (17 + 300 / dp));
+      dOm = 10 * Math.log10(1 + (dp * dp + (hs - hr) ** 2) / (dp * dp + hsum * hsum));
+    }
+    Agr = (1 - soft) * hard + soft * sft; Domega = soft * dOm;
+  } else if (soft > 0) Agr = soft * concaweGround(d2);
   let Abar = 0, bar = null;
   if ((S.barriers && (buildings.length || state.hoardings.length)) || (S.terrain && state.terrain)) {
     bar = screening(src, rx, ry, d2, zs, zr, S, buildings, detail);
-    if (bar) Abar = Math.max(0, bar.Dz - Agr);
+    if (bar) {
+      if (iso) Abar = Math.max(0, bar.Dz - Agr);
+      else { Abar = bar.Dz; Agr = groundUnderScreening(Agr, Abar); }
+    }
   }
-  const Lp = src.lw - Adiv - Aatm - Agr - Abar;
-  return detail ? { Lp, d, Adiv, Aatm, Agr, Abar, bar, zr } : Lp;
+  const Lw = src._lw != null ? src._lw : src.lw;
+  const Lp = Lw + Domega - Adiv - Aatm - Agr - Abar;
+  return detail ? { Lp, Lw, d, Adiv, Aatm, Agr, Abar, Domega, bar, zr } : Lp;
 }
 function prep(sources) {
   for (const s of sources) {
@@ -473,6 +2043,7 @@ function prep(sources) {
     const b = buildingAt(s.x, s.y);
     if (b) for (const c of state.buildings) if (inBox(s.x, s.y, c.bbox) && pip(s.x, s.y, c.pts)) s._inside.add(c.id);
     s._z = ground(s.x, s.y) + s.h;
+    s._lw = effectiveLw(s);
   }
 }
 
@@ -1099,7 +2670,7 @@ function render() {
     ctx.fillStyle = '#111827'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = sel ? '#60a5fa' : '#fff'; ctx.stroke();
     ctx.beginPath(); ctx.arc(sx, sy, 3, 0, 7); ctx.fillStyle = '#ef4444'; ctx.fill();
     ctx.font = '600 11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    const label = `${s.name} · Lw ${fmt(s.lw, 0)}`, w = ctx.measureText(label).width;
+    const label = `${s.name} · Lw ${fmt(effectiveLw(s), 0)}${overMax(s) != null ? ' ⚠' : ''}`, w = ctx.measureText(label).width;
     ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(sx + 11, sy - 8, w + 6, 16);
     ctx.fillStyle = '#111827'; ctx.fillText(label, sx + 14, sy);
   }
@@ -1133,18 +2704,20 @@ function updateProbe() {
   for (const s of state.sources) {
     const r = contrib(s, wx, wy, S, B, true, gr);
     e += Math.pow(10, r.Lp / 10);
-    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
-    let note = `Lw ${fmt(s.lw, 0)} · src RL ${fmt(s._z, 1)} · rcv RL ${fmt(r.zr, 1)}`;
+    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
+    let note = `${lwBreakdown(s)} · src RL ${fmt(s._z, 1)} · rcv RL ${fmt(r.zr, 1)}${r.Domega ? ` · DΩ +${fmt(r.Domega)}` : ''}`;
     if (r.bar) {
       const k = r.bar.kinds, parts = [];
       if (k.terrain) parts.push(k.terrain + ' terrain'); if (k.building) parts.push(k.building + ' building'); if (k.hoarding) parts.push(k.hoarding + ' hoarding');
-      note += ` · edges: ${parts.join(', ')} · δ ${fmt(r.bar.delta, 2)} m · Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ' (cap)' : ''}`;
+      note += ` · edges: ${parts.join(', ')} · δ ${fmt(r.bar.delta, 2)} m · Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ` (capped at ${S.method === 'iso' ? (r.bar.n >= 2 ? 25 : 20) : S.barCap})` : ''}`;
     } else note += ' · line of sight';
-    rows += `<tr class="note"><td colspan="6">${note}</td></tr>`;
+    rows += `<tr class="note"><td colspan="8">${note}</td></tr>`;
   }
   const L = 10 * Math.log10(e);
-  el.innerHTML = `<table><tr><th>Source</th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>${rows}</table>
-    <div class="tot">Total: ${fmt(L)} dB(A) <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>`;
+  const basis = S.method === 'iso' ? 'ISO 9613-2: A<sub>div</sub> = 20·lg d + 11' : 'TfNSW estimator basis: A<sub>div</sub> = 20·lg d + 8';
+  el.innerHTML = `<table><tr><th>Source</th><th>L<sub>w</sub></th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>atm</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>${rows}</table>
+    <div class="tot">Total: ${fmt(L)} dB(A) L<sub>Aeq,15min</sub> <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>
+    <p class="kv muted">${basis} · ${PERIODS[S.period]} · air ${S.air ? fmt(airAlpha(S), 2) + ' dB/km' : 'off'} · ${Math.round(S.soft * 100)} % soft ground</p>`;
   $('hud').textContent = `${hud} · ${fmt(L)} dB(A)`;
 }
 
@@ -1172,22 +2745,38 @@ function renderSelPanel() {
   if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building or hoarding in Select mode.</p>'; return; }
   const o = s.obj;
   if (s.type === 'source') {
-    const opts = EQUIP.map((e, i) => `<option value="${i}" ${i === o.eq ? 'selected' : ''}>${esc(e[0])}${e[1] != null ? ' – ' + e[1] : ''}</option>`).join('');
     body.innerHTML = `
       <div class="row"><label for="sName">Name</label><input type="text" id="sName" value="${esc(o.name)}" maxlength="40"></div>
-      <div class="row"><label for="sEq">Equipment</label><select id="sEq">${opts}</select></div>
-      <div class="row"><label for="sLw">Lw dB(A)</label><input type="number" id="sLw" min="40" max="150" step="1" value="${o.lw}"></div>
+      <div class="row"><label for="sEq">Equipment</label><select id="sEq">${libraryOptions(o.eq)}</select></div>
+      <div class="row"><label for="sLw">Sound power Lw dB(A)</label><input type="number" id="sLw" min="40" max="150" step="0.5" value="${o.lw}"></div>
+      <div class="row"><label for="sOn">% time on in 15 min</label><input type="number" id="sOn" min="1" max="100" step="1" value="${o.on}"></div>
+      <div class="row"><label for="sPen">Annoyance penalty (dB)</label><input type="number" id="sPen" min="0" max="10" step="1" value="${o.pen}"></div>
+      <div class="row"><label for="sMit">Mitigation reduction (dB)</label><input type="number" id="sMit" min="0" max="30" step="0.5" value="${o.mit}"></div>
       <div class="row"><label for="sH">Height above ground (m)</label><input type="number" id="sH" min="0" max="200" step="0.5" value="${o.h}"></div>
+      <p class="kv" id="sInfo"></p>
       <p class="kv">${coordText(o.x, o.y)} · ground RL ${fmt(ground(o.x, o.y), 2)}</p>
-      <div class="row"><span></span><button type="button" id="sDel" class="danger">Delete</button></div>`;
+      <div class="row"><button type="button" id="sToLib">Save as library item</button><button type="button" id="sDel" class="danger">Delete</button></div>`;
+    const info = () => {
+      const e = libItem(o.eq), mx = overMax(o);
+      $('sInfo').innerHTML = `Effective: ${esc(lwBreakdown(o))} dB(A)` +
+        (e.sac ? '<br>Special audible characteristics – CNVG-PTI applies +5 dB.' : '') +
+        (mx != null ? `<br><b style="color:#b91c1c">Above the CNVG-PTI Appendix C maximum of ${mx} dB(A) – this plant should not be permitted on site.</b>` : '') +
+        `<br><span class="muted">${esc(e.group)}${e.maxLw != null ? ` · maximum ${e.maxLw} dB(A)` : ''}</span>`;
+    };
+    info();
     $('sName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'Source'; requestRender(); });
     $('sEq').addEventListener('change', e => {
-      const i = parseInt(e.target.value, 10); o.eq = i; state.lastEq = i;
-      if (EQUIP[i][1] != null) { o.lw = EQUIP[i][1]; $('sLw').value = o.lw; o.name = EQUIP[i][0].replace(/ \(.*\)$/, ''); $('sName').value = o.name; }
-      log(`Source ${o.id} → ${EQUIP[i][0]} (Lw ${o.lw}).`); requestCompute(false);
+      const it = libItem(e.target.value); o.eq = it.id; state.lastEq = it.id;
+      o.lw = it.lw; o.pen = it.sac ? SAC_PENALTY : 0; $('sLw').value = o.lw; $('sPen').value = o.pen;
+      if (it.id !== 'custom') { o.name = it.name.replace(/ \(.*\)$/, ''); $('sName').value = o.name; }
+      log(`Source ${o.id} → ${it.name} (Lw ${o.lw}${o.pen ? ', +' + o.pen + ' dB penalty' : ''}).`); info(); requestCompute(false);
     });
-    bindNum($('sLw'), 40, 150, v => { o.lw = v; o.eq = CUSTOM_EQ; $('sEq').value = String(CUSTOM_EQ); });
+    bindNum($('sLw'), 40, 150, v => { o.lw = v; info(); if (overMax(o) != null) log(`“${o.name}”: Lw ${v} is above the CNVG-PTI Appendix C maximum (${overMax(o)} dB(A)).`, 'warn'); });
+    bindNum($('sOn'), 1, 100, v => { o.on = v; info(); });
+    bindNum($('sPen'), 0, 10, v => { o.pen = v; info(); });
+    bindNum($('sMit'), 0, 30, v => { o.mit = v; info(); });
     bindNum($('sH'), 0, 200, v => { o.h = v; });
+    $('sToLib').addEventListener('click', () => saveSourceToLibrary(o));
     $('sDel').addEventListener('click', deleteSel);
   } else if (s.type === 'building') {
     body.innerHTML = `
@@ -1270,7 +2859,7 @@ canvas.addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
   if (state.mode === 'source') {
     const s = makeSource(wx, wy, state.lastEq); state.sources.push(s);
-    log(`Added source ${s.id} “${s.name}” Lw ${s.lw} at ${coordText(wx, wy)}, ground RL ${fmt(ground(wx, wy), 2)}.`);
+    log(`Added source ${s.id} “${s.name}” ${lwBreakdown(s)} at ${coordText(wx, wy)}, ground RL ${fmt(ground(wx, wy), 2)}.`);
     setMode('select'); select('source', s.id); requestCompute(false); return;
   }
   if (state.mode === 'building' || state.mode === 'hoarding') {
@@ -1348,7 +2937,20 @@ $('setBar').addEventListener('change', e => { state.settings.barriers = e.target
 $('setTerr').addEventListener('change', e => { state.settings.terrain = e.target.checked; log(`Terrain screening ${e.target.checked ? 'ON' : 'OFF'}.`); requestCompute(false); });
 $('setShade').addEventListener('change', e => { state.settings.shade = e.target.checked; requestRender(); });
 $('setAir').addEventListener('change', e => { state.settings.air = e.target.checked; requestCompute(false); });
-$('setGround').addEventListener('change', e => { state.settings.ground = e.target.value; log(`Ground: ${e.target.value}.`); requestCompute(false); });
+const METHOD_NOTES = {
+  tfnsw: 'Same basis as the TfNSW Construction Noise Estimator: hemispherical spreading (20·lg d + 8), seasonal air absorption, CONCAWE ground × % soft, and screening from the modelled buildings, hoarding and terrain capped at the value below (the estimator allows at most 15 dB).',
+  iso: 'ISO 9613-2: spherical spreading with ground per §7.3 (hard: G = 0, soft: eq. 10 with DΩ) and full barrier diffraction (20/25 dB caps). Use for detailed checks; results can differ from the TfNSW estimator.'
+};
+function onMethodChange() {
+  const iso = state.settings.method === 'iso';
+  $('methodNote').textContent = METHOD_NOTES[state.settings.method];
+  $('rowBarCap').hidden = iso;
+}
+$('setMethod').addEventListener('change', e => { state.settings.method = e.target.value; onMethodChange(); log(`Method: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
+$('setPeriod').addEventListener('change', e => { state.settings.period = e.target.value; log(`Time period: ${PERIODS[e.target.value]}.`); requestCompute(false); });
+$('setSeason').addEventListener('change', e => { state.settings.season = e.target.value; log(`Season: ${e.target.value === 'warm' ? 'Oct–Apr' : 'May–Sep'} (air ${fmt(airAlpha(state.settings), 2)} dB/km).`); requestCompute(false); });
+bindNum($('setSoft'), 0, 100, v => { state.settings.soft = v / 100; });
+bindNum($('setBarCap'), 5, 25, v => { state.settings.barCap = v; });
 bindNum($('setHr'), 0, 200, v => { state.settings.hr = v; });
 bindNum($('setNewH'), 0.5, 300, v => { state.settings.newH = v; });
 bindNum($('setNewHo'), 0.3, 20, v => { state.settings.newHo = v; });
@@ -1358,7 +2960,9 @@ $('setOp').addEventListener('input', e => { state.settings.opacity = parseFloat(
 function syncSettingsUI() {
   const S = state.settings;
   $('setBar').checked = S.barriers; $('setTerr').checked = S.terrain; $('setShade').checked = S.shade; $('setAir').checked = S.air;
-  $('setGround').value = S.ground; $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
+  $('setMethod').value = S.method; $('setPeriod').value = S.period; $('setSeason').value = S.season;
+  $('setSoft').value = Math.round(S.soft * 100); $('setBarCap').value = S.barCap; onMethodChange();
+  $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
   $('setCell').value = String(S.cellPx); $('setMin').value = String(S.minDb); $('setOp').value = S.opacity; buildLegend();
 }
 function buildLegend() {
@@ -1366,6 +2970,63 @@ function buildLegend() {
   $('legend').innerHTML = BANDS.filter(b => b[0] >= min).map((b, i, arr) => `<div><i style="background:${b[1]}"></i>${b[0]}${i === arr.length - 1 ? '+' : '–' + (b[0] + 5)}</div>`).join('');
 }
 
+/* =========================== EQUIPMENT LIBRARY ========================= */
+function libraryOptions(selId) {
+  const groups = new Map();
+  for (const e of LIBRARY) { if (!groups.has(e.group)) groups.set(e.group, []); groups.get(e.group).push(e); }
+  let html = '';
+  for (const [g, list] of groups) {
+    html += `<optgroup label="${esc(g)}">` + list.map(e =>
+      `<option value="${esc(e.id)}" ${e.id === selId ? 'selected' : ''}>${esc(e.name)}${e.id === 'custom' ? '' : ' – ' + fmt(e.lw, 0) + (e.sac ? ' +5' : '')}</option>`).join('') + '</optgroup>';
+  }
+  return html;
+}
+function updateLibInfo() {
+  const n = LIBRARY.length, user = LIBRARY.filter(e => e.group === 'Project').length;
+  $('libInfo').textContent = `${n} items${user ? ` (${user} project item${user > 1 ? 's' : ''})` : ''}. Sources: CNVG-PTI Appendix C Table 19 (maximum permissible levels) and the TfNSW Construction Noise Estimator plant list – verify against the current client strategy.`;
+}
+/* Store a source's settings as a 'Project' library item. */
+function saveSourceToLibrary(o) {
+  const id = 'prj-' + o.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
+  const base = libItem(o.eq), item = { id, name: o.name, lw: o.lw, sac: (o.pen || 0) > 0, group: 'Project' };
+  if (base && base.maxLw != null) item.maxLw = base.maxLw;
+  const k = LIBRARY.findIndex(e => e.id === id);
+  if (k >= 0) LIBRARY[k] = item; else LIBRARY.push(item);
+  o.eq = id; state.libraryEdited = true;
+  log(`Library: ${k >= 0 ? 'updated' : 'added'} project item “${o.name}” (Lw ${o.lw}).`, 'pass');
+  updateLibInfo(); renderSelPanel();
+}
+/* Validate imported library items; returns the clean list or throws. */
+function cleanLibrary(items) {
+  if (!Array.isArray(items)) throw new Error('expected { "items": [...] }');
+  const out = [], ids = new Set();
+  for (const e of items) {
+    const lw = num(e && e.lw, 40, 150);
+    if (!e || typeof e.id !== 'string' || !e.id || typeof e.name !== 'string' || lw === null || ids.has(e.id)) { log(`Library item skipped: ${JSON.stringify(e).slice(0, 80)}`, 'warn'); continue; }
+    ids.add(e.id);
+    const it = { id: e.id.slice(0, 60), name: e.name.slice(0, 60), lw, sac: !!e.sac, group: typeof e.group === 'string' ? e.group.slice(0, 40) : 'Project' };
+    const mx = num(e.maxLw, 40, 150); if (mx !== null) it.maxLw = mx;
+    out.push(it);
+  }
+  if (!out.some(e => e.id === 'custom')) out.push({ id: 'custom', name: 'Custom', lw: 100, sac: false, group: 'Custom' });
+  return out;
+}
+$('btnLibExport').addEventListener('click', () => {
+  download('equipment_library.json', JSON.stringify({ _about: DATA.equipment._about, exported: new Date().toISOString(), app: 'noise-poc ' + VERSION, items: LIBRARY }, null, 1));
+  log(`Exported equipment library (${LIBRARY.length} items).`);
+});
+$('btnLibImport').addEventListener('click', () => $('fileLib').click());
+readJSONFile($('fileLib'), (d, name) => {
+  LIBRARY = cleanLibrary(d && d.items); state.libraryEdited = true;
+  log(`Imported equipment library ${name}: ${LIBRARY.length} items.`, 'pass');
+  const missing = state.sources.filter(s => !LIBRARY.some(e => e.id === s.eq));
+  if (missing.length) log(`${missing.length} source(s) refer to items not in this library – they keep their own levels and show as Custom.`, 'warn');
+  updateLibInfo(); renderSelPanel(); requestCompute(false);
+});
+$('btnLibReset').addEventListener('click', () => {
+  LIBRARY = DATA.equipment.items.map(o => Object.assign({}, o)); state.libraryEdited = false;
+  log('Equipment library reset to the built-in list.'); updateLibInfo(); renderSelPanel();
+});
 /* ======================= LAS / LAZ READER (pure JS) ======================
    Port of the LASzip decoder (arithmetic coder by A. Said; LASzip by
    M. Isenburg, Apache-2.0). Supports:
@@ -2320,7 +3981,8 @@ $('btnSave').addEventListener('click', () => {
   const data = {
     app: 'noise-poc', version: VERSION, saved: new Date().toISOString(), origin: state.origin,
     dem: state.terrain ? state.terrain.name : null, settings: state.settings, view: state.view,
-    sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, h: s.h, x: s.x, y: s.y })),
+    sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, on: s.on, pen: s.pen, mit: s.mit, h: s.h, x: s.x, y: s.y })),
+    library: state.libraryEdited ? LIBRARY : undefined,
     buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype, pts: b.pts })),
     hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts }))
   };
@@ -2338,6 +4000,27 @@ function readJSONFile(input, cb) {
     r.readAsText(f);
   });
 }
+/* Merge saved settings over the current ones, keeping only known keys with
+   valid values. v0.4 files stored ground as 'hard'/'soft'; that maps to 0 or
+   100 % soft ground. */
+function sanitizeSettings(raw, cur) {
+  const out = Object.assign({}, cur);
+  if (!raw || typeof raw !== 'object') return out;
+  const pick = (k, ok) => { if (k in raw && ok(raw[k])) out[k] = raw[k]; else if (k in raw) log(`Scenario setting “${k}” ignored (invalid value ${JSON.stringify(raw[k])}).`, 'warn'); };
+  const inR = (a, b) => v => typeof v === 'number' && isFinite(v) && v >= a && v <= b;
+  const oneOf = (...vals) => v => vals.includes(v);
+  const bool = v => typeof v === 'boolean';
+  pick('method', oneOf('tfnsw', 'iso')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
+  pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
+  pick('air', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
+  pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
+  pick('newH', inR(0.5, 300)); pick('newHo', inR(0.3, 20));
+  if (!('soft' in raw) && (raw.ground === 'soft' || raw.ground === 'hard')) {
+    out.soft = raw.ground === 'soft' ? 1 : 0;
+    log(`Scenario from an older version: ground “${raw.ground}” → ${out.soft * 100} % soft ground. Levels now use the ${out.method === 'iso' ? 'ISO' : 'TfNSW'} basis and will differ from v0.4.`, 'warn');
+  }
+  return out;
+}
 function validPts(pts, min) {
   if (!Array.isArray(pts)) return null;
   const out = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).map(p => [+p[0], +p[1]]);
@@ -2351,11 +4034,18 @@ readJSONFile($('fileLoad'), (d, name) => {
     else state.origin = d.origin;
   }
   const sh = p => [+p[0] + dx, +p[1] + dy];
-  state.settings = Object.assign({}, state.settings, d.settings || {});
+  state.settings = sanitizeSettings(d.settings, state.settings);
+  if (d.library) {
+    try { LIBRARY = cleanLibrary(d.library); state.libraryEdited = true; updateLibInfo(); log(`Scenario carries its own equipment library (${LIBRARY.length} items).`); }
+    catch (e) { log(`Scenario library ignored: ${e.message}`, 'warn'); }
+  }
   state.sources = d.sources.filter(s => isFinite(s.x) && isFinite(s.y)).map(s => {
     const [x, y] = sh([s.x, s.y]);
-    const o = makeSource(x, y, Number.isInteger(s.eq) && EQUIP[s.eq] ? s.eq : CUSTOM_EQ);
-    o.name = String(s.name || o.name).slice(0, 40); o.lw = num(s.lw, 40, 150) ?? o.lw; o.h = num(s.h, 0, 200) ?? 1.5; return o;
+    const o = makeSource(x, y, typeof s.eq === 'string' ? s.eq : 'custom');   // v0.4 stored a numeric index
+    if (typeof s.eq === 'string' && o.eq !== s.eq) log(`Source “${s.name}”: library item “${s.eq}” not found – kept its saved level as Custom.`, 'warn');
+    o.name = String(s.name || o.name).slice(0, 40); o.lw = num(s.lw, 40, 150) ?? o.lw; o.h = num(s.h, 0, 200) ?? 1.5;
+    o.on = num(s.on, 1, 100) ?? 100; o.pen = num(s.pen, 0, 10) ?? (typeof s.eq === 'string' ? o.pen : 0); o.mit = num(s.mit, 0, 30) ?? 0;
+    return o;
   });
   state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null }) : null; }).filter(Boolean);
   state.hoardings = (d.hoardings || []).map(h => { const p = validPts(h.pts, 2); return p ? makeHoarding(p.map(sh), num(h.h, 0.3, 20) ?? 2.4, String(h.name || '').slice(0, 40) || undefined) : null; }).filter(Boolean);
@@ -2467,69 +4157,107 @@ function loadDemo() {
     makeBuilding(rect(-30, 45, 10, 60), 5, 'Shops')
   ];
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
-  state.sources = [makeSource(0, 0, 0)];
+  state.sources = [makeSource(0, 0, DEFAULT_EQ)];
   geomChanged(); select(null);
-  log('Demo loaded: 1 excavator (Lw 105), 5 buildings, 1 hoarding (2.4 m).');
+  log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
   requestCompute(false);
 }
 
 /* ============================== SELF-TESTS ============================= */
+/* Golden values from the TfNSW Construction Noise Estimator (EMF-NV-TT-0068),
+   'Step 3 Results' recalculated in LibreOffice 24.2 with total SWL (E7) =
+   110 dBA: [season, period, distance m, soft fraction, screening dB, LAeq]. */
+const ESTIMATOR_GOLDEN = [
+  ['warm', 'std', 40, 0.2, 0, 69.6545014344895],
+  ['warm', 'std', 100, 0.5, 0, 59.1718666666667],
+  ['warm', 'p2night', 250, 1, 0, 44.3973813005487],
+  ['cool', 'std', 10, 0, 0, 81.9747666666667],
+  ['cool', 'p2night', 1000, 0.8, 0, 30.5724133333333],
+  ['warm', 'std', 100, 1, 5, 51.6424],
+  ['warm', 'std', 250, 1, 10, 43.2945331598926],
+  ['warm', 'std', 500, 0.5, 15, 31.5272665799463]
+];
 function selfTest() {
-  const S0 = { hr: 1.5, ground: 'hard', air: false, barriers: true, terrain: true };
+  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true };
+  const ST = Object.assign({}, S0, { method: 'tfnsw', air: true });
   let pass = 0, fail = 0;
   const results = [];
   const saved = { b: state.buildings, h: state.hoardings, t: state.terrain };
   function check(name, got, exp, tol) {
     const ok = Math.abs(got - exp) <= tol; ok ? pass++ : fail++;
     results.push({ name, got, exp, tol, ok });
-    log(`${ok ? 'PASS' : 'FAIL'} ${name}: engine ${got.toFixed(2)}, hand calc ${exp.toFixed(2)} dB`, ok ? 'pass' : 'fail');
+    log(`${ok ? 'PASS' : 'FAIL'} ${name}: engine ${got.toFixed(2)}, expected ${exp.toFixed(2)} dB`, ok ? 'pass' : 'fail');
   }
   const single = (zs, zr, xb, hb, d) => {
     const a = Math.hypot(xb, hb - zs), b = Math.hypot(d - xb, hb - zr), dir = Math.hypot(d, zs - zr), z = a + b - dir;
     const km = Math.exp(-(1 / 2000) * Math.sqrt(a * b * dir / (2 * z)));
     return 10 * Math.log10(3 + (20 / LAMBDA) * z * km);
   };
+  const Dz = r => (r.bar ? r.bar.Dz : 0);
   try {
     state.buildings = []; state.hoardings = []; state.terrain = null; geomChanged();
     const src = { x: 0, y: 0, h: 1.5, lw: 105 }; prep([src]);
-    check('Free field 50 m', contrib(src, 50, 0, S0, [], false), 105 - (20 * Math.log10(50) + 11), 0.01);
-    check('Soft ground 100 m', contrib(src, 100, 0, Object.assign({}, S0, { ground: 'soft' }), [], false), 105 - 51 - 4.2, 0.01);
 
+    // ISO 9613-2 ground (§7.3): hard G = 0 gives Agr = −3 − 3q; soft eq. 10 with DΩ.
+    check('ISO hard ground 50 m (q = 0)', contrib(src, 50, 0, S0, [], false), 105 - (20 * Math.log10(50) + 11) + 3, 0.01);
+    check('ISO hard ground 200 m (q = 0.55)', contrib(src, 200, 0, S0, [], false), 105 - (20 * Math.log10(200) + 11) + 3 + 3 * 0.55, 0.01);
+    const dOm = 10 * Math.log10(1 + 10000 / (10000 + 9));
+    check('ISO soft ground 100 m + DΩ', contrib(src, 100, 0, Object.assign({}, S0, { soft: 1 }), [], false), 105 - 51 - 4.2 + dOm, 0.01);
+
+    // Diffraction (Dz) against hand calculations.
     const wall = makeBuilding(rect(24.9, -100, 25.1, 100), 10, 'test wall');
     state.buildings = [wall]; geomChanged(); prep([src]);
-    check('10 m wall @ 25 m (Dz)', contrib(src, 50, 0, S0, state.buildings, true).Abar, single(1.5, 1.5, 25, 10, 50), 0.15);
+    check('10 m wall @ 25 m (Dz)', Dz(contrib(src, 50, 0, S0, state.buildings, true)), single(1.5, 1.5, 25, 10, 50), 0.15);
     const hi = { x: 0, y: 0, h: 30, lw: 105 }; prep([hi]);
-    check('Line of sight over wall', contrib(hi, 50, 0, S0, state.buildings, true).Abar, 0, 0.001);
+    check('Line of sight over wall', Dz(contrib(hi, 50, 0, S0, state.buildings, true)), 0, 0.001);
 
     state.buildings = []; geomChanged();
     state.hoardings = [makeHoarding([[5, -50], [5, 50]], 2.4, 'test hoarding')]; prep([src]);
-    check('2.4 m hoarding @ 5 m', contrib(src, 50, 0, S0, [], true).Abar, single(1.5, 1.5, 5, 2.4, 50), 0.05);
+    check('2.4 m hoarding @ 5 m (Dz)', Dz(contrib(src, 50, 0, S0, [], true)), single(1.5, 1.5, 5, 2.4, 50), 0.05);
     state.hoardings = [];
 
     const mkT = (fn) => { const w = 121, h = 41, z = new Float32Array(w * h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) z[j * w + i] = fn(i - 10, 20 - j); return { w, h, cx: 1, cy: 1, x0: -10.5, yTop: 20.5, z, zmin: 0, zmax: 0 }; };
     state.terrain = mkT(() => 30); prep([src]);
-    check('Flat terrain RL 30 = free field', contrib(src, 50, 0, S0, [], false), 105 - (20 * Math.log10(50) + 11), 0.01);
+    check('Flat terrain RL 30 = flat ground', contrib(src, 50, 0, S0, [], false), 105 - (20 * Math.log10(50) + 11) + 3, 0.01);
     state.terrain = mkT(x => 30 + (x === 25 ? 6 : 0)); prep([src]);
-    check('Terrain ridge 6 m @ 25 m', contrib(src, 50, 0, S0, [], true).Abar, single(31.5, 31.5, 25, 36, 50), 0.15);
+    check('Terrain ridge 6 m @ 25 m (Dz)', Dz(contrib(src, 50, 0, S0, [], true)), single(31.5, 31.5, 25, 36, 50), 0.15);
     state.terrain = mkT(x => (x <= 10 ? 26 : 30)); prep([src]);
-    const r = contrib(src, 40, 0, S0, [], true);
-    check('Source in 4 m cut, edge @ 10 m', r.Abar, single(27.5, 31.5, 11, 30, 40), 0.3);
+    check('Source in 4 m cut, edge @ 10 m (Dz)', Dz(contrib(src, 40, 0, S0, [], true)), single(27.5, 31.5, 11, 30, 40), 0.3);
+    state.terrain = null;
+
+    // TfNSW estimator basis: terms, then whole-path golden values.
+    check('Air: Oct–Apr day (dB/km)', airAlpha(ST), (1.04 + 2.77 + 5.15) / 3, 1e-9);
+    check('Air: May–Sep night (dB/km)', airAlpha(Object.assign({}, ST, { season: 'cool', period: 'p2night' })), (0.897 + 1.64 + 3.8) / 3, 1e-9);
+    check('CONCAWE ground 100 m × 50 %', 0.5 * concaweGround(100), 2.52946666666667, 1e-6);
+    check('CONCAWE ground 250 m', concaweGround(250), 9.00881852601056, 1e-6);
+    check('Ground kept with 5 dB screening', 5 + groundUnderScreening(concaweGround(100), 5), 62 - 0.298666666666667 - 51.6424, 1e-6);
+    check('Ground dropped with 10 dB screening', 10 + groundUnderScreening(concaweGround(250), 10), 10, 1e-9);
+    const src110 = { x: 0, y: 0, h: 1.5, lw: 110 }; prep([src110]);
+    for (const [season, period, d, soft, scr, exp] of ESTIMATOR_GOLDEN) {
+      if (scr && scr !== 15) continue;   // 5 and 10 dB screening are checked through groundUnderScreening above
+      if (scr === 15) {                  // 20 m wall 5 m from the source: Dz ≈ 25 dB, capped at 15
+        state.buildings = [makeBuilding(rect(4.9, -1000, 5.1, 1000), 20, 'test wall')]; geomChanged(); prep([src110]);
+      }
+      const S = Object.assign({}, ST, { season, period, soft });
+      check(`TfNSW estimator ${season === 'warm' ? 'Oct–Apr' : 'May–Sep'} ${period} ${d} m, ${soft * 100} % soft${scr ? ', ' + scr + ' dB screening' : ''}`,
+        contrib(src110, d, 0, S, state.buildings, false), exp, 0.01);
+      state.buildings = []; geomChanged();
+    }
   } catch (err) { fail++; results.push({ name: 'exception', error: err.message, ok: false }); log('Self-test error: ' + err.message, 'fail'); console.error(err); }
   state.buildings = saved.b; state.hoardings = saved.h; state.terrain = saved.t; geomChanged();
   log(`Self-test: ${pass} passed, ${fail} failed.`, fail ? 'fail' : 'pass');
   return { pass, fail, results };
 }
-
 /* ================================ INIT ================================= */
 $('ver').textContent = 'v' + VERSION;
 log(`Noise POC v${VERSION} starting. λ = ${LAMBDA.toFixed(3)} m (${F_BAND} Hz). DecompressionStream: ${typeof DecompressionStream !== 'undefined' ? 'yes' : 'NO'}.`);
 const selftest = selfTest();
 nextId = 1;
-syncSettingsUI(); setMode('select'); loadDemo(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
+syncSettingsUI(); updateLibInfo(); setMode('select'); loadDemo(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
 if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
 resize();
 requestAnimationFrame(() => zoomExtents());
-window.__noise = { _t: { crsFromGeoKeys, fillHoles, mgaZoneToZone }, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
+window.__noise = { _t: { crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings }, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
 })();
 </script>
 </body>

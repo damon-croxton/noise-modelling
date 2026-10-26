@@ -22,22 +22,38 @@ function renderSelPanel() {
   if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building or hoarding in Select mode.</p>'; return; }
   const o = s.obj;
   if (s.type === 'source') {
-    const opts = EQUIP.map((e, i) => `<option value="${i}" ${i === o.eq ? 'selected' : ''}>${esc(e[0])}${e[1] != null ? ' – ' + e[1] : ''}</option>`).join('');
     body.innerHTML = `
       <div class="row"><label for="sName">Name</label><input type="text" id="sName" value="${esc(o.name)}" maxlength="40"></div>
-      <div class="row"><label for="sEq">Equipment</label><select id="sEq">${opts}</select></div>
-      <div class="row"><label for="sLw">Lw dB(A)</label><input type="number" id="sLw" min="40" max="150" step="1" value="${o.lw}"></div>
+      <div class="row"><label for="sEq">Equipment</label><select id="sEq">${libraryOptions(o.eq)}</select></div>
+      <div class="row"><label for="sLw">Sound power Lw dB(A)</label><input type="number" id="sLw" min="40" max="150" step="0.5" value="${o.lw}"></div>
+      <div class="row"><label for="sOn">% time on in 15 min</label><input type="number" id="sOn" min="1" max="100" step="1" value="${o.on}"></div>
+      <div class="row"><label for="sPen">Annoyance penalty (dB)</label><input type="number" id="sPen" min="0" max="10" step="1" value="${o.pen}"></div>
+      <div class="row"><label for="sMit">Mitigation reduction (dB)</label><input type="number" id="sMit" min="0" max="30" step="0.5" value="${o.mit}"></div>
       <div class="row"><label for="sH">Height above ground (m)</label><input type="number" id="sH" min="0" max="200" step="0.5" value="${o.h}"></div>
+      <p class="kv" id="sInfo"></p>
       <p class="kv">${coordText(o.x, o.y)} · ground RL ${fmt(ground(o.x, o.y), 2)}</p>
-      <div class="row"><span></span><button type="button" id="sDel" class="danger">Delete</button></div>`;
+      <div class="row"><button type="button" id="sToLib">Save as library item</button><button type="button" id="sDel" class="danger">Delete</button></div>`;
+    const info = () => {
+      const e = libItem(o.eq), mx = overMax(o);
+      $('sInfo').innerHTML = `Effective: ${esc(lwBreakdown(o))} dB(A)` +
+        (e.sac ? '<br>Special audible characteristics – CNVG-PTI applies +5 dB.' : '') +
+        (mx != null ? `<br><b style="color:#b91c1c">Above the CNVG-PTI Appendix C maximum of ${mx} dB(A) – this plant should not be permitted on site.</b>` : '') +
+        `<br><span class="muted">${esc(e.group)}${e.maxLw != null ? ` · maximum ${e.maxLw} dB(A)` : ''}</span>`;
+    };
+    info();
     $('sName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'Source'; requestRender(); });
     $('sEq').addEventListener('change', e => {
-      const i = parseInt(e.target.value, 10); o.eq = i; state.lastEq = i;
-      if (EQUIP[i][1] != null) { o.lw = EQUIP[i][1]; $('sLw').value = o.lw; o.name = EQUIP[i][0].replace(/ \(.*\)$/, ''); $('sName').value = o.name; }
-      log(`Source ${o.id} → ${EQUIP[i][0]} (Lw ${o.lw}).`); requestCompute(false);
+      const it = libItem(e.target.value); o.eq = it.id; state.lastEq = it.id;
+      o.lw = it.lw; o.pen = it.sac ? SAC_PENALTY : 0; $('sLw').value = o.lw; $('sPen').value = o.pen;
+      if (it.id !== 'custom') { o.name = it.name.replace(/ \(.*\)$/, ''); $('sName').value = o.name; }
+      log(`Source ${o.id} → ${it.name} (Lw ${o.lw}${o.pen ? ', +' + o.pen + ' dB penalty' : ''}).`); info(); requestCompute(false);
     });
-    bindNum($('sLw'), 40, 150, v => { o.lw = v; o.eq = CUSTOM_EQ; $('sEq').value = String(CUSTOM_EQ); });
+    bindNum($('sLw'), 40, 150, v => { o.lw = v; info(); if (overMax(o) != null) log(`“${o.name}”: Lw ${v} is above the CNVG-PTI Appendix C maximum (${overMax(o)} dB(A)).`, 'warn'); });
+    bindNum($('sOn'), 1, 100, v => { o.on = v; info(); });
+    bindNum($('sPen'), 0, 10, v => { o.pen = v; info(); });
+    bindNum($('sMit'), 0, 30, v => { o.mit = v; info(); });
     bindNum($('sH'), 0, 200, v => { o.h = v; });
+    $('sToLib').addEventListener('click', () => saveSourceToLibrary(o));
     $('sDel').addEventListener('click', deleteSel);
   } else if (s.type === 'building') {
     body.innerHTML = `
@@ -120,7 +136,7 @@ canvas.addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
   if (state.mode === 'source') {
     const s = makeSource(wx, wy, state.lastEq); state.sources.push(s);
-    log(`Added source ${s.id} “${s.name}” Lw ${s.lw} at ${coordText(wx, wy)}, ground RL ${fmt(ground(wx, wy), 2)}.`);
+    log(`Added source ${s.id} “${s.name}” ${lwBreakdown(s)} at ${coordText(wx, wy)}, ground RL ${fmt(ground(wx, wy), 2)}.`);
     setMode('select'); select('source', s.id); requestCompute(false); return;
   }
   if (state.mode === 'building' || state.mode === 'hoarding') {

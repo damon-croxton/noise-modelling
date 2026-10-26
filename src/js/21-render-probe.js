@@ -73,7 +73,7 @@ function render() {
     ctx.fillStyle = '#111827'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = sel ? '#60a5fa' : '#fff'; ctx.stroke();
     ctx.beginPath(); ctx.arc(sx, sy, 3, 0, 7); ctx.fillStyle = '#ef4444'; ctx.fill();
     ctx.font = '600 11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    const label = `${s.name} · Lw ${fmt(s.lw, 0)}`, w = ctx.measureText(label).width;
+    const label = `${s.name} · Lw ${fmt(effectiveLw(s), 0)}${overMax(s) != null ? ' ⚠' : ''}`, w = ctx.measureText(label).width;
     ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(sx + 11, sy - 8, w + 6, 16);
     ctx.fillStyle = '#111827'; ctx.fillText(label, sx + 14, sy);
   }
@@ -107,18 +107,20 @@ function updateProbe() {
   for (const s of state.sources) {
     const r = contrib(s, wx, wy, S, B, true, gr);
     e += Math.pow(10, r.Lp / 10);
-    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
-    let note = `Lw ${fmt(s.lw, 0)} · src RL ${fmt(s._z, 1)} · rcv RL ${fmt(r.zr, 1)}`;
+    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
+    let note = `${lwBreakdown(s)} · src RL ${fmt(s._z, 1)} · rcv RL ${fmt(r.zr, 1)}${r.Domega ? ` · DΩ +${fmt(r.Domega)}` : ''}`;
     if (r.bar) {
       const k = r.bar.kinds, parts = [];
       if (k.terrain) parts.push(k.terrain + ' terrain'); if (k.building) parts.push(k.building + ' building'); if (k.hoarding) parts.push(k.hoarding + ' hoarding');
-      note += ` · edges: ${parts.join(', ')} · δ ${fmt(r.bar.delta, 2)} m · Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ' (cap)' : ''}`;
+      note += ` · edges: ${parts.join(', ')} · δ ${fmt(r.bar.delta, 2)} m · Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ` (capped at ${S.method === 'iso' ? (r.bar.n >= 2 ? 25 : 20) : S.barCap})` : ''}`;
     } else note += ' · line of sight';
-    rows += `<tr class="note"><td colspan="6">${note}</td></tr>`;
+    rows += `<tr class="note"><td colspan="8">${note}</td></tr>`;
   }
   const L = 10 * Math.log10(e);
-  el.innerHTML = `<table><tr><th>Source</th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>${rows}</table>
-    <div class="tot">Total: ${fmt(L)} dB(A) <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>`;
+  const basis = S.method === 'iso' ? 'ISO 9613-2: A<sub>div</sub> = 20·lg d + 11' : 'TfNSW estimator basis: A<sub>div</sub> = 20·lg d + 8';
+  el.innerHTML = `<table><tr><th>Source</th><th>L<sub>w</sub></th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>atm</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>${rows}</table>
+    <div class="tot">Total: ${fmt(L)} dB(A) L<sub>Aeq,15min</sub> <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>
+    <p class="kv muted">${basis} · ${PERIODS[S.period]} · air ${S.air ? fmt(airAlpha(S), 2) + ' dB/km' : 'off'} · ${Math.round(S.soft * 100)} % soft ground</p>`;
   $('hud').textContent = `${hud} · ${fmt(L)} dB(A)`;
 }
 

@@ -95,6 +95,7 @@ function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
   const e = hyp(H[1], H[n]) > 0 ? (function () { let s = 0; for (let k = 1; k < n; k++) s += hyp(H[k], H[k + 1]); return s; })() : 0;
   let C3 = 1, cap = 20;
   if (n >= 2) { cap = 25; if (e > 1e-6) { const q = Math.pow(5 * LAMBDA / e, 2); C3 = (1 + q) / (1 / 3 + q); } }
+  if (S.method !== 'iso' && S.barCap > 0) cap = Math.min(cap, S.barCap);
   const Kmet = Math.exp(-(1 / 2000) * Math.sqrt(dss * dsr * direct / (2 * delta)));
   let Dz = 10 * Math.log10(3 + (20 / LAMBDA) * C3 * delta * Kmet);
   const capped = Dz > cap; if (capped) Dz = cap;
@@ -102,22 +103,70 @@ function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
   return { Dz, delta, n, e, Kmet, C3, capped, kinds };
 }
 
+/* Air absorption coefficient (dB/km) for the season and time period. */
+function airAlpha(S) {
+  const t = (AIR_ATTEN[S.season] || AIR_ATTEN.warm)[S.period === 'p2night' ? 'night' : 'day'];
+  return (t[0] + t[1] + t[2]) / 3;
+}
+/* CONCAWE category-4 ground attenuation for fully soft ground, mean of the
+   250 / 500 / 1000 Hz fits, each floored at 0 (as in the TfNSW estimator). */
+function concaweGround(d) {
+  const L = Math.log10(Math.max(d, 1));
+  let s = 0;
+  for (const c of CONCAWE_CAT4) s += Math.max(0, c[0] + c[1] * L + c[2] * L * L + c[3] * L * L * L);
+  return s / 3;
+}
+/* Ground attenuation kept alongside screening, TfNSW convention. The estimator
+   keeps ground absorption with 5 dB screening and drops it with 10 or 15 dB
+   (enclosed works / receivers behind buildings). A continuous screening value
+   is tapered linearly between 5 and 10 dB so the result matches the estimator
+   at 0, 5, 10 and 15 dB without a step in the map. */
+function groundUnderScreening(agr, abar) {
+  if (abar <= 5) return agr;
+  if (abar >= 10) return 0;
+  return agr * (10 - abar) / 5;
+}
+
+/* Contribution of one source at one receiver, dB(A).
+   method 'tfnsw' (default, reconciles with the TfNSW Construction Noise
+   Estimator):  Lp = Lw − (20·lg d + 8) − Aatm − Agr − Abar
+     20·lg d + 8 is hemispherical spreading over hard ground, Agr = %soft ×
+     CONCAWE cat 4 (horizontal distance), Abar = Dz capped at S.barCap.
+   method 'iso' (ISO 9613-2 detailed):  Lp = Lw + DΩ − (20·lg d + 11) − Aatm − Agr − Abar
+     hard ground: Agr = As + Ar + Am = −1.5 − 1.5 − 3q (G = 0, §7.3.1);
+     soft ground: eq. 10 with DΩ (§7.3.2); mixed: linear blend by %soft;
+     Abar = Dz − Agr ≥ 0 with the 20/25 dB caps.
+   Lw is the effective level from prep(): time-on, penalty and mitigation applied. */
 function contrib(src, rx, ry, S, buildings, detail, gr) {
-  const hs = src.h, hr = S.hr;
+  const hs = src.h, hr = S.hr, iso = S.method === 'iso', soft = Math.max(0, Math.min(1, S.soft || 0));
   const zs = src._z, zr = (gr == null ? ground(rx, ry) : gr) + hr;
   const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
   const d = Math.max(Math.hypot(d2, zs - zr), 1);
-  const Adiv = 20 * Math.log10(d) + 11;
-  const Aatm = S.air ? ALPHA_DBKM * d / 1000 : 0;
-  let Agr = 0;
-  if (S.ground === 'soft') { const hm = (hs + hr) / 2, dg = Math.max(d2, 1); Agr = Math.max(0, 4.8 - (2 * hm / dg) * (17 + 300 / dg)); }
+  const Adiv = 20 * Math.log10(d) + (iso ? 11 : 8);
+  const Aatm = S.air ? airAlpha(S) * d / 1000 : 0;
+  let Agr = 0, Domega = 0;
+  if (iso) {
+    const dp = Math.max(d2, 1), hsum = hs + hr, q = dp <= 30 * hsum ? 0 : 1 - 30 * hsum / dp;
+    const hard = -3 - 3 * q;
+    let sft = 0, dOm = 0;
+    if (soft > 0) {
+      const hm = (hs + hr) / 2;
+      sft = Math.max(0, 4.8 - (2 * hm / dp) * (17 + 300 / dp));
+      dOm = 10 * Math.log10(1 + (dp * dp + (hs - hr) ** 2) / (dp * dp + hsum * hsum));
+    }
+    Agr = (1 - soft) * hard + soft * sft; Domega = soft * dOm;
+  } else if (soft > 0) Agr = soft * concaweGround(d2);
   let Abar = 0, bar = null;
   if ((S.barriers && (buildings.length || state.hoardings.length)) || (S.terrain && state.terrain)) {
     bar = screening(src, rx, ry, d2, zs, zr, S, buildings, detail);
-    if (bar) Abar = Math.max(0, bar.Dz - Agr);
+    if (bar) {
+      if (iso) Abar = Math.max(0, bar.Dz - Agr);
+      else { Abar = bar.Dz; Agr = groundUnderScreening(Agr, Abar); }
+    }
   }
-  const Lp = src.lw - Adiv - Aatm - Agr - Abar;
-  return detail ? { Lp, d, Adiv, Aatm, Agr, Abar, bar, zr } : Lp;
+  const Lw = src._lw != null ? src._lw : src.lw;
+  const Lp = Lw + Domega - Adiv - Aatm - Agr - Abar;
+  return detail ? { Lp, Lw, d, Adiv, Aatm, Agr, Abar, Domega, bar, zr } : Lp;
 }
 function prep(sources) {
   for (const s of sources) {
@@ -125,6 +174,7 @@ function prep(sources) {
     const b = buildingAt(s.x, s.y);
     if (b) for (const c of state.buildings) if (inBox(s.x, s.y, c.bbox) && pip(s.x, s.y, c.pts)) s._inside.add(c.id);
     s._z = ground(s.x, s.y) + s.h;
+    s._lw = effectiveLw(s);
   }
 }
 

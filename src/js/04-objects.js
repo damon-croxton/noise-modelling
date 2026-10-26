@@ -21,10 +21,26 @@ function updateBase(b) {
   if (b.roofRL != null) b.h = Math.max(0.5, b.roofRL - b.base);
 }
 function topOf(b) { return b.base + b.h; }
-function makeSource(x, y, eqIdx) {
-  const e = EQUIP[eqIdx] || EQUIP[0], id = nextId++;
-  return { id, name: e[0].replace(/ \(.*\)$/, ''), eq: eqIdx, lw: e[1] == null ? 100 : e[1], h: 1.5, x, y };
+/* A source: lw = sound power dB(A); on = % of each 15 min the plant operates;
+   pen = annoyance / special audible characteristics penalty (dB); mit =
+   mitigation at the plant, e.g. local screening or an enclosure (dB). */
+function makeSource(x, y, libId) {
+  const e = libItem(libId), id = nextId++;
+  return { id, name: e.name.replace(/ \(.*\)$/, ''), eq: e.id, lw: e.lw, on: 100, pen: e.sac ? SAC_PENALTY : 0, mit: 0, h: 2, x, y };
 }
+/* Leq correction for operating time: 10·lg(on/100). The TfNSW estimator uses a
+   flat −3 dB for plant running under 7 min in 15 (10·lg(7/15) = −3.3). */
+function onTimeCorr(s) { return 10 * Math.log10(Math.max(1, Math.min(100, s.on == null ? 100 : s.on)) / 100); }
+function effectiveLw(s) { return s.lw + onTimeCorr(s) + (s.pen || 0) - (s.mit || 0); }
+function lwBreakdown(s) {
+  const parts = [`Lw ${fmt(s.lw, 1)}`];
+  if (s.on != null && s.on < 100) parts.push(`${fmt(onTimeCorr(s), 1)} (${fmt(s.on, 0)} % on)`);
+  if (s.pen) parts.push(`+${fmt(s.pen, 0)} penalty`);
+  if (s.mit) parts.push(`−${fmt(s.mit, 1)} mitigation`);
+  return parts.length > 1 ? `${parts.join(' ')} = ${fmt(effectiveLw(s), 1)}` : parts[0];
+}
+/* CNVG-PTI Appendix C maximum for the source's library item, if exceeded. */
+function overMax(s) { const e = libItem(s.eq); return e && e.id === s.eq && e.maxLw != null && s.lw > e.maxLw ? e.maxLw : null; }
 function makeHoarding(pts, h, name) {
   const id = nextId++;
   return { id, name: name || ('Hoarding ' + id), h, pts, bbox: bboxOf(pts) };
