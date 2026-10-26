@@ -1,0 +1,2452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Construction Noise POC v0.4</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; color: #1d2330; background: #eef0f3; }
+  #app { display: flex; height: 100vh; }
+  #side { width: 350px; flex: none; overflow-y: auto; background: #fff; border-right: 1px solid #d5d9e0; padding: 10px 12px 20px; }
+  #wrap { position: relative; flex: 1; min-width: 0; }
+  #map { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  h1 { font-size: 16px; margin: 0 0 2px; }
+  h1 span { font-size: 11px; font-weight: 400; color: #6b7280; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #4b5563; margin: 0 0 6px; }
+  .sub { margin: 0 0 8px; color: #6b7280; font-size: 12px; }
+  section { border-top: 1px solid #e5e7eb; padding: 9px 0; }
+  .seg, .btns { display: flex; gap: 4px; flex-wrap: wrap; }
+  button { font: inherit; padding: 5px 8px; border: 1px solid #c3c9d3; background: #f8f9fb; border-radius: 4px; cursor: pointer; color: inherit; }
+  button:hover { background: #eef2f7; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+  button.on { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+  button.danger { color: #b91c1c; border-color: #e5b4b4; }
+  button.primary { background: #0f766e; color: #fff; border-color: #0f766e; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; }
+  .row > label { flex: 1; }
+  .row input[type=number], .row input[type=text], .row select { width: 150px; font: inherit; padding: 3px 5px; border: 1px solid #c3c9d3; border-radius: 3px; }
+  .row input.bad { border-color: #dc2626; background: #fef2f2; }
+  .chk { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+  .hint { color: #374151; background: #f3f6fb; border-left: 3px solid #1d4ed8; padding: 5px 7px; margin: 6px 0 0; font-size: 12px; }
+  .muted { color: #6b7280; margin: 0; }
+  .kv { font-size: 11.5px; color: #374151; margin: 4px 0 0; line-height: 1.45; }
+  #legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 6px; font-size: 11px; }
+  #legend div { display: flex; align-items: center; gap: 4px; }
+  #legend i { width: 16px; height: 11px; border: 1px solid rgba(0,0,0,.2); display: inline-block; }
+  #probe table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  #probe th, #probe td { text-align: right; padding: 2px 3px; border-bottom: 1px solid #eef0f3; }
+  #probe th:first-child, #probe td:first-child { text-align: left; }
+  #probe .note td { color: #6b7280; text-align: left; font-size: 10.5px; }
+  #probe .tot { font-weight: 600; font-size: 13px; margin-top: 4px; }
+  #log { font-family: Consolas, monospace; font-size: 10.5px; background: #0f172a; color: #d1e7ff; padding: 6px; height: 200px; overflow: auto; white-space: pre-wrap; margin: 0; border-radius: 4px; }
+  #log .pass { color: #86efac; } #log .fail { color: #fca5a5; } #log .warn { color: #fde68a; }
+  #hud { position: absolute; right: 8px; bottom: 8px; background: rgba(255,255,255,.92); border: 1px solid #c3c9d3; border-radius: 4px; padding: 4px 8px; font-size: 12px; pointer-events: none; max-width: calc(100% - 16px); }
+  #busy { position: absolute; left: 8px; top: 8px; background: rgba(255,255,255,.92); border: 1px solid #c3c9d3; border-radius: 4px; padding: 3px 8px; font-size: 11px; color: #4b5563; pointer-events: none; }
+  #attrib { position: absolute; right: 8px; top: 8px; background: rgba(255,255,255,.9); border: 1px solid #c3c9d3; border-radius: 4px; padding: 2px 6px; font-size: 10.5px; }
+  #attrib a { color: #1d4ed8; }
+  .disclaimer { font-size: 11px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 5px 7px; border-radius: 4px; margin: 6px 0 0; }
+  @media (max-width: 800px) {
+    #app { flex-direction: column; height: auto; }
+    #side { width: auto; border-right: 0; border-bottom: 1px solid #d5d9e0; }
+    #wrap { height: 70vh; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <h1>Construction Noise POC <span id="ver"></span></h1>
+    <p class="sub">ISO 9613-2 screening · A-weighted · terrain + buildings + hoarding</p>
+
+    <section>
+      <h2>Mode</h2>
+      <div class="seg">
+        <button type="button" data-mode="select">Select / move (V)</button>
+        <button type="button" data-mode="source">Add source (S)</button>
+        <button type="button" data-mode="building">Draw building (B)</button>
+        <button type="button" data-mode="hoarding">Draw hoarding (H)</button>
+      </div>
+      <p id="hint" class="hint"></p>
+      <div class="btns" style="margin-top:6px">
+        <button type="button" id="finishPoly" hidden>Finish (Enter)</button>
+        <button type="button" id="cancelPoly" hidden>Cancel (Esc)</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Selection</h2>
+      <div id="selBody"></div>
+    </section>
+
+    <section>
+      <h2>Building heights from LiDAR</h2>
+      <div class="btns">
+        <button type="button" id="btnLaz" class="primary">Load LiDAR (.laz / .las)</button>
+        <button type="button" id="btnLazCancel" class="danger" hidden>Cancel</button>
+      </div>
+      <input type="file" id="fileLaz" accept=".laz,.las" hidden>
+      <div id="lazInfo" class="kv"><span class="muted">No LiDAR loaded. Uses class 6 (building) points for roof levels; class 2 (ground) builds the terrain if no DEM is loaded. The file is read locally – nothing is uploaded.</span></div>
+      <label class="chk"><input type="checkbox" id="setLazShow" checked> Show LiDAR building points</label>
+    </section>
+
+    <section>
+      <h2>Buildings from free data</h2>
+      <div class="row"><label for="siteLL">Site (lat, lon)</label><input type="text" id="siteLL" placeholder="-33.8890, 151.2370"></div>
+      <div class="btns">
+        <button type="button" id="btnSite">Go to site</button>
+        <button type="button" id="btnOsm" class="primary">Fetch OSM buildings in view</button>
+        <button type="button" id="btnOsmLink">Copy OSM download link</button>
+        <button type="button" id="btnDsm">Load DSM for roof heights</button>
+      </div>
+      <input type="file" id="fileDsm" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
+      <label class="chk"><input type="checkbox" id="osmReplace"> Re-fetch replaces existing OSM buildings</label>
+      <div id="siteInfo" class="kv"></div>
+      <p class="kv muted">Footprints: OpenStreetMap. Heights: OSM <i>height</i> → <i>levels</i> × 3 m → typical height for the building type (dashed outline = estimated). A DSM (roof surface) overrides estimates.</p>
+    </section>
+
+    <section>
+      <h2>Terrain (DEM)</h2>
+      <div class="btns">
+        <button type="button" id="btnDem" class="primary">Load DEM (.tif / .asc / .xyz)</button>
+        <button type="button" id="btnDemClear" class="danger">Remove DEM</button>
+      </div>
+      <input type="file" id="fileDem" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
+      <div id="demInfo" class="kv"><span class="muted">No DEM loaded – ground is flat at RL 0.</span></div>
+      <label class="chk"><input type="checkbox" id="setTerr" checked> Terrain blocks sound</label>
+      <label class="chk"><input type="checkbox" id="setShade" checked> Show hillshade</label>
+    </section>
+
+    <section>
+      <h2>Model</h2>
+      <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
+      <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (1.9 dB/km @ 500 Hz)</label>
+      <div class="row"><label for="setGround">Ground</label>
+        <select id="setGround"><option value="hard">Hard (Agr = 0)</option><option value="soft">Soft (ISO eq. 10)</option></select></div>
+      <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
+      <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
+      <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
+    </section>
+
+    <section>
+      <h2>Display</h2>
+      <div class="row"><label for="setCell">Map detail</label>
+        <select id="setCell"><option value="3">Fine (3 px)</option><option value="5" selected>Normal (5 px)</option><option value="8">Coarse (8 px)</option></select></div>
+      <div class="row"><label for="setMin">Hide below</label>
+        <select id="setMin"><option>30</option><option selected>35</option><option>40</option><option>45</option><option>50</option></select></div>
+      <div class="row"><label for="setOp">Opacity</label><input type="range" id="setOp" min="0.2" max="1" step="0.05" value="0.7"></div>
+      <div id="legend" aria-label="Legend, dB(A)"></div>
+    </section>
+
+    <section>
+      <h2>Probe (hover the map)</h2>
+      <div id="probe" aria-live="polite"><p class="muted">Hover the map to see the calculation breakdown.</p></div>
+    </section>
+
+    <section>
+      <h2>Scenario</h2>
+      <div class="btns">
+        <button type="button" id="btnFit">Zoom to extents</button>
+        <button type="button" id="btnSave">Save JSON</button>
+        <button type="button" id="btnLoad">Load JSON</button>
+        <button type="button" id="btnGeo">Import buildings (GeoJSON / .osm)</button>
+        <button type="button" id="btnClearB" class="danger">Clear buildings</button>
+        <button type="button" id="btnDemo">Reset demo</button>
+      </div>
+      <input type="file" id="fileLoad" accept=".json,application/json" hidden>
+      <input type="file" id="fileGeo" hidden>
+      <p class="disclaimer">Screening tool only. Not a validated compliance model. Lw values are indicative; replace them with project or consultant data. The DEM is not saved in the JSON – reload it after loading a scenario.</p>
+    </section>
+
+    <section>
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </section>
+  </aside>
+  <main id="wrap">
+    <canvas id="map" aria-label="Noise map"></canvas>
+    <div id="busy"></div>
+    <div id="hud">–</div>
+    <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
+  </main>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* ============================== CONSTANTS ============================== */
+const VERSION = '0.4.0';
+const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
+const ALPHA_DBKM = 1.9;
+const MAX_TERRAIN_SAMPLES = 160;
+const MAX_DEM_CELLS = 4.5e6;
+
+const BANDS = [
+  [30, '#d4edc4'], [35, '#a5d68a'], [40, '#5fb85a'], [45, '#2e8b3e'],
+  [50, '#f4e04d'], [55, '#e7b23a'], [60, '#f07f22'], [65, '#e0352b'],
+  [70, '#a3173a'], [75, '#8a2a9b'], [80, '#3e4fb0'], [85, '#142266']
+];
+const BAND_RGB = BANDS.map(b => hexToRgb(b[1]));
+
+const EQUIP = [
+  ['Excavator (~20 t)', 105], ['Excavator + hydraulic hammer', 118], ['Bored piling rig', 111],
+  ['Concrete saw', 117], ['Jackhammer', 113], ['Concrete pump', 108], ['Concrete agitator truck', 109],
+  ['Dump truck', 108], ['Mobile crane', 104], ['Skid steer loader', 104], ['Vibratory roller', 109],
+  ['Generator', 99], ['Hand tools (electric)', 102], ['Custom', null]
+];
+const CUSTOM_EQ = EQUIP.length - 1;
+
+/* ================================ STATE ================================ */
+const state = {
+  sources: [], buildings: [], hoardings: [],
+  sel: null, mode: 'select', draft: [],
+  view: { cx: 0, cy: 0, scale: 3 }, mouse: null, lastEq: 0,
+  origin: null,            // {type:'projected', x0, y0, zone, epsg}  (MGA / GDA)
+  dsm: null,
+  terrain: null,
+  settings: { hr: 1.5, ground: 'hard', air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
+};
+let nextId = 1, grid = null;
+
+/* ================================ DOM ================================== */
+const $ = id => document.getElementById(id);
+const canvas = $('map'), ctx = canvas.getContext('2d'), wrap = $('wrap');
+const off = document.createElement('canvas'), offctx = off.getContext('2d');
+let cssW = 800, cssH = 600, dpr = 1;
+
+/* =============================== LOGGING =============================== */
+function log(msg, cls) {
+  const el = $('log'), line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = `[${new Date().toTimeString().slice(0, 8)}] ${msg}`;
+  el.appendChild(line);
+  while (el.childNodes.length > 300) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+  (cls === 'fail' ? console.error : console.log)('[noise-poc]', msg);
+}
+
+/* =============================== HELPERS =============================== */
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function num(v, min, max) { const n = parseFloat(v); if (!isFinite(n) || n < min || n > max) return null; return n; }
+function fmt(n, d = 1) { return isFinite(n) ? n.toFixed(d) : '–'; }
+function bboxOf(pts) {
+  let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+  for (const p of pts) { if (p[0] < a) a = p[0]; if (p[1] < b) b = p[1]; if (p[0] > c) c = p[0]; if (p[1] > d) d = p[1]; }
+  return [a, b, c, d];
+}
+function pip(x, y, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function inBox(x, y, bb) { return x >= bb[0] && x <= bb[2] && y >= bb[1] && y <= bb[3]; }
+function hyp(a, b) { return Math.hypot(b[0] - a[0], b[1] - a[1]); }
+function rect(x0, y0, x1, y1) { return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]; }
+function distSeg(px, py, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+  let t = L ? ((px - a[0]) * dx + (py - a[1]) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - a[0] - t * dx, py - a[1] - t * dy);
+}
+
+/* ============================ TERRAIN MODEL ============================ */
+function ground(x, y) {
+  const T = state.terrain;
+  if (!T) return 0;
+  let fx = (x - T.x0) / T.cx - 0.5, fy = (T.yTop - y) / T.cy - 0.5;
+  if (fx < 0) fx = 0; else if (fx > T.w - 1) fx = T.w - 1;
+  if (fy < 0) fy = 0; else if (fy > T.h - 1) fy = T.h - 1;
+  const i = Math.min(Math.floor(fx), T.w - 2 < 0 ? 0 : T.w - 2), j = Math.min(Math.floor(fy), T.h - 2 < 0 ? 0 : T.h - 2);
+  const u = fx - i, v = fy - j, w = T.w, z = T.z;
+  const i1 = T.w > 1 ? i + 1 : i, j1 = T.h > 1 ? j + 1 : j;
+  const a = z[j * w + i], b = z[j * w + i1], c = z[j1 * w + i], d = z[j1 * w + i1];
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+}
+function terrainInside(x, y) {
+  const T = state.terrain; if (!T) return false;
+  return x >= T.x0 && x <= T.x0 + T.w * T.cx && y <= T.yTop && y >= T.yTop - T.h * T.cy;
+}
+
+/* ============================ SPATIAL INDEX ============================ */
+const IDX = { cs: 25, map: new Map(), dirty: true, stamp: 1 };
+function ikey(i, j) { return (i + 60000) * 120001 + (j + 60000); }
+function rebuildIndex() {
+  IDX.map.clear();
+  let span = 0;
+  for (const b of state.buildings) span = Math.max(span, b.bbox[2] - b.bbox[0], b.bbox[3] - b.bbox[1]);
+  IDX.cs = Math.max(10, Math.min(100, span * 0.75 || 25));
+  for (const b of state.buildings) {
+    const cs = IDX.cs;
+    for (let i = Math.floor(b.bbox[0] / cs); i <= Math.floor(b.bbox[2] / cs); i++)
+      for (let j = Math.floor(b.bbox[1] / cs); j <= Math.floor(b.bbox[3] / cs); j++) {
+        const k = ikey(i, j); let a = IDX.map.get(k); if (!a) IDX.map.set(k, a = []); a.push(b);
+      }
+  }
+  IDX.dirty = false;
+}
+function idx() { if (IDX.dirty) rebuildIndex(); return IDX; }
+function buildingsOnSegment(x0, y0, x1, y1, out) {
+  const I = idx(), cs = I.cs, st = ++I.stamp;
+  out.length = 0;
+  let i = Math.floor(x0 / cs), j = Math.floor(y0 / cs);
+  const ie = Math.floor(x1 / cs), je = Math.floor(y1 / cs);
+  const dx = x1 - x0, dy = y1 - y0, si = dx > 0 ? 1 : -1, sj = dy > 0 ? 1 : -1;
+  const tdx = dx !== 0 ? Math.abs(cs / dx) : Infinity, tdy = dy !== 0 ? Math.abs(cs / dy) : Infinity;
+  let tmx = dx !== 0 ? (dx > 0 ? (i + 1) * cs - x0 : x0 - i * cs) / Math.abs(dx) : Infinity;
+  let tmy = dy !== 0 ? (dy > 0 ? (j + 1) * cs - y0 : y0 - j * cs) / Math.abs(dy) : Infinity;
+  let guard = 0;
+  for (;;) {
+    const a = I.map.get(ikey(i, j));
+    if (a) for (const b of a) if (b._st !== st) { b._st = st; out.push(b); }
+    if ((i === ie && j === je) || guard++ > 20000) break;
+    if (tmx < tmy) { tmx += tdx; i += si; } else { tmy += tdy; j += sj; }
+  }
+  return out;
+}
+function buildingAt(x, y) {
+  const I = idx(), a = I.map.get(ikey(Math.floor(x / I.cs), Math.floor(y / I.cs)));
+  if (a) for (let k = a.length - 1; k >= 0; k--) { const b = a[k]; if (inBox(x, y, b.bbox) && pip(x, y, b.pts)) return b; }
+  return null;
+}
+
+/* ============================== OBJECTS ================================ */
+function makeBuilding(pts, h, name, opt) {
+  const id = nextId++;
+  const b = { id, name: name || ('Building ' + id), h, pts, bbox: bboxOf(pts), base: 0, baseFixed: null, roofRL: null, hsrc: 'manual', osmId: null, btype: null };
+  if (opt) {
+    if (opt.baseRL != null) b.baseFixed = opt.baseRL; if (opt.roofRL != null) b.roofRL = opt.roofRL;
+    if (opt.hsrc) b.hsrc = opt.hsrc; if (opt.osmId) b.osmId = opt.osmId; if (opt.btype) b.btype = opt.btype;
+  }
+  updateBase(b);
+  return b;
+}
+function updateBase(b) {
+  if (b.baseFixed != null) b.base = b.baseFixed;
+  else if (state.terrain) {
+    let m = Infinity;
+    for (const p of b.pts) m = Math.min(m, ground(p[0], p[1]));
+    const cx = b.pts.reduce((a, p) => a + p[0], 0) / b.pts.length, cy = b.pts.reduce((a, p) => a + p[1], 0) / b.pts.length;
+    m = Math.min(m, ground(cx, cy));
+    b.base = m;
+  } else b.base = 0;
+  if (b.roofRL != null) b.h = Math.max(0.5, b.roofRL - b.base);
+}
+function topOf(b) { return b.base + b.h; }
+function makeSource(x, y, eqIdx) {
+  const e = EQUIP[eqIdx] || EQUIP[0], id = nextId++;
+  return { id, name: e[0].replace(/ \(.*\)$/, ''), eq: eqIdx, lw: e[1] == null ? 100 : e[1], h: 1.5, x, y };
+}
+function makeHoarding(pts, h, name) {
+  const id = nextId++;
+  return { id, name: name || ('Hoarding ' + id), h, pts, bbox: bboxOf(pts) };
+}
+function geomChanged() { IDX.dirty = true; }
+
+/* ============================ ACOUSTIC ENGINE ========================== */
+function segPolyIntervals(sx, sy, rx, ry, pts) {
+  const dx = rx - sx, dy = ry - sy, ts = [0, 1];
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const ax = pts[j][0], ay = pts[j][1], ex = pts[i][0] - ax, ey = pts[i][1] - ay;
+    const den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-12) continue;
+    const wx = ax - sx, wy = ay - sy;
+    const t = (wx * ey - wy * ex) / den;
+    if (t <= 0 || t >= 1) continue;
+    const u = (wx * dy - wy * dx) / den;
+    if (u < 0 || u > 1) continue;
+    ts.push(t);
+  }
+  if (ts.length === 2) return null;
+  ts.sort((a, b) => a - b);
+  const out = [];
+  for (let k = 0; k < ts.length - 1; k++) {
+    const a = ts[k], c = ts[k + 1];
+    if (c - a < 1e-9) continue;
+    const m = (a + c) * 0.5;
+    if (pip(sx + dx * m, sy + dy * m, pts)) {
+      if (out.length && Math.abs(out[out.length - 1][1] - a) < 1e-9) out[out.length - 1][1] = c;
+      else out.push([a, c]);
+    }
+  }
+  return out.length ? out : null;
+}
+function upperHull(P) {
+  const H = [];
+  for (const p of P) {
+    while (H.length >= 2) {
+      const o = H[H.length - 2], a = H[H.length - 1];
+      if ((a[0] - o[0]) * (p[1] - o[1]) - (a[1] - o[1]) * (p[0] - o[0]) >= 0) H.pop(); else break;
+    }
+    H.push(p);
+  }
+  return H;
+}
+
+const _cand = [];
+function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
+  const prof = [];
+  const above = (s, z) => z > zs + (zr - zs) * (s / d2) + 1e-6;
+  const dx = rx - src.x, dy = ry - src.y;
+  let kinds = detail ? { terrain: 0, building: 0, hoarding: 0 } : null;
+
+  if (S.terrain && state.terrain) {
+    const T = state.terrain, step = Math.max(Math.min(T.cx, T.cy), 0.5);
+    const n = Math.min(MAX_TERRAIN_SAMPLES, Math.ceil(d2 / step));
+    for (let k = 1; k < n; k++) {
+      const t = k / n, z = ground(src.x + dx * t, src.y + dy * t), s = t * d2;
+      if (above(s, z)) { prof.push([s, z, 0]); }
+    }
+  }
+  if (S.barriers) {
+    if (buildings.length) {
+      const list = buildingsOnSegment(src.x, src.y, rx, ry, _cand);
+      for (const b of list) {
+        if (src._inside && src._inside.has(b.id)) continue;
+        const iv = segPolyIntervals(src.x, src.y, rx, ry, b.pts);
+        if (!iv) continue;
+        const top = topOf(b);
+        for (const [t0, t1] of iv) {
+          if (above(t0 * d2, top)) prof.push([t0 * d2, top, 1]);
+          if (above(t1 * d2, top)) prof.push([t1 * d2, top, 1]);
+        }
+      }
+    }
+    for (const ho of state.hoardings) {
+      const bb = ho.bbox;
+      if (bb[2] < Math.min(src.x, rx) || bb[0] > Math.max(src.x, rx) || bb[3] < Math.min(src.y, ry) || bb[1] > Math.max(src.y, ry)) continue;
+      for (let i = 0; i < ho.pts.length - 1; i++) {
+        const a = ho.pts[i], ex = ho.pts[i + 1][0] - a[0], ey = ho.pts[i + 1][1] - a[1];
+        const den = dx * ey - dy * ex;
+        if (Math.abs(den) < 1e-12) continue;
+        const wx = a[0] - src.x, wy = a[1] - src.y;
+        const t = (wx * ey - wy * ex) / den, u = (wx * dy - wy * dx) / den;
+        if (t <= 0 || t >= 1 || u < 0 || u > 1) continue;
+        const top = ground(src.x + dx * t, src.y + dy * t) + ho.h;
+        if (above(t * d2, top)) prof.push([t * d2, top, 2]);
+      }
+    }
+  }
+  if (!prof.length) return null;
+  prof.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const P = [[0, zs, -1]]; for (const p of prof) P.push(p); P.push([d2, zr, -1]);
+  const H = upperHull(P);
+  if (H.length <= 2) return null;
+  let L = 0; for (let k = 0; k < H.length - 1; k++) L += hyp(H[k], H[k + 1]);
+  const direct = Math.hypot(d2, zs - zr), delta = L - direct;
+  if (delta <= 0) return null;
+  const n = H.length - 2;
+  const dss = hyp(H[0], H[1]), dsr = hyp(H[n], H[n + 1]);
+  const e = hyp(H[1], H[n]) > 0 ? (function () { let s = 0; for (let k = 1; k < n; k++) s += hyp(H[k], H[k + 1]); return s; })() : 0;
+  let C3 = 1, cap = 20;
+  if (n >= 2) { cap = 25; if (e > 1e-6) { const q = Math.pow(5 * LAMBDA / e, 2); C3 = (1 + q) / (1 / 3 + q); } }
+  const Kmet = Math.exp(-(1 / 2000) * Math.sqrt(dss * dsr * direct / (2 * delta)));
+  let Dz = 10 * Math.log10(3 + (20 / LAMBDA) * C3 * delta * Kmet);
+  const capped = Dz > cap; if (capped) Dz = cap;
+  if (detail) for (let k = 1; k <= n; k++) { const kd = H[k][2]; if (kd === 0) kinds.terrain++; else if (kd === 1) kinds.building++; else if (kd === 2) kinds.hoarding++; }
+  return { Dz, delta, n, e, Kmet, C3, capped, kinds };
+}
+
+function contrib(src, rx, ry, S, buildings, detail, gr) {
+  const hs = src.h, hr = S.hr;
+  const zs = src._z, zr = (gr == null ? ground(rx, ry) : gr) + hr;
+  const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
+  const d = Math.max(Math.hypot(d2, zs - zr), 1);
+  const Adiv = 20 * Math.log10(d) + 11;
+  const Aatm = S.air ? ALPHA_DBKM * d / 1000 : 0;
+  let Agr = 0;
+  if (S.ground === 'soft') { const hm = (hs + hr) / 2, dg = Math.max(d2, 1); Agr = Math.max(0, 4.8 - (2 * hm / dg) * (17 + 300 / dg)); }
+  let Abar = 0, bar = null;
+  if ((S.barriers && (buildings.length || state.hoardings.length)) || (S.terrain && state.terrain)) {
+    bar = screening(src, rx, ry, d2, zs, zr, S, buildings, detail);
+    if (bar) Abar = Math.max(0, bar.Dz - Agr);
+  }
+  const Lp = src.lw - Adiv - Aatm - Agr - Abar;
+  return detail ? { Lp, d, Adiv, Aatm, Agr, Abar, bar, zr } : Lp;
+}
+function prep(sources) {
+  for (const s of sources) {
+    s._inside = new Set();
+    const b = buildingAt(s.x, s.y);
+    if (b) for (const c of state.buildings) if (inBox(s.x, s.y, c.bbox) && pip(s.x, s.y, c.pts)) s._inside.add(c.id);
+    s._z = ground(s.x, s.y) + s.h;
+  }
+}
+
+/* ===================== TIFF / GeoTIFF READER (local) ==================== */
+const TYPE_SIZE = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8, 16: 8, 17: 8, 18: 8 };
+const COMP_NAMES = { 1: 'none', 5: 'LZW', 7: 'JPEG', 8: 'Deflate', 32946: 'Deflate (old)', 32773: 'PackBits', 34887: 'LERC', 50000: 'ZSTD', 50001: 'WebP', 34925: 'LZMA' };
+
+function readIFD(dv, off, le, big) {
+  const tags = {};
+  const count = big ? Number(dv.getBigUint64(off, le)) : dv.getUint16(off, le);
+  let p = off + (big ? 8 : 2);
+  const es = big ? 20 : 12, inl = big ? 8 : 4;
+  for (let k = 0; k < count; k++, p += es) {
+    const tag = dv.getUint16(p, le), type = dv.getUint16(p + 2, le);
+    const cnt = big ? Number(dv.getBigUint64(p + 4, le)) : dv.getUint32(p + 4, le);
+    const sz = TYPE_SIZE[type]; if (!sz) continue;
+    const total = sz * cnt;
+    const vp = total <= inl ? p + (big ? 12 : 8) : (big ? Number(dv.getBigUint64(p + 12, le)) : dv.getUint32(p + 8, le));
+    if (vp + total > dv.byteLength) { tags[tag] = null; continue; }
+    tags[tag] = readVals(dv, vp, type, cnt, le);
+  }
+  return tags;
+}
+function readVals(dv, p, type, cnt, le) {
+  if (type === 2) { let s = ''; for (let i = 0; i < cnt; i++) { const c = dv.getUint8(p + i); if (c) s += String.fromCharCode(c); } return s; }
+  const out = new Array(cnt);
+  for (let i = 0; i < cnt; i++) {
+    switch (type) {
+      case 1: case 7: out[i] = dv.getUint8(p + i); break;
+      case 6: out[i] = dv.getInt8(p + i); break;
+      case 3: out[i] = dv.getUint16(p + i * 2, le); break;
+      case 8: out[i] = dv.getInt16(p + i * 2, le); break;
+      case 4: out[i] = dv.getUint32(p + i * 4, le); break;
+      case 9: out[i] = dv.getInt32(p + i * 4, le); break;
+      case 5: out[i] = dv.getUint32(p + i * 8, le) / (dv.getUint32(p + i * 8 + 4, le) || 1); break;
+      case 10: out[i] = dv.getInt32(p + i * 8, le) / (dv.getInt32(p + i * 8 + 4, le) || 1); break;
+      case 11: out[i] = dv.getFloat32(p + i * 4, le); break;
+      case 12: out[i] = dv.getFloat64(p + i * 8, le); break;
+      case 16: case 18: out[i] = Number(dv.getBigUint64(p + i * 8, le)); break;
+      case 17: out[i] = Number(dv.getBigInt64(p + i * 8, le)); break;
+    }
+  }
+  return out;
+}
+function lzwDecode(input, expected) {
+  const out = new Uint8Array(expected);
+  const prefix = new Int32Array(4096), suffix = new Uint8Array(4096), first = new Uint8Array(4096), len = new Uint16Array(4096);
+  for (let i = 0; i < 256; i++) { prefix[i] = -1; suffix[i] = i; first[i] = i; len[i] = 1; }
+  let op = 0, bitPos = 0, width = 9, next = 258, old = -1;
+  const nbits = input.length * 8;
+  function write(code) {
+    const L = len[code];
+    let end = op + L;
+    if (end > expected) {
+      let c = code, pos = op + L - 1;
+      while (c >= 0) { if (pos < expected) out[pos] = suffix[c]; pos--; c = prefix[c]; }
+      op = expected; return;
+    }
+    let c = code, pos = end - 1;
+    while (c >= 0) { out[pos--] = suffix[c]; c = prefix[c]; }
+    op = end;
+  }
+  while (bitPos + width <= nbits && op < expected) {
+    let code = 0;
+    for (let b = 0; b < width; b++, bitPos++) code = (code << 1) | ((input[bitPos >> 3] >> (7 - (bitPos & 7))) & 1);
+    if (code === 257) break;
+    if (code === 256) { width = 9; next = 258; old = -1; continue; }
+    if (old === -1) { if (code > 255) throw new Error('LZW: bad first code ' + code); write(code); old = code; continue; }
+    if (code < next) {
+      write(code);
+      if (next < 4096) { prefix[next] = old; suffix[next] = first[code]; first[next] = first[old]; len[next] = len[old] + 1; next++; }
+    } else if (code === next) {
+      if (next < 4096) { prefix[next] = old; suffix[next] = first[old]; first[next] = first[old]; len[next] = len[old] + 1; next++; }
+      write(code);
+    } else throw new Error('LZW: invalid code ' + code);
+    old = code;
+    if (next >= (1 << width) - 1 && width < 12) width++;
+  }
+  return out;
+}
+function packBitsDecode(input, expected) {
+  const out = new Uint8Array(expected); let ip = 0, op = 0;
+  while (ip < input.length && op < expected) {
+    const n = (input[ip++] << 24) >> 24;
+    if (n >= 0) { for (let k = 0; k <= n && op < expected; k++) out[op++] = input[ip++]; }
+    else if (n !== -128) { const v = input[ip++]; for (let k = 0; k < 1 - n && op < expected; k++) out[op++] = v; }
+  }
+  return out;
+}
+async function inflate(bytes) {
+  if (typeof DecompressionStream === 'undefined') throw new Error('this browser has no DecompressionStream (Deflate). Use Edge/Chrome 80+ or export as .asc');
+  try {
+    const s = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  } catch (e) {
+    const s = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  }
+}
+
+function epsgFromText(cite, what) {
+  if (!cite) return null;
+  const zm = cite.match(/zone\s*_?(\d{2})/i) || cite.match(/MGA\s*_?(\d{2})/i), z = zm ? +zm[1] : null;
+  const datum = /GDA\s*_?2020|7844|1168/i.test(cite) ? 'GDA2020' : /GDA\s*_?94|4283|6283/i.test(cite) ? 'GDA94' : null;
+  if (z >= 48 && z <= 58 && datum) { const e = (datum === 'GDA2020' ? 7800 : 28300) + z; log(`${what}: CRS identified from description: ${datum} / MGA zone ${z} → EPSG ${e}.`, 'pass'); return e; }
+  if (z >= 48 && z <= 58) { const e = 7800 + z; log(`${what}: CRS description gives MGA zone ${z} but no datum – assuming GDA2020 (EPSG ${e}). GDA94 vs GDA2020 differs by ~1.8 m.`, 'warn'); return e; }
+  return null;
+}
+async function parseGeoTIFF(buf) {
+  const dv = new DataView(buf);
+  const bo = dv.getUint16(0, false);
+  if (bo !== 0x4949 && bo !== 0x4D4D) throw new Error('not a TIFF file (bad byte-order mark)');
+  const le = bo === 0x4949, magic = dv.getUint16(2, le), big = magic === 43;
+  if (!big && magic !== 42) throw new Error('not a TIFF file (magic ' + magic + ')');
+  const ifd0 = big ? Number(dv.getBigUint64(8, le)) : dv.getUint32(4, le);
+  const t = readIFD(dv, ifd0, le, big);
+  const g = (k, d) => (t[k] != null ? t[k] : d);
+  const W = g(256)[0], H = g(257)[0];
+  const bps = g(258, [1])[0], comp = g(259, [1])[0], spp = g(277, [1])[0];
+  const planar = g(284, [1])[0], pred = g(317, [1])[0], fmtS = g(339, [1])[0];
+  const tiled = t[322] != null;
+  log(`TIFF: ${big ? 'BigTIFF' : 'classic'} ${le ? 'II' : 'MM'}, ${W}×${H}, ${bps}-bit ${({ 1: 'uint', 2: 'int', 3: 'float' })[fmtS] || '?'}, ${spp} band(s), ${tiled ? 'tiled ' + g(322)[0] + '×' + g(323)[0] : 'strips'}, compression ${COMP_NAMES[comp] || comp}, predictor ${pred}.`);
+  if (![1, 5, 8, 32946, 32773].includes(comp)) throw new Error(`compression "${COMP_NAMES[comp] || comp}" not supported – re-export as LZW/Deflate/uncompressed GeoTIFF or .asc`);
+  if (![8, 16, 32, 64].includes(bps)) throw new Error(bps + '-bit samples not supported');
+  if (fmtS === 3 && bps !== 32 && bps !== 64) throw new Error('float ' + bps + '-bit not supported');
+  const bpsB = bps / 8, pixStride = planar === 1 ? spp : 1;
+
+  let ox, oy, sx, sy;
+  if (t[33550] && t[33922]) {
+    sx = t[33550][0]; sy = t[33550][1];
+    const tp = t[33922]; ox = tp[3] - tp[0] * sx; oy = tp[4] + tp[1] * sy;
+  } else if (t[34264]) {
+    const m = t[34264]; sx = m[0]; sy = -m[5]; ox = m[3]; oy = m[7];
+    if (Math.abs(m[1]) > 1e-9 || Math.abs(m[4]) > 1e-9) log('DEM has rotation terms – ignored.', 'warn');
+  } else throw new Error('no georeferencing tags (not a GeoTIFF). Export with a .tfw-free GeoTIFF or use .asc');
+  let epsg = null, modelType = null, pixelIsPoint = false;
+  if (t[34735]) {
+    const k = t[34735];
+    for (let i = 4; i + 3 < k.length; i += 4) {
+      if (k[i] === 1024) modelType = k[i + 3];
+      if (k[i] === 3072 || k[i] === 2048) epsg = epsg || k[i + 3];
+      if (k[i] === 1025) pixelIsPoint = k[i + 3] === 2;
+    }
+  }
+  if (epsg === 32767 || epsg === 0) epsg = null;
+  const cite = [t[34737], t[270]].filter(v => typeof v === 'string').map(v => v.replace(/\|/g, ' ').trim()).filter(Boolean).join(' · ');
+  if (cite.trim()) log(`GeoTIFF CRS text: “${cite.replace(/\s+/g, ' ').slice(0, 160)}”`);
+  if (!epsg) epsg = epsgFromText(cite, 'GeoTIFF');
+  if (pixelIsPoint) { ox -= sx / 2; oy += sy / 2; }
+  let nodata = null;
+  if (typeof t[42113] === 'string' && t[42113].trim() !== '') { const v = parseFloat(t[42113]); if (isFinite(v)) nodata = v; }
+
+  const out = new Float32Array(W * H).fill(NaN);
+  function decodeSamples(bytes, cw, ch, bigEndianOverride) {
+    const n = cw * ch * pixStride, vals = new Float64Array(n);
+    const d = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), L = bigEndianOverride ? false : le;
+    const avail = Math.min(n, Math.floor(bytes.byteLength / bpsB));
+    for (let i = 0; i < avail; i++) {
+      const p = i * bpsB;
+      if (fmtS === 3) vals[i] = bps === 32 ? d.getFloat32(p, L) : d.getFloat64(p, L);
+      else if (bps === 8) vals[i] = d.getUint8(p);
+      else if (bps === 16) vals[i] = d.getUint16(p, L);
+      else if (bps === 32) vals[i] = d.getUint32(p, L);
+      else vals[i] = Number(d.getBigUint64(p, L));
+    }
+    for (let i = avail; i < n; i++) vals[i] = NaN;
+    if (pred === 2 && fmtS !== 3) {
+      const mod = Math.pow(2, bps);
+      for (let r = 0; r < ch; r++) {
+        const base = r * cw * pixStride;
+        for (let c = pixStride; c < cw * pixStride; c++) vals[base + c] = (vals[base + c] + vals[base + c - pixStride]) % mod;
+      }
+    }
+    if (fmtS === 2) { const half = Math.pow(2, bps - 1), mod = Math.pow(2, bps); for (let i = 0; i < n; i++) if (vals[i] >= half) vals[i] -= mod; }
+    return vals;
+  }
+  function undoFloatPredictor(bytes, cw, ch) {
+    const rowB = cw * pixStride * bpsB, res = new Uint8Array(rowB * ch);
+    for (let r = 0; r < ch; r++) {
+      const row = bytes.subarray(r * rowB, (r + 1) * rowB);
+      const tmp = new Uint8Array(row);
+      for (let i = pixStride; i < rowB; i++) tmp[i] = (tmp[i] + tmp[i - pixStride]) & 255;
+      const nS = cw * pixStride;
+      for (let s = 0; s < nS; s++) for (let b = 0; b < bpsB; b++) res[r * rowB + s * bpsB + b] = tmp[b * nS + s];
+    }
+    return res;
+  }
+  async function decompress(raw, expected) {
+    if (comp === 1) return raw;
+    if (comp === 5) return lzwDecode(raw, expected);
+    if (comp === 32773) return packBitsDecode(raw, expected);
+    return inflate(raw);
+  }
+
+  const offs = tiled ? t[324] : t[273], cnts = tiled ? t[325] : t[279];
+  if (!offs || !cnts) throw new Error('missing strip/tile offsets');
+  let chunks;
+  if (tiled) {
+    const tw = t[322][0], th = t[323][0], ta = Math.ceil(W / tw), td = Math.ceil(H / th);
+    chunks = []; for (let r = 0; r < td; r++) for (let c = 0; c < ta; c++) chunks.push({ i: r * ta + c, x: c * tw, y: r * th, cw: tw, ch: th, vw: Math.min(tw, W - c * tw), vh: Math.min(th, H - r * th) });
+  } else {
+    const rps = Math.min(g(278, [H])[0], H), ns = Math.ceil(H / rps);
+    chunks = []; for (let s = 0; s < ns; s++) { const vh = Math.min(rps, H - s * rps); chunks.push({ i: s, x: 0, y: s * rps, cw: W, ch: vh, vw: W, vh }); }
+  }
+  let done = 0, lastPct = -1;
+  for (const c of chunks) {
+    if (c.i >= offs.length) break;
+    const raw = new Uint8Array(buf, offs[c.i], Math.min(cnts[c.i], buf.byteLength - offs[c.i]));
+    const expected = c.cw * c.ch * pixStride * bpsB;
+    let bytes = await decompress(raw, expected);
+    let be = false;
+    if (pred === 3) { bytes = undoFloatPredictor(bytes, c.cw, c.ch); be = true; }
+    const vals = decodeSamples(bytes, c.cw, c.ch, be);
+    for (let r = 0; r < c.vh; r++) for (let q = 0; q < c.vw; q++) out[(c.y + r) * W + c.x + q] = vals[(r * c.cw + q) * pixStride];
+    done++;
+    const pct = Math.floor(100 * done / chunks.length / 25) * 25;
+    if (pct !== lastPct && chunks.length > 8) { lastPct = pct; $('busy').textContent = `Decoding DEM… ${pct}%`; await new Promise(r => setTimeout(r, 0)); }
+  }
+  return { W, H, z: out, ox, oy, sx, sy, nodata, epsg, modelType };
+}
+
+function parseASC(text) {
+  const lines = text.split(/\r?\n/);
+  const hdr = {}; let li = 0;
+  for (; li < lines.length && li < 10; li++) {
+    const m = lines[li].trim().match(/^([a-zA-Z_]+)\s+(\S+)/);
+    if (!m || !/^(ncols|nrows|xllcorner|yllcorner|xllcenter|yllcenter|cellsize|nodata_value|dx|dy)$/i.test(m[1])) break;
+    hdr[m[1].toLowerCase()] = parseFloat(m[2]);
+  }
+  const W = hdr.ncols, H = hdr.nrows, cs = hdr.cellsize || hdr.dx;
+  if (!(W > 0 && H > 0 && cs > 0)) throw new Error('ASC header missing ncols/nrows/cellsize');
+  const sy = hdr.cellsize || hdr.dy || cs;
+  let ox = hdr.xllcorner, oyb = hdr.yllcorner;
+  if (ox == null) ox = hdr.xllcenter - cs / 2;
+  if (oyb == null) oyb = hdr.yllcenter - sy / 2;
+  const z = new Float32Array(W * H).fill(NaN);
+  const body = lines.slice(li).join(' ').trim().split(/\s+/);
+  const n = Math.min(body.length, W * H);
+  for (let i = 0; i < n; i++) z[i] = parseFloat(body[i]);
+  if (body.length < W * H) log(`ASC: expected ${W * H} values, found ${body.length}.`, 'warn');
+  return { W, H, z, ox, oy: oyb + H * sy, sx: cs, sy, nodata: hdr.nodata_value ?? null, epsg: null };
+}
+function parseXYZ(text) {
+  const xs = [], ys = [], zs = [];
+  for (const line of text.split(/\r?\n/)) {
+    const p = line.trim().split(/[\s,;]+/);
+    if (p.length < 3) continue;
+    const x = +p[0], y = +p[1], z = +p[2];
+    if (isFinite(x) && isFinite(y) && isFinite(z)) { xs.push(x); ys.push(y); zs.push(z); }
+  }
+  if (xs.length < 4) throw new Error('XYZ: fewer than 4 numeric points');
+  const ux = [...new Set(xs.map(v => +v.toFixed(3)))].sort((a, b) => a - b);
+  const uy = [...new Set(ys.map(v => +v.toFixed(3)))].sort((a, b) => a - b);
+  let cs = Infinity; for (let i = 1; i < Math.min(ux.length, 5000); i++) cs = Math.min(cs, ux[i] - ux[i - 1]);
+  let csy = Infinity; for (let i = 1; i < Math.min(uy.length, 5000); i++) csy = Math.min(csy, uy[i] - uy[i - 1]);
+  if (!isFinite(cs) || !isFinite(csy)) throw new Error('XYZ: could not detect grid spacing');
+  const W = Math.round((ux[ux.length - 1] - ux[0]) / cs) + 1, H = Math.round((uy[uy.length - 1] - uy[0]) / csy) + 1;
+  if (W * H > 30e6) throw new Error(`XYZ: grid ${W}×${H} too large – XYZ must be a regular grid`);
+  const z = new Float32Array(W * H).fill(NaN), x0 = ux[0], yMax = uy[uy.length - 1];
+  for (let k = 0; k < xs.length; k++) {
+    const i = Math.round((xs[k] - x0) / cs), j = Math.round((yMax - ys[k]) / csy);
+    if (i >= 0 && i < W && j >= 0 && j < H) z[j * W + i] = zs[k];
+  }
+  log(`XYZ: ${xs.length.toLocaleString()} points → ${W}×${H} grid at ${cs} m.`);
+  return { W, H, z, ox: x0 - cs / 2, oy: yMax + csy / 2, sx: cs, sy: csy, nodata: null, epsg: null };
+}
+
+/* ===================== MGA / GDA projection (Krüger) =================== */
+const GRS80 = (function () {
+  const a = 6378137, f = 1 / 298.257222101, n = f / (2 - f), n2 = n * n, n3 = n2 * n, n4 = n3 * n;
+  return {
+    a, e: Math.sqrt(f * (2 - f)), k0: 0.9996,
+    A: a / (1 + n) * (1 + n2 / 4 + n4 / 64),
+    al: [n / 2 - 2 * n2 / 3 + 5 * n3 / 16 + 41 * n4 / 180, 13 * n2 / 48 - 3 * n3 / 5 + 557 * n4 / 1440, 61 * n3 / 240 - 103 * n4 / 140, 49561 * n4 / 161280],
+    be: [n / 2 - 2 * n2 / 3 + 37 * n3 / 96 - n4 / 360, n2 / 48 + n3 / 15 - 437 * n4 / 1440, 17 * n3 / 480 - 37 * n4 / 840, 4397 * n4 / 161280]
+  };
+})();
+function zoneOf(lon) { return Math.floor((lon + 180) / 6) + 1; }
+function ll2mga(lat, lon, zone) {
+  const G = GRS80, phi = lat * Math.PI / 180, lam = (lon - (zone * 6 - 183)) * Math.PI / 180;
+  const sp = Math.sin(phi), t = Math.sinh(Math.atanh(sp) - G.e * Math.atanh(G.e * sp));
+  const xi1 = Math.atan2(t, Math.cos(lam)), eta1 = Math.atanh(Math.sin(lam) / Math.sqrt(1 + t * t));
+  let xi = xi1, eta = eta1;
+  for (let j = 1; j <= 4; j++) { xi += G.al[j - 1] * Math.sin(2 * j * xi1) * Math.cosh(2 * j * eta1); eta += G.al[j - 1] * Math.cos(2 * j * xi1) * Math.sinh(2 * j * eta1); }
+  return [500000 + G.k0 * G.A * eta, 10000000 + G.k0 * G.A * xi];
+}
+function mga2ll(E, N, zone) {
+  const G = GRS80, xi = (N - 10000000) / (G.k0 * G.A), eta = (E - 500000) / (G.k0 * G.A);
+  let xi1 = xi, eta1 = eta;
+  for (let j = 1; j <= 4; j++) { xi1 -= G.be[j - 1] * Math.sin(2 * j * xi) * Math.cosh(2 * j * eta); eta1 -= G.be[j - 1] * Math.cos(2 * j * xi) * Math.sinh(2 * j * eta); }
+  const tp = Math.sin(xi1) / Math.sqrt(Math.sinh(eta1) ** 2 + Math.cos(xi1) ** 2), lam = Math.atan2(Math.sinh(eta1), Math.cos(xi1));
+  const e = G.e, e2 = e * e; let tau = tp;
+  for (let k = 0; k < 6; k++) {
+    const sig = Math.sinh(e * Math.atanh(e * tau / Math.sqrt(1 + tau * tau)));
+    const tpi = tau * Math.sqrt(1 + sig * sig) - sig * Math.sqrt(1 + tau * tau);
+    const dt = (tp - tpi) / Math.sqrt(1 + tpi * tpi) * (1 + (1 - e2) * tau * tau) / ((1 - e2) * Math.sqrt(1 + tau * tau));
+    tau += dt; if (Math.abs(dt) < 1e-13) break;
+  }
+  return [Math.atan(tau) * 180 / Math.PI, lam * 180 / Math.PI + (zone * 6 - 183)];
+}
+function zoneFromEpsg(epsg) {
+  if (epsg >= 28348 && epsg <= 28358) return epsg - 28300;
+  if (epsg >= 7848 && epsg <= 7858) return epsg - 7800;
+  return null;
+}
+function datumOf(epsg) { return epsg >= 28348 && epsg <= 28358 ? 'GDA94' : epsg >= 7848 && epsg <= 7858 ? 'GDA2020' : null; }
+function ensureOrigin(E, N, epsg, zone, why) {
+  if (state.origin && state.origin.type === 'projected') {
+    if (!state.origin.zone && (zone || zoneFromEpsg(epsg))) state.origin.zone = zone || zoneFromEpsg(epsg);
+    if (!state.origin.epsg && epsg) state.origin.epsg = epsg;
+    if (epsg && state.origin.epsg && epsg !== state.origin.epsg) log(`${why}: EPSG ${epsg} differs from scenario EPSG ${state.origin.epsg}.`, 'warn');
+    return state.origin;
+  }
+  let z = zone || zoneFromEpsg(epsg);
+  if (!z && isFinite(E) && E > 100000 && E < 900000 && N > 5000000 && N < 9000000) { z = 56; log(`${why}: CRS not recorded in file – coordinates look like MGA; assuming zone 56 (Sydney). Check the site location lines up.`, 'warn'); }
+  if (!z) { z = 56; log(`${why}: no EPSG code found – assuming MGA zone 56 (Sydney).`, 'warn'); }
+  state.origin = { type: 'projected', x0: Math.round(E), y0: Math.round(N), zone: z, epsg: epsg || null };
+  log(`Local origin set to E ${state.origin.x0}, N ${state.origin.y0}, MGA zone ${z}${epsg ? ' (EPSG ' + epsg + ')' : ''} – ${why}.`);
+  updateSiteInfo();
+  return state.origin;
+}
+function ll2local(lat, lon) { const o = state.origin, p = ll2mga(lat, lon, o.zone); return [p[0] - o.x0, p[1] - o.y0]; }
+function local2ll(x, y) { const o = state.origin; return mga2ll(x + o.x0, y + o.y0, o.zone); }
+
+function rasterPlacement(R, f) {
+  const geographic = R.modelType === 2 || (Math.abs(R.sx) < 0.01 && Math.abs(R.ox) <= 180 && Math.abs(R.oy) <= 90);
+  if (geographic) {
+    const lonC = R.ox + R.W * R.sx / 2, latC = R.oy - R.H * R.sy / 2;
+    const z = zoneOf(lonC), c = ll2mga(latC, lonC, z);
+    ensureOrigin(c[0], c[1], null, z, 'raster in degrees');
+    const tl = ll2local(R.oy, R.ox), br = ll2local(R.oy - R.H * R.sy, R.ox + R.W * R.sx);
+    log('Raster is in degrees (geographic) – placed approximately on MGA. Prefer an MGA (metres) raster.', 'warn');
+    return { x0: tl[0], yTop: tl[1], cx: (br[0] - tl[0]) / R.W * f, cy: (tl[1] - br[1]) / R.H * f };
+  }
+  const o = ensureOrigin(R.ox + R.W * R.sx / 2, R.oy - R.H * R.sy / 2, R.epsg, null, 'raster');
+  return { x0: R.ox - o.x0, yTop: R.oy - o.y0, cx: R.sx * f, cy: R.sy * f };
+}
+
+/* Clean, downsample and install a raster as terrain */
+function installTerrain(R, fileName) {
+  const t0 = performance.now();
+  let bad = 0;
+  const z = R.z;
+  for (let i = 0; i < z.length; i++) {
+    const v = z[i];
+    if (!isFinite(v) || (R.nodata != null && Math.abs(v - R.nodata) < 1e-6 * Math.max(1, Math.abs(R.nodata))) || v < -1e4 || v > 1e5) { z[i] = NaN; bad++; }
+  }
+  if (bad === z.length) throw new Error('all cells are NoData');
+  const f = Math.max(1, Math.ceil(Math.sqrt(R.W * R.H / MAX_DEM_CELLS)));
+  const w = Math.ceil(R.W / f), h = Math.ceil(R.H / f), zz = new Float32Array(w * h);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    let s = 0, c = 0;
+    for (let b = 0; b < f; b++) { const y = j * f + b; if (y >= R.H) break; for (let a = 0; a < f; a++) { const x = i * f + a; if (x >= R.W) break; const v = z[y * R.W + x]; if (v === v) { s += v; c++; } } }
+    zz[j * w + i] = c ? s / c : NaN;
+  }
+  let holes = 0; for (let i = 0; i < zz.length; i++) if (zz[i] !== zz[i]) holes++;
+  const holes0 = holes;
+  for (let pass = 0; holes > 0 && pass < 400; pass++) {
+    const src = zz.slice(); holes = 0;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const k = j * w + i; if (src[k] === src[k]) continue;
+      let s = 0, c = 0;
+      if (i > 0 && src[k - 1] === src[k - 1]) { s += src[k - 1]; c++; }
+      if (i < w - 1 && src[k + 1] === src[k + 1]) { s += src[k + 1]; c++; }
+      if (j > 0 && src[k - w] === src[k - w]) { s += src[k - w]; c++; }
+      if (j < h - 1 && src[k + w] === src[k + w]) { s += src[k + w]; c++; }
+      if (c) zz[k] = s / c; else holes++;
+    }
+  }
+  let zmin = Infinity, zmax = -Infinity;
+  for (let i = 0; i < zz.length; i++) { if (zz[i] !== zz[i]) zz[i] = 0; else { if (zz[i] < zmin) zmin = zz[i]; if (zz[i] > zmax) zmax = zz[i]; } }
+
+  const P = rasterPlacement(R, f);
+  const { x0, yTop, cx, cy } = P;
+  state.terrain = { w, h, cx, cy, x0, yTop, z: zz, zmin, zmax, name: fileName, srcW: R.W, srcH: R.H, srcCell: R.sx, factor: f, epsg: R.epsg, nodata: bad, filled: holes0 };
+  buildHillshade();
+  for (const b of state.buildings) updateBase(b);
+  geomChanged();
+  const ms = performance.now() - t0;
+  log(`DEM installed: ${R.W}×${R.H} @ ${fmt(R.sx, R.sx < 0.01 ? 6 : 2)} → ${w}×${h} @ ${fmt(cx, 2)} m (factor ${f}). RL ${fmt(zmin, 2)} – ${fmt(zmax, 2)} m. NoData ${bad.toLocaleString()} cells, ${holes0} filled. ${ms.toFixed(0)} ms.`, 'pass');
+  if (state.dsm) applyDsmHeights();
+  updateDemInfo();
+}
+function updateDemInfo() {
+  const T = state.terrain, el = $('demInfo');
+  if (!T) { el.innerHTML = '<span class="muted">No DEM loaded – ground is flat at RL 0.</span>'; return; }
+  el.innerHTML = `<b>${esc(T.name)}</b><br>${T.srcW}×${T.srcH} source cells → ${T.w}×${T.h} @ ${fmt(T.cx, 2)} m<br>Extent ${fmt(T.w * T.cx, 0)} × ${fmt(T.h * T.cy, 0)} m · RL ${fmt(T.zmin, 2)} – ${fmt(T.zmax, 2)} m${T.epsg ? '<br>EPSG ' + T.epsg : ''}`;
+}
+
+/* hillshade underlay */
+const shadeCv = document.createElement('canvas'), shadeCtx = shadeCv.getContext('2d');
+function buildHillshade() {
+  const T = state.terrain; if (!T) return;
+  shadeCv.width = T.w; shadeCv.height = T.h;
+  const img = shadeCtx.createImageData(T.w, T.h), d = img.data, z = T.z, w = T.w, h = T.h;
+  const L = [-0.5, 0.5, 0.707], ln = Math.hypot(...L); L[0] /= ln; L[1] /= ln; L[2] /= ln;
+  const rng = Math.max(T.zmax - T.zmin, 0.01);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const k = j * w + i;
+    const zl = z[j * w + Math.max(0, i - 1)], zr = z[j * w + Math.min(w - 1, i + 1)];
+    const zu = z[Math.max(0, j - 1) * w + i], zd = z[Math.min(h - 1, j + 1) * w + i];
+    const gx = (zr - zl) / (2 * T.cx), gy = (zu - zd) / (2 * T.cy) * 1;
+    const nx = -gx * 2, ny = -gy * 2, nz = 1, nn = Math.hypot(nx, ny, nz);
+    const sh = Math.max(0, (nx * L[0] + ny * L[1] + nz * L[2]) / nn);
+    const t = (z[k] - T.zmin) / rng;
+    const base = [200 + 40 * t, 210 + 25 * t, 190 + 50 * t];
+    const f = 0.55 + 0.5 * sh;
+    d[k * 4] = Math.min(255, base[0] * f); d[k * 4 + 1] = Math.min(255, base[1] * f); d[k * 4 + 2] = Math.min(255, base[2] * f); d[k * 4 + 3] = 255;
+  }
+  shadeCtx.putImageData(img, 0, 0);
+}
+
+/* ============================= VIEW / COORDS =========================== */
+function s2w(sx, sy) { const v = state.view; return [v.cx + (sx - cssW / 2) / v.scale, v.cy - (sy - cssH / 2) / v.scale]; }
+function w2s(x, y) { const v = state.view; return [(x - v.cx) * v.scale + cssW / 2, cssH / 2 - (y - v.cy) * v.scale]; }
+function resize() {
+  const r = wrap.getBoundingClientRect();
+  cssW = Math.max(100, Math.floor(r.width)); cssH = Math.max(100, Math.floor(r.height));
+  dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  requestCompute(false);
+}
+
+/* ============================ GRID COMPUTE ============================= */
+function computeGrid(cellPx, quiet) {
+  const t0 = performance.now();
+  const S = state.settings, B = state.buildings, srcs = state.sources;
+  prep(srcs);
+  const gw = Math.ceil(cssW / cellPx), gh = Math.ceil(cssH / cellPx);
+  off.width = gw; off.height = gh;
+  const img = offctx.createImageData(gw, gh), data = img.data;
+  const v = state.view, inv = 1 / v.scale;
+  let maxL = -Infinity, masked = 0;
+  if (srcs.length) {
+    for (let j = 0; j < gh; j++) {
+      const wy = v.cy - ((j + 0.5) * cellPx - cssH / 2) * inv;
+      for (let i = 0; i < gw; i++) {
+        const wx = v.cx + ((i + 0.5) * cellPx - cssW / 2) * inv;
+        if (B.length && buildingAt(wx, wy)) { masked++; continue; }
+        const gr = ground(wx, wy);
+        let e = 0;
+        for (let s = 0; s < srcs.length; s++) e += Math.pow(10, contrib(srcs[s], wx, wy, S, B, false, gr) / 10);
+        const L = 10 * Math.log10(e);
+        if (L > maxL) maxL = L;
+        if (!(L >= S.minDb) || L < BANDS[0][0]) continue;
+        const c = BAND_RGB[Math.min(BANDS.length - 1, Math.floor((L - BANDS[0][0]) / 5))], k = (j * gw + i) * 4;
+        data[k] = c[0]; data[k + 1] = c[1]; data[k + 2] = c[2]; data[k + 3] = 255;
+      }
+    }
+  }
+  offctx.putImageData(img, 0, 0);
+  grid = { cellPx, gw, gh };
+  const ms = performance.now() - t0;
+  $('busy').textContent = `${gw}×${gh} receivers · ${srcs.length} src · ${B.length} bldg · ${ms.toFixed(0)} ms · cell ≈ ${fmt(cellPx / v.scale, 2)} m`;
+  if (!quiet) log(`Grid ${gw}×${gh} (${(gw * gh).toLocaleString()} rcv, ${masked} masked) × ${srcs.length} src, ${B.length} bldg, ${state.hoardings.length} hoarding${state.terrain ? ', terrain' : ''}: ${ms.toFixed(0)} ms. Max ${fmt(maxL)} dB(A).`);
+}
+
+/* ============================== SCHEDULER ============================== */
+let rafId = 0, needCompute = false, computeFast = false, fullTimer = 0;
+function requestCompute(fast) {
+  needCompute = true; computeFast = fast;
+  clearTimeout(fullTimer);
+  if (fast) fullTimer = setTimeout(() => requestCompute(false), 250);
+  schedule();
+}
+function requestRender() { schedule(); }
+function schedule() { if (!rafId) rafId = requestAnimationFrame(frame); }
+function frame() {
+  rafId = 0;
+  try {
+    if (needCompute) { needCompute = false; const cp = state.settings.cellPx; computeGrid(computeFast ? Math.max(cp * 2, 10) : cp, computeFast); }
+    render(); updateProbe();
+  } catch (err) { log('Frame error: ' + err.message, 'fail'); console.error(err); }
+}
+
+/* ================================ RENDER =============================== */
+function niceStep(target) { for (const s of [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000]) if (s >= target) return s; return 10000; }
+function polyPath(pts, close) {
+  ctx.beginPath();
+  pts.forEach((p, i) => { const [sx, sy] = w2s(p[0], p[1]); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
+  if (close) ctx.closePath();
+}
+function render() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#f4f5f7'; ctx.fillRect(0, 0, cssW, cssH);
+  const v = state.view, S = state.settings, T = state.terrain;
+
+  if (T && S.shade) {
+    const [a, b] = w2s(T.x0, T.yTop);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(shadeCv, a, b, T.w * T.cx * v.scale, T.h * T.cy * v.scale);
+  }
+  const step = niceStep(60 / v.scale);
+  const [x0, y1] = s2w(0, 0), [x1, y0] = s2w(cssW, cssH);
+  ctx.strokeStyle = T && S.shade ? 'rgba(0,0,0,0.06)' : '#e1e4e9'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = Math.ceil(x0 / step) * step; x <= x1; x += step) { const sx = Math.round(w2s(x, 0)[0]) + 0.5; ctx.moveTo(sx, 0); ctx.lineTo(sx, cssH); }
+  for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) { const sy = Math.round(w2s(0, y)[1]) + 0.5; ctx.moveTo(0, sy); ctx.lineTo(cssW, sy); }
+  ctx.stroke();
+
+  if (grid && state.sources.length) {
+    ctx.save(); ctx.globalAlpha = S.opacity; ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, grid.gw * grid.cellPx, grid.gh * grid.cellPx);
+    ctx.restore();
+  }
+
+  if (state.dsm && state.dsm.kind === 'lidar' && $('setLazShow').checked) {
+    const D = state.dsm, [a, b] = w2s(D.x0, D.yTop);
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(lazCv, a, b, D.w * D.cx * v.scale, D.h * D.cy * v.scale);
+    ctx.restore();
+  }
+  const showLabels = state.buildings.length < 400;
+  for (const b of state.buildings) {
+    const bb = b.bbox;
+    if (bb[2] < x0 || bb[0] > x1 || bb[3] < y0 || bb[1] > y1) continue;
+    const sel = state.sel && state.sel.type === 'building' && state.sel.id === b.id;
+    polyPath(b.pts, true);
+    ctx.fillStyle = sel ? 'rgba(37,99,235,0.55)' : 'rgba(55,60,72,0.78)'; ctx.fill();
+    if (isEstimated(b) && !sel) { ctx.lineWidth = 1.5; ctx.strokeStyle = '#f59e0b'; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]); }
+    else { ctx.lineWidth = sel ? 2.5 : 1; ctx.strokeStyle = sel ? '#1d4ed8' : '#1f2937'; ctx.stroke(); }
+    if (showLabels && (bb[2] - bb[0]) * v.scale > 34) {
+      let cx = b.pts.reduce((a, p) => a + p[0], 0) / b.pts.length, cy = b.pts.reduce((a, p) => a + p[1], 0) / b.pts.length;
+      if (!pip(cx, cy, b.pts)) { const p = b.pts; cx = (p[0][0] + p[1][0] + p[2][0]) / 3; cy = (p[0][1] + p[1][1] + p[2][1]) / 3; }
+      const [lx, ly] = w2s(cx, cy);
+      ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+      ctx.fillText(`${fmt(b.h, 1)} m${isEstimated(b) ? '?' : ''}`, lx, ly);
+    }
+  }
+  for (const ho of state.hoardings) {
+    const sel = state.sel && state.sel.type === 'hoarding' && state.sel.id === ho.id;
+    polyPath(ho.pts, false);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineWidth = sel ? 7 : 5; ctx.strokeStyle = sel ? '#1d4ed8' : '#111827'; ctx.stroke();
+    polyPath(ho.pts, false); ctx.lineWidth = sel ? 3 : 2; ctx.strokeStyle = '#facc15'; ctx.setLineDash([6, 5]); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  if (state.draft.length) {
+    polyPath(state.draft, false);
+    if (state.mouse) ctx.lineTo(state.mouse.x, state.mouse.y);
+    ctx.strokeStyle = state.mode === 'hoarding' ? '#b45309' : '#1d4ed8'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
+    state.draft.forEach((p, i) => { const [sx, sy] = w2s(p[0], p[1]); ctx.beginPath(); ctx.arc(sx, sy, i ? 3.5 : 6, 0, 7); ctx.fillStyle = i ? '#1d4ed8' : '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2; ctx.stroke(); });
+  }
+
+  for (const s of state.sources) {
+    const [sx, sy] = w2s(s.x, s.y);
+    const sel = state.sel && state.sel.type === 'source' && state.sel.id === s.id;
+    ctx.beginPath(); ctx.arc(sx, sy, sel ? 9 : 7, 0, 7);
+    ctx.fillStyle = '#111827'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = sel ? '#60a5fa' : '#fff'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(sx, sy, 3, 0, 7); ctx.fillStyle = '#ef4444'; ctx.fill();
+    ctx.font = '600 11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const label = `${s.name} · Lw ${fmt(s.lw, 0)}`, w = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(sx + 11, sy - 8, w + 6, 16);
+    ctx.fillStyle = '#111827'; ctx.fillText(label, sx + 14, sy);
+  }
+
+  const sb = niceStep(110 / v.scale), sbPx = sb * v.scale;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(8, cssH - 34, sbPx + 16, 26);
+  ctx.fillStyle = '#111827'; ctx.fillRect(16, cssH - 16, sbPx, 4);
+  ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(`${sb} m`, 16, cssH - 21);
+  ctx.textAlign = 'center'; ctx.font = '600 12px Segoe UI, sans-serif';
+  ctx.fillText('N ↑', cssW - 24, 40);
+}
+
+/* ================================ PROBE ================================ */
+function coordText(wx, wy) {
+  const o = state.origin;
+  if (o && o.type === 'projected') return `E ${fmt(wx + o.x0, 1)}  N ${fmt(wy + o.y0, 1)}`;
+  return `x ${fmt(wx)}  y ${fmt(wy)} m`;
+}
+function updateProbe() {
+  const m = state.mouse; if (!m) return;
+  const [wx, wy] = s2w(m.x, m.y), B = state.buildings, S = state.settings;
+  const gr = ground(wx, wy);
+  let hud = coordText(wx, wy) + (state.terrain ? `  RL ${fmt(gr, 2)}${terrainInside(wx, wy) ? '' : ' (edge)'}` : '');
+  const el = $('probe');
+  if (!state.sources.length) { el.innerHTML = '<p class="muted">Add a source to see levels.</p>'; $('hud').textContent = hud; return; }
+  const hb = buildingAt(wx, wy);
+  if (hb) { el.innerHTML = `<p class="muted">Inside “${esc(hb.name)}” (base RL ${fmt(hb.base, 2)}, roof RL ${fmt(topOf(hb), 2)}) – receivers masked.</p>`; $('hud').textContent = hud + ' · inside building'; return; }
+  prep(state.sources);
+  let e = 0, rows = '';
+  for (const s of state.sources) {
+    const r = contrib(s, wx, wy, S, B, true, gr);
+    e += Math.pow(10, r.Lp / 10);
+    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
+    let note = `Lw ${fmt(s.lw, 0)} · src RL ${fmt(s._z, 1)} · rcv RL ${fmt(r.zr, 1)}`;
+    if (r.bar) {
+      const k = r.bar.kinds, parts = [];
+      if (k.terrain) parts.push(k.terrain + ' terrain'); if (k.building) parts.push(k.building + ' building'); if (k.hoarding) parts.push(k.hoarding + ' hoarding');
+      note += ` · edges: ${parts.join(', ')} · δ ${fmt(r.bar.delta, 2)} m · Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ' (cap)' : ''}`;
+    } else note += ' · line of sight';
+    rows += `<tr class="note"><td colspan="6">${note}</td></tr>`;
+  }
+  const L = 10 * Math.log10(e);
+  el.innerHTML = `<table><tr><th>Source</th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>${rows}</table>
+    <div class="tot">Total: ${fmt(L)} dB(A) <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>`;
+  $('hud').textContent = `${hud} · ${fmt(L)} dB(A)`;
+}
+
+/* ============================== SELECTION ============================== */
+function listFor(type) { return type === 'source' ? state.sources : type === 'building' ? state.buildings : state.hoardings; }
+function getSel() { if (!state.sel) return null; const obj = listFor(state.sel.type).find(o => o.id === state.sel.id); return obj ? { type: state.sel.type, obj } : null; }
+function select(type, id) { state.sel = type ? { type, id } : null; renderSelPanel(); requestRender(); }
+function deleteSel() {
+  const s = getSel(); if (!s) return;
+  if (s.type === 'source') state.sources = state.sources.filter(o => o !== s.obj);
+  else if (s.type === 'building') { state.buildings = state.buildings.filter(o => o !== s.obj); geomChanged(); }
+  else state.hoardings = state.hoardings.filter(o => o !== s.obj);
+  log(`Deleted ${s.type} “${s.obj.name}”.`);
+  select(null); requestCompute(false);
+}
+function bindNum(input, min, max, apply) {
+  input.addEventListener('input', () => {
+    const v = num(input.value, min, max);
+    input.classList.toggle('bad', v === null);
+    if (v !== null) { apply(v); requestCompute(true); }
+  });
+}
+function renderSelPanel() {
+  const body = $('selBody'), s = getSel();
+  if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building or hoarding in Select mode.</p>'; return; }
+  const o = s.obj;
+  if (s.type === 'source') {
+    const opts = EQUIP.map((e, i) => `<option value="${i}" ${i === o.eq ? 'selected' : ''}>${esc(e[0])}${e[1] != null ? ' – ' + e[1] : ''}</option>`).join('');
+    body.innerHTML = `
+      <div class="row"><label for="sName">Name</label><input type="text" id="sName" value="${esc(o.name)}" maxlength="40"></div>
+      <div class="row"><label for="sEq">Equipment</label><select id="sEq">${opts}</select></div>
+      <div class="row"><label for="sLw">Lw dB(A)</label><input type="number" id="sLw" min="40" max="150" step="1" value="${o.lw}"></div>
+      <div class="row"><label for="sH">Height above ground (m)</label><input type="number" id="sH" min="0" max="200" step="0.5" value="${o.h}"></div>
+      <p class="kv">${coordText(o.x, o.y)} · ground RL ${fmt(ground(o.x, o.y), 2)}</p>
+      <div class="row"><span></span><button type="button" id="sDel" class="danger">Delete</button></div>`;
+    $('sName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'Source'; requestRender(); });
+    $('sEq').addEventListener('change', e => {
+      const i = parseInt(e.target.value, 10); o.eq = i; state.lastEq = i;
+      if (EQUIP[i][1] != null) { o.lw = EQUIP[i][1]; $('sLw').value = o.lw; o.name = EQUIP[i][0].replace(/ \(.*\)$/, ''); $('sName').value = o.name; }
+      log(`Source ${o.id} → ${EQUIP[i][0]} (Lw ${o.lw}).`); requestCompute(false);
+    });
+    bindNum($('sLw'), 40, 150, v => { o.lw = v; o.eq = CUSTOM_EQ; $('sEq').value = String(CUSTOM_EQ); });
+    bindNum($('sH'), 0, 200, v => { o.h = v; });
+    $('sDel').addEventListener('click', deleteSel);
+  } else if (s.type === 'building') {
+    body.innerHTML = `
+      <div class="row"><label for="bName">Name</label><input type="text" id="bName" value="${esc(o.name)}" maxlength="40"></div>
+      <div class="row"><label for="bH">Height (m)</label><input type="number" id="bH" min="0.5" max="300" step="0.5" value="${fmt(o.h, 2)}"></div>
+      <p class="kv" id="bInfo"></p>
+      <div class="row"><span class="muted">${o.pts.length} vertices</span><button type="button" id="bDel" class="danger">Delete</button></div>`;
+    const SRC = { manual: 'entered by hand', 'osm-height': 'OSM height tag', 'osm-levels': 'OSM levels × 3 m + 1 m', 'type-default': `ESTIMATE – typical “${o.btype || 'yes'}” height, check it`, dsm: 'DSM (90th percentile roof) − DEM', lidar: `LiDAR – 90th percentile of ${o.lidarN || '?'} roof cells (class 6) − ground`, file: 'imported file' };
+    const info = () => { $('bInfo').textContent = `Height source: ${SRC[o.hsrc] || o.hsrc}${o.osmId ? ' · ' + o.osmId : ''}. Base RL ${fmt(o.base, 2)}${o.baseFixed != null ? ' (from file)' : state.terrain ? ' (lowest DEM point)' : ''} · Roof RL ${fmt(topOf(o), 2)}`; };
+    info();
+    $('bName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'Building'; });
+    bindNum($('bH'), 0.5, 300, v => { o.h = v; o.roofRL = null; o.hsrc = 'manual'; info(); requestRender(); });
+    $('bDel').addEventListener('click', deleteSel);
+  } else {
+    let len = 0; for (let i = 0; i < o.pts.length - 1; i++) len += hyp(o.pts[i], o.pts[i + 1]);
+    body.innerHTML = `
+      <div class="row"><label for="hName">Name</label><input type="text" id="hName" value="${esc(o.name)}" maxlength="40"></div>
+      <div class="row"><label for="hH">Height above ground (m)</label><input type="number" id="hH" min="0.3" max="20" step="0.1" value="${o.h}"></div>
+      <div class="row"><span class="muted">${fmt(len)} m long, ${o.pts.length} points</span><button type="button" id="hDel" class="danger">Delete</button></div>`;
+    $('hName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'Hoarding'; });
+    bindNum($('hH'), 0.3, 20, v => { o.h = v; });
+    $('hDel').addEventListener('click', deleteSel);
+  }
+}
+
+/* ================================ MODES ================================ */
+const HINTS = {
+  select: 'Drag a source, building or hoarding to move it. Drag empty space to pan; wheel to zoom. Delete removes the selection.',
+  source: 'Click the map to place a noise source.',
+  building: 'Click to add corners. Click the first corner, double-click or press Enter to finish. Esc cancels. Right-drag pans.',
+  hoarding: 'Click to add points along the hoarding line. Double-click or Enter to finish (2+ points). Esc cancels.'
+};
+function setMode(m) {
+  if (state.mode !== m && state.draft.length) cancelDraft();
+  state.mode = m;
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('hint').textContent = HINTS[m];
+  canvas.style.cursor = m === 'select' ? 'default' : 'crosshair';
+  updateDraftButtons(); requestRender();
+}
+function updateDraftButtons() {
+  const show = (state.mode === 'building' || state.mode === 'hoarding') && state.draft.length > 0;
+  $('finishPoly').hidden = !show; $('cancelPoly').hidden = !show;
+}
+function cancelDraft() { state.draft = []; updateDraftButtons(); requestRender(); }
+function finishDraft() {
+  const tol = 4 / state.view.scale, pts = [];
+  for (const p of state.draft) if (!pts.length || hyp(pts[pts.length - 1], p) > tol) pts.push(p);
+  if (state.mode === 'hoarding') {
+    if (pts.length < 2) { log('Hoarding needs at least 2 points.', 'warn'); return; }
+    const ho = makeHoarding(pts, state.settings.newHo);
+    state.hoardings.push(ho); state.draft = [];
+    let len = 0; for (let i = 0; i < pts.length - 1; i++) len += hyp(pts[i], pts[i + 1]);
+    log(`Added ${ho.name}: ${fmt(len)} m long, ${ho.h} m high.`);
+    updateDraftButtons(); select('hoarding', ho.id); requestCompute(false); return;
+  }
+  if (pts.length > 1 && hyp(pts[0], pts[pts.length - 1]) <= tol) pts.pop();
+  if (pts.length < 3) { log('Building needs at least 3 distinct corners.', 'warn'); return; }
+  const b = makeBuilding(pts, state.settings.newH);
+  state.buildings.push(b); state.draft = []; geomChanged();
+  log(`Added ${b.name}: ${pts.length} corners, ${b.h} m high, base RL ${fmt(b.base, 2)}.`);
+  updateDraftButtons(); select('building', b.id); requestCompute(false);
+}
+
+/* ============================== INTERACTION ============================ */
+let drag = null;
+function mousePos(e) { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+function hitSource(mx, my) { for (let i = state.sources.length - 1; i >= 0; i--) { const s = state.sources[i], [sx, sy] = w2s(s.x, s.y); if (Math.hypot(sx - mx, sy - my) <= 11) return s; } return null; }
+function hitHoarding(wx, wy) {
+  const tol = 6 / state.view.scale;
+  for (let k = state.hoardings.length - 1; k >= 0; k--) { const ho = state.hoardings[k]; for (let i = 0; i < ho.pts.length - 1; i++) if (distSeg(wx, wy, ho.pts[i], ho.pts[i + 1]) <= tol) return ho; }
+  return null;
+}
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  const [mx, my] = mousePos(e), [wx, wy] = s2w(mx, my);
+  state.mouse = { x: mx, y: my };
+  if (e.button === 1 || e.button === 2) { drag = { kind: 'pan', lx: mx, ly: my }; return; }
+  if (e.button !== 0) return;
+  if (state.mode === 'source') {
+    const s = makeSource(wx, wy, state.lastEq); state.sources.push(s);
+    log(`Added source ${s.id} “${s.name}” Lw ${s.lw} at ${coordText(wx, wy)}, ground RL ${fmt(ground(wx, wy), 2)}.`);
+    setMode('select'); select('source', s.id); requestCompute(false); return;
+  }
+  if (state.mode === 'building' || state.mode === 'hoarding') {
+    if (state.mode === 'building' && state.draft.length >= 3) {
+      const [fx, fy] = w2s(state.draft[0][0], state.draft[0][1]);
+      if (Math.hypot(fx - mx, fy - my) <= 10) { finishDraft(); return; }
+    }
+    state.draft.push([wx, wy]); updateDraftButtons(); requestRender(); return;
+  }
+  const s = hitSource(mx, my);
+  if (s) { select('source', s.id); drag = { kind: 'source', obj: s, ox: wx - s.x, oy: wy - s.y, moved: false }; return; }
+  const ho = hitHoarding(wx, wy);
+  if (ho) { select('hoarding', ho.id); drag = { kind: 'poly', type: 'hoarding', obj: ho, lx: wx, ly: wy, moved: false }; return; }
+  const b = buildingAt(wx, wy);
+  if (b) { select('building', b.id); drag = { kind: 'poly', type: 'building', obj: b, lx: wx, ly: wy, moved: false }; return; }
+  if (state.sel) select(null);
+  drag = { kind: 'pan', lx: mx, ly: my };
+});
+canvas.addEventListener('pointermove', e => {
+  const [mx, my] = mousePos(e), [wx, wy] = s2w(mx, my);
+  state.mouse = { x: mx, y: my };
+  if (drag) {
+    const v = state.view;
+    if (drag.kind === 'pan') { v.cx -= (mx - drag.lx) / v.scale; v.cy += (my - drag.ly) / v.scale; drag.lx = mx; drag.ly = my; requestCompute(true); return; }
+    if (drag.kind === 'source') { drag.obj.x = wx - drag.ox; drag.obj.y = wy - drag.oy; drag.moved = true; requestCompute(true); return; }
+    if (drag.kind === 'poly') {
+      const dx = wx - drag.lx, dy = wy - drag.ly;
+      for (const p of drag.obj.pts) { p[0] += dx; p[1] += dy; }
+      drag.obj.bbox = bboxOf(drag.obj.pts); drag.lx = wx; drag.ly = wy; drag.moved = true;
+      if (drag.type === 'building') geomChanged();
+      requestCompute(true); return;
+    }
+  }
+  requestRender();
+});
+function endDrag() {
+  if (!drag) return;
+  if (drag.moved && drag.kind === 'source') { log(`Moved “${drag.obj.name}” to ${coordText(drag.obj.x, drag.obj.y)}.`); renderSelPanel(); }
+  if (drag.moved && drag.kind === 'poly') {
+    if (drag.type === 'building') { updateBase(drag.obj); geomChanged(); }
+    log(`Moved “${drag.obj.name}”.`); renderSelPanel();
+  }
+  drag = null; requestCompute(false);
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('pointerleave', () => { if (!drag) { state.mouse = null; $('hud').textContent = '–'; requestRender(); } });
+canvas.addEventListener('dblclick', e => {
+  e.preventDefault();
+  if (state.mode === 'building' && state.draft.length >= 3) finishDraft();
+  if (state.mode === 'hoarding' && state.draft.length >= 2) finishDraft();
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const [mx, my] = mousePos(e), before = s2w(mx, my), v = state.view;
+  v.scale = Math.min(60, Math.max(0.02, v.scale * Math.exp(-e.deltaY * 0.0015)));
+  v.cx = before[0] - (mx - cssW / 2) / v.scale; v.cy = before[1] + (my - cssH / 2) / v.scale;
+  requestCompute(true);
+}, { passive: false });
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  const k = e.key.toLowerCase();
+  if (k === 'v') setMode('select'); else if (k === 's') setMode('source'); else if (k === 'b') setMode('building'); else if (k === 'h') setMode('hoarding');
+  else if (k === 'escape') { if (state.draft.length) cancelDraft(); else select(null); }
+  else if (k === 'enter' && (state.mode === 'building' || state.mode === 'hoarding')) finishDraft();
+  else if (k === 'delete' || k === 'backspace') { if (state.sel) { e.preventDefault(); deleteSel(); } }
+});
+
+/* ============================== SETTINGS UI ============================ */
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('finishPoly').addEventListener('click', finishDraft);
+$('cancelPoly').addEventListener('click', cancelDraft);
+$('setBar').addEventListener('change', e => { state.settings.barriers = e.target.checked; log(`Buildings/hoarding screening ${e.target.checked ? 'ON' : 'OFF'}.`); requestCompute(false); });
+$('setTerr').addEventListener('change', e => { state.settings.terrain = e.target.checked; log(`Terrain screening ${e.target.checked ? 'ON' : 'OFF'}.`); requestCompute(false); });
+$('setShade').addEventListener('change', e => { state.settings.shade = e.target.checked; requestRender(); });
+$('setAir').addEventListener('change', e => { state.settings.air = e.target.checked; requestCompute(false); });
+$('setGround').addEventListener('change', e => { state.settings.ground = e.target.value; log(`Ground: ${e.target.value}.`); requestCompute(false); });
+bindNum($('setHr'), 0, 200, v => { state.settings.hr = v; });
+bindNum($('setNewH'), 0.5, 300, v => { state.settings.newH = v; });
+bindNum($('setNewHo'), 0.3, 20, v => { state.settings.newHo = v; });
+$('setCell').addEventListener('change', e => { state.settings.cellPx = parseInt(e.target.value, 10); requestCompute(false); });
+$('setMin').addEventListener('change', e => { state.settings.minDb = parseInt(e.target.value, 10); buildLegend(); requestCompute(false); });
+$('setOp').addEventListener('input', e => { state.settings.opacity = parseFloat(e.target.value); requestRender(); });
+function syncSettingsUI() {
+  const S = state.settings;
+  $('setBar').checked = S.barriers; $('setTerr').checked = S.terrain; $('setShade').checked = S.shade; $('setAir').checked = S.air;
+  $('setGround').value = S.ground; $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
+  $('setCell').value = String(S.cellPx); $('setMin').value = String(S.minDb); $('setOp').value = S.opacity; buildLegend();
+}
+function buildLegend() {
+  const min = state.settings.minDb;
+  $('legend').innerHTML = BANDS.filter(b => b[0] >= min).map((b, i, arr) => `<div><i style="background:${b[1]}"></i>${b[0]}${i === arr.length - 1 ? '+' : '–' + (b[0] + 5)}</div>`).join('');
+}
+
+/* ======================= LAS / LAZ READER (pure JS) ======================
+   Port of the LASzip decoder (arithmetic coder by A. Said; LASzip by
+   M. Isenburg, Apache-2.0). Supports:
+     - uncompressed .las, formats 0-10
+     - .laz pointwise-chunked (formats 0-5: POINT10 v2, GPSTIME11 v2, RGB12 v2, BYTE v2)
+     - .laz layered-chunked (formats 6-10: POINT14 v3/v4) – only the XY, Z and
+       classification layers are decoded, everything else is skipped.
+   Output: per chunk, Int32 X/Y/Z (raw, apply scale/offset) and Uint8 class.
+========================================================================== */
+function lazFactory() {
+  'use strict';
+  const AC_MIN = 0x01000000, AC_MAX = 0xFFFFFFFF;
+  const DM_SHIFT = 15, DM_MAX = 1 << 15, BM_SHIFT = 13, BM_MAX = 1 << 13;
+
+  /* ---------- models ---------- */
+  function Model(symbols) {
+    this.symbols = symbols; this.last = symbols - 1;
+    if (symbols > 16) {
+      let tb = 3; while (symbols > (1 << (tb + 2))) ++tb;
+      this.tsize = 1 << tb; this.tshift = DM_SHIFT - tb;
+      this.table = new Uint32Array(this.tsize + 2);
+    } else { this.table = null; this.tsize = 0; this.tshift = 0; }
+    this.dist = new Uint32Array(symbols); this.count = new Uint32Array(symbols);
+    this.init();
+  }
+  Model.prototype.init = function () {
+    this.total = 0; this.cycle = this.symbols; this.count.fill(1);
+    this.update();
+    this.untilUpdate = this.cycle = (this.symbols + 6) >>> 1;
+  };
+  Model.prototype.update = function () {
+    const n = this.symbols, cnt = this.count, dist = this.dist;
+    if ((this.total += this.cycle) > DM_MAX) {
+      let t = 0; for (let i = 0; i < n; i++) { cnt[i] = (cnt[i] + 1) >>> 1; t += cnt[i]; } this.total = t;
+    }
+    const scale = (0x80000000 / this.total) >>> 0;
+    let sum = 0;
+    if (!this.table) {
+      for (let k = 0; k < n; k++) { dist[k] = (scale * sum / 65536) >>> 0; sum += cnt[k]; }
+    } else {
+      const tab = this.table, sh = this.tshift; let s = 0;
+      for (let k = 0; k < n; k++) {
+        dist[k] = (scale * sum / 65536) >>> 0; sum += cnt[k];
+        const w = dist[k] >>> sh; while (s < w) tab[++s] = k - 1;
+      }
+      tab[0] = 0; while (s <= this.tsize) tab[++s] = n - 1;
+    }
+    this.cycle = (5 * this.cycle) >>> 2;
+    const mx = (n + 6) << 3; if (this.cycle > mx) this.cycle = mx;
+    this.untilUpdate = this.cycle;
+  };
+  function BitModel() { this.init(); }
+  BitModel.prototype.init = function () { this.b0 = 1; this.bc = 2; this.p0 = 1 << (BM_SHIFT - 1); this.cycle = this.until = 4; };
+  BitModel.prototype.update = function () {
+    if ((this.bc += this.cycle) > BM_MAX) { this.bc = (this.bc + 1) >>> 1; this.b0 = (this.b0 + 1) >>> 1; if (this.b0 === this.bc) ++this.bc; }
+    const scale = (0x80000000 / this.bc) >>> 0;
+    this.p0 = (this.b0 * scale / 262144) >>> 0;
+    this.cycle = (5 * this.cycle) >>> 2; if (this.cycle > 64) this.cycle = 64;
+    this.until = this.cycle;
+  };
+
+  /* ---------- arithmetic decoder ---------- */
+  function Decoder(buf, pos, end) { this.buf = buf; this.pos = pos; this.end = end; this.length = AC_MAX; this.value = 0; }
+  Decoder.prototype.byte = function () { return this.pos < this.end ? this.buf[this.pos++] : (this.pos++, 0); };
+  Decoder.prototype.start = function () { this.length = AC_MAX; this.value = ((this.byte() << 24) | (this.byte() << 16) | (this.byte() << 8) | this.byte()) >>> 0; };
+  Decoder.prototype.renorm = function () {
+    let v = this.value, l = this.length;
+    do { v = ((v << 8) | this.byte()) >>> 0; l = l * 256; } while (l < AC_MIN);
+    this.value = v; this.length = l;
+  };
+  Decoder.prototype.bit = function (m) {
+    const x = m.p0 * (this.length >>> BM_SHIFT);
+    let sym;
+    if (this.value >= x) { sym = 1; this.value -= x; this.length -= x; } else { sym = 0; this.length = x; ++m.b0; }
+    if (this.length < AC_MIN) this.renorm();
+    if (--m.until === 0) m.update();
+    return sym;
+  };
+  Decoder.prototype.symbol = function (m) {
+    let n, sym, x, y = this.length;
+    const dist = m.dist;
+    if (m.table) {
+      const len = this.length = this.length >>> DM_SHIFT;
+      const dv = (this.value / len) >>> 0, t = dv >>> m.tshift;
+      sym = m.table[t]; n = m.table[t + 1] + 1;
+      while (n > sym + 1) { const k = (sym + n) >>> 1; if (dist[k] > dv) n = k; else sym = k; }
+      x = dist[sym] * len;
+      if (sym !== m.last) y = dist[sym + 1] * len;
+    } else {
+      x = sym = 0;
+      const len = this.length = this.length >>> DM_SHIFT;
+      n = m.symbols; let k = n >>> 1;
+      do { const z = len * dist[k]; if (z > this.value) { n = k; y = z; } else { sym = k; x = z; } } while ((k = (sym + n) >>> 1) !== sym);
+    }
+    this.value -= x; this.length = y - x;
+    if (this.length < AC_MIN) this.renorm();
+    ++m.count[sym];
+    if (--m.untilUpdate === 0) m.update();
+    return sym;
+  };
+  Decoder.prototype.bits = function (b) {
+    if (b > 19) { const lo = this.short(); const hi = this.bits(b - 16); return hi * 65536 + lo; }
+    const len = this.length = this.length >>> b;
+    const sym = (this.value / len) >>> 0;
+    this.value -= len * sym;
+    if (this.length < AC_MIN) this.renorm();
+    return sym;
+  };
+  Decoder.prototype.short = function () {
+    const len = this.length = this.length >>> 16;
+    const sym = (this.value / len) >>> 0;
+    this.value -= len * sym;
+    if (this.length < AC_MIN) this.renorm();
+    return sym;
+  };
+  Decoder.prototype.int = function () { const lo = this.short(); const hi = this.short(); return (hi * 65536 + lo) >>> 0; };
+
+  /* ---------- integer compressor ---------- */
+  function IC(dec, bits, contexts, bitsHigh) {
+    this.dec = dec; bitsHigh = bitsHigh || 8; this.bh = bitsHigh;
+    if (bits && bits < 32) { this.cb = bits; this.range = Math.pow(2, bits); this.cmin = -this.range / 2; }
+    else { this.cb = 32; this.range = 0; this.cmin = -2147483648; }
+    this.k = 0;
+    this.mBits = []; for (let i = 0; i < (contexts || 1); i++) this.mBits.push(new Model(this.cb + 1));
+    this.mCorr = [new BitModel()];
+    for (let i = 1; i <= this.cb; i++) this.mCorr.push(new Model(i <= bitsHigh ? (1 << i) : (1 << bitsHigh)));
+  }
+  IC.prototype.corrector = function (m) {
+    const dec = this.dec, k = this.k = dec.symbol(m);
+    let c;
+    if (k) {
+      if (k < 32) {
+        if (k <= this.bh) c = dec.symbol(this.mCorr[k]);
+        else { const k1 = k - this.bh; c = dec.symbol(this.mCorr[k]); const c1 = dec.bits(k1); c = c * P2[k1] + c1; }
+        if (c >= P2[k - 1]) c += 1; else c -= (P2[k] - 1);
+      } else c = this.cmin;
+    } else c = dec.bit(this.mCorr[0]);
+    return c;
+  };
+  IC.prototype.decompress = function (pred, ctx) {
+    let real = pred + this.corrector(this.mBits[ctx || 0]);
+    if (this.range) { if (real < 0) real += this.range; else if (real >= this.range) real -= this.range; }
+    else real = real | 0;
+    return real;
+  };
+
+  /* ---------- streaming median ---------- */
+  function Median5() { this.v = [0, 0, 0, 0, 0]; this.high = true; }
+  Median5.prototype.add = function (x) {
+    const v = this.v;
+    if (this.high) {
+      if (x < v[2]) {
+        v[4] = v[3]; v[3] = v[2];
+        if (x < v[0]) { v[2] = v[1]; v[1] = v[0]; v[0] = x; }
+        else if (x < v[1]) { v[2] = v[1]; v[1] = x; }
+        else v[2] = x;
+      } else {
+        if (x < v[3]) { v[4] = v[3]; v[3] = x; } else v[4] = x;
+        this.high = false;
+      }
+    } else {
+      if (v[2] < x) {
+        v[0] = v[1]; v[1] = v[2];
+        if (v[4] < x) { v[2] = v[3]; v[3] = v[4]; v[4] = x; }
+        else if (v[3] < x) { v[2] = v[3]; v[3] = x; }
+        else v[2] = x;
+      } else {
+        if (v[1] < x) { v[0] = v[1]; v[1] = x; } else v[0] = x;
+        this.high = true;
+      }
+    }
+  };
+  const P2 = []; for (let i = 0; i <= 32; i++) P2.push(Math.pow(2, i));
+  const fold = n => n < 0 ? n + 256 : n > 255 ? n - 256 : n;
+  const clamp = n => n <= 0 ? 0 : n >= 255 ? 255 : n;
+
+  /* ---------- context tables ---------- */
+  const NRM = [[15,14,13,12,11,10,9,8],[14,0,1,3,6,10,10,9],[13,1,2,4,7,11,11,10],[12,3,4,5,8,12,12,11],[11,6,7,8,9,13,13,12],[10,10,11,12,13,14,14,13],[9,10,11,12,13,14,15,14],[8,9,10,11,12,13,14,15]];
+  const NRL = [[0,1,2,3,4,5,6,7],[1,0,1,2,3,4,5,6],[2,1,0,1,2,3,4,5],[3,2,1,0,1,2,3,4],[4,3,2,1,0,1,2,3],[5,4,3,2,1,0,1,2],[6,5,4,3,2,1,0,1],[7,6,5,4,3,2,1,0]];
+  const NRM6 = [
+    [0,1,2,3,4,5,3,4,4,5,5,5,5,5,5,5],[1,0,1,3,3,3,3,3,3,3,3,3,3,3,3,3],[2,1,2,4,4,4,4,4,4,4,4,3,3,3,3,3],[3,3,4,5,4,4,4,4,4,4,4,4,4,4,4,4],
+    [4,3,4,4,5,4,4,4,4,4,4,4,4,4,4,4],[5,3,4,4,4,5,4,4,4,4,4,4,4,4,4,4],[3,3,4,4,4,4,5,4,4,4,4,4,4,4,4,4],[4,3,4,4,4,4,4,5,4,4,4,4,4,4,4,4],
+    [4,3,4,4,4,4,4,4,5,4,4,4,4,4,4,4],[5,3,4,4,4,4,4,4,4,5,4,4,4,4,4,4],[5,3,4,4,4,4,4,4,4,4,5,4,4,4,4,4],[5,3,3,4,4,4,4,4,4,4,4,5,5,4,4,4],
+    [5,3,3,4,4,4,4,4,4,4,4,5,5,5,4,4],[5,3,3,4,4,4,4,4,4,4,4,4,5,5,5,4],[5,3,3,4,4,4,4,4,4,4,4,4,4,5,5,5],[5,3,3,4,4,4,4,4,4,4,4,4,4,4,5,5]];
+  const NRL8 = [];
+  for (let n = 0; n < 16; n++) { NRL8.push([]); for (let r = 0; r < 16; r++) NRL8[n].push(Math.min(7, Math.abs(n - r))); }
+
+  /* ---------- POINT10 v2 ---------- */
+  function Point10(dec) {
+    this.dec = dec;
+    this.mChanged = new Model(64); this.icInt = new IC(dec, 16, 4);
+    this.mScan = [new Model(256), new Model(256)]; this.icPsid = new IC(dec, 16, 1);
+    this.mBitByte = new Array(256); this.mClass = new Array(256); this.mUser = new Array(256);
+    this.icDx = new IC(dec, 32, 2); this.icDy = new IC(dec, 32, 22); this.icZ = new IC(dec, 32, 20);
+  }
+  Point10.prototype.init = function (dv, o) {
+    this.xm = []; this.ym = []; this.lastInt = new Int32Array(16); this.lastH = new Int32Array(8);
+    for (let i = 0; i < 16; i++) { this.xm.push(new Median5()); this.ym.push(new Median5()); }
+    this.x = dv.getInt32(o, true); this.y = dv.getInt32(o + 4, true); this.z = dv.getInt32(o + 8, true);
+    this.intensity = 0; this.bb = dv.getUint8(o + 14); this.cls = dv.getUint8(o + 15);
+    this.scan = dv.getUint8(o + 16); this.user = dv.getUint8(o + 17); this.psid = dv.getUint16(o + 18, true);
+  };
+  Point10.prototype.read = function () {
+    const dec = this.dec;
+    const changed = dec.symbol(this.mChanged);
+    let r, n, m, l;
+    if (changed) {
+      if (changed & 32) { let md = this.mBitByte[this.bb]; if (!md) md = this.mBitByte[this.bb] = new Model(256); this.bb = dec.symbol(md); }
+      r = this.bb & 7; n = (this.bb >> 3) & 7; m = NRM[n][r]; l = NRL[n][r];
+      if (changed & 16) { this.intensity = this.icInt.decompress(this.lastInt[m], m < 3 ? m : 3); this.lastInt[m] = this.intensity; }
+      else this.intensity = this.lastInt[m];
+      if (changed & 8) { let md = this.mClass[this.cls]; if (!md) md = this.mClass[this.cls] = new Model(256); this.cls = dec.symbol(md); }
+      if (changed & 4) { const v = dec.symbol(this.mScan[(this.bb >> 6) & 1]); this.scan = fold(v + this.scan); }
+      if (changed & 2) { let md = this.mUser[this.user]; if (!md) md = this.mUser[this.user] = new Model(256); this.user = dec.symbol(md); }
+      if (changed & 1) this.psid = this.icPsid.decompress(this.psid, 0);
+    } else { r = this.bb & 7; n = (this.bb >> 3) & 7; m = NRM[n][r]; l = NRL[n][r]; }
+    let diff = this.icDx.decompress(this.xm[m].v[2], n === 1 ? 1 : 0);
+    this.x = (this.x + diff) | 0; this.xm[m].add(diff);
+    let kb = this.icDx.k;
+    diff = this.icDy.decompress(this.ym[m].v[2], (n === 1 ? 1 : 0) + (kb < 20 ? (kb & ~1) : 20));
+    this.y = (this.y + diff) | 0; this.ym[m].add(diff);
+    kb = (this.icDx.k + this.icDy.k) >>> 1;
+    this.z = this.icZ.decompress(this.lastH[l], (n === 1 ? 1 : 0) + (kb < 18 ? (kb & ~1) : 18));
+    this.lastH[l] = this.z;
+  };
+
+  /* ---------- GPSTIME11 v2 (decoded only to keep the stream in sync) ---------- */
+  function Gps11(dec) { this.dec = dec; this.mMulti = new Model(516); this.m0 = new Model(6); this.ic = new IC(dec, 32, 9); }
+  Gps11.prototype.init = function (dv, o) {
+    this.last = 0; this.next = 0; this.diff = new Int32Array(4); this.ext = new Int32Array(4);
+    this.lo = new Uint32Array(4); this.hi = new Int32Array(4);
+    this.lo[0] = dv.getUint32(o, true); this.hi[0] = dv.getInt32(o + 4, true);
+  };
+  Gps11.prototype.add = function (i, d) {          // 64-bit add of a signed 32-bit value
+    const s = this.lo[i] + d;
+    this.hi[i] = (this.hi[i] + Math.floor(s / 4294967296)) | 0; this.lo[i] = s >>> 0;
+  };
+  Gps11.prototype.full = function () {
+    const dec = this.dec;
+    this.next = (this.next + 1) & 3;
+    this.hi[this.next] = this.ic.decompress(this.hi[this.last], 8);
+    this.lo[this.next] = dec.int();
+    this.last = this.next; this.diff[this.last] = 0; this.ext[this.last] = 0;
+  };
+  Gps11.prototype.read = function () {
+    const dec = this.dec;
+    for (;;) {
+      if (this.diff[this.last] === 0) {
+        const multi = dec.symbol(this.m0);
+        if (multi === 1) { this.diff[this.last] = this.ic.decompress(0, 0); this.add(this.last, this.diff[this.last]); this.ext[this.last] = 0; }
+        else if (multi === 2) this.full();
+        else if (multi > 2) { this.last = (this.last + multi - 2) & 3; continue; }
+        return;
+      }
+      let multi = dec.symbol(this.mMulti);
+      if (multi === 1) { this.add(this.last, this.ic.decompress(this.diff[this.last], 1)); this.ext[this.last] = 0; }
+      else if (multi < 511) {
+        let gd; const ld = this.diff[this.last];
+        if (multi === 0) { gd = this.ic.decompress(0, 7); if (++this.ext[this.last] > 3) { this.diff[this.last] = gd; this.ext[this.last] = 0; } }
+        else if (multi < 500) gd = this.ic.decompress(Math.imul(multi, ld), multi < 10 ? 2 : 3);
+        else if (multi === 500) { gd = this.ic.decompress(Math.imul(500, ld), 4); if (++this.ext[this.last] > 3) { this.diff[this.last] = gd; this.ext[this.last] = 0; } }
+        else {
+          multi = 500 - multi;
+          if (multi > -10) gd = this.ic.decompress(Math.imul(multi, ld), 5);
+          else { gd = this.ic.decompress(Math.imul(-10, ld), 6); if (++this.ext[this.last] > 3) { this.diff[this.last] = gd; this.ext[this.last] = 0; } }
+        }
+        this.add(this.last, gd);
+      }
+      else if (multi === 512) this.full();
+      else if (multi > 512) { this.last = (this.last + multi - 512) & 3; continue; }
+      return;
+    }
+  };
+
+  /* ---------- RGB12 v2 ---------- */
+  function Rgb12(dec) { this.dec = dec; this.mUsed = new Model(128); this.m = []; for (let i = 0; i < 6; i++) this.m.push(new Model(256)); }
+  Rgb12.prototype.init = function (dv, o) { this.l = [dv.getUint16(o, true), dv.getUint16(o + 2, true), dv.getUint16(o + 4, true)]; };
+  Rgb12.prototype.read = function () {
+    const dec = this.dec, l = this.l, m = this.m, it = [0, 0, 0];
+    const sym = dec.symbol(this.mUsed);
+    let diff;
+    it[0] = (sym & 1) ? fold(dec.symbol(m[0]) + (l[0] & 255)) : (l[0] & 255);
+    it[0] |= (sym & 2) ? (fold(dec.symbol(m[1]) + (l[0] >> 8)) << 8) : (l[0] & 0xFF00);
+    if (sym & 64) {
+      diff = (it[0] & 255) - (l[0] & 255);
+      it[1] = (sym & 4) ? fold(dec.symbol(m[2]) + clamp(diff + (l[1] & 255))) : (l[1] & 255);
+      if (sym & 16) { const c = dec.symbol(m[4]); diff = Math.trunc((diff + ((it[1] & 255) - (l[1] & 255))) / 2); it[2] = fold(c + clamp(diff + (l[2] & 255))); }
+      else it[2] = l[2] & 255;
+      diff = (it[0] >> 8) - (l[0] >> 8);
+      it[1] |= (sym & 8) ? (fold(dec.symbol(m[3]) + clamp(diff + (l[1] >> 8))) << 8) : (l[1] & 0xFF00);
+      if (sym & 32) { const c = dec.symbol(m[5]); diff = Math.trunc((diff + ((it[1] >> 8) - (l[1] >> 8))) / 2); it[2] |= fold(c + clamp(diff + (l[2] >> 8))) << 8; }
+      else it[2] |= l[2] & 0xFF00;
+    } else { it[1] = it[0]; it[2] = it[0]; }
+    this.l = it;
+  };
+
+  /* ---------- BYTE v2 ---------- */
+  function Byte2(dec, n) { this.dec = dec; this.n = n; this.m = []; for (let i = 0; i < n; i++) this.m.push(new Model(256)); }
+  Byte2.prototype.init = function (dv, o) { this.l = new Uint8Array(this.n); for (let i = 0; i < this.n; i++) this.l[i] = dv.getUint8(o + i); };
+  Byte2.prototype.read = function () { for (let i = 0; i < this.n; i++) this.l[i] = fold(this.l[i] + this.dec.symbol(this.m[i])); };
+
+  /* ---------- POINT14 v3/v4 (XY + Z + classification layers only) ---------- */
+  function P14Ctx(decXY, decZ) {
+    this.mChanged = []; for (let i = 0; i < 8; i++) this.mChanged.push(new Model(128));
+    this.mChannel = new Model(3); this.mNret = new Array(16); this.mRn = new Array(16); this.mRnSame = new Model(13);
+    this.icDx = new IC(decXY, 32, 2); this.icDy = new IC(decXY, 32, 22); this.icZ = new IC(decZ, 32, 20);
+    this.mClass = new Array(64);
+    this.xm = []; this.ym = []; for (let i = 0; i < 12; i++) { this.xm.push(new Median5()); this.ym.push(new Median5()); }
+    this.lastZ = new Int32Array(8);
+  }
+  function decodeP14Chunk(buf, first, count, layers, out, ptLen) {
+    // first: DataView over raw first point; layers: {xy:[s,e], z:[s,e] or null, cls:[s,e] or null}
+    const decXY = new Decoder(buf, layers.xy[0], layers.xy[1]); decXY.start();
+    const decZ = layers.z ? new Decoder(buf, layers.z[0], layers.z[1]) : null; if (decZ) decZ.start();
+    const decC = layers.cls ? new Decoder(buf, layers.cls[0], layers.cls[1]) : null; if (decC) decC.start();
+    const p0 = {
+      x: first.getInt32(0, true), y: first.getInt32(4, true), z: first.getInt32(8, true),
+      r: first.getUint8(14) & 15, n: first.getUint8(14) >> 4, ch: (first.getUint8(15) >> 4) & 3, cls: first.getUint8(16), gpsChange: false
+    };
+    const ctxs = [null, null, null, null], last = [null, null, null, null];
+    const mk = (c, item) => {
+      const C = new P14Ctx(decXY, decZ || decXY);
+      for (let i = 0; i < 8; i++) C.lastZ[i] = item.z;
+      ctxs[c] = C; last[c] = { x: item.x, y: item.y, z: item.z, r: item.r, n: item.n, ch: c, cls: item.cls, gpsChange: false };
+    };
+    let cur = p0.ch; mk(cur, p0); last[cur].ch = p0.ch;
+    out.X[0] = p0.x; out.Y[0] = p0.y; out.Z[0] = p0.z; out.C[0] = p0.cls;
+    for (let i = 1; i < count; i++) {
+      let C = ctxs[cur], L = last[cur];
+      let lpr = (L.r === 1 ? 1 : 0) + (L.r >= L.n ? 2 : 0) + (L.gpsChange ? 4 : 0);
+      const changed = decXY.symbol(C.mChanged[lpr]);
+      if (changed & 64) {
+        const d = decXY.symbol(C.mChannel), sc = (cur + d + 1) % 4;
+        if (!ctxs[sc]) mk(sc, L);
+        cur = sc; C = ctxs[cur]; L = last[cur]; L.ch = sc;
+      }
+      const gpsChange = (changed & 16) ? 1 : 0;
+      const lastN = L.n, lastR = L.r;
+      let n, r;
+      if (changed & 4) { let md = C.mNret[lastN]; if (!md) md = C.mNret[lastN] = new Model(16); n = decXY.symbol(md); L.n = n; } else n = lastN;
+      const rc = changed & 3;
+      if (rc === 0) r = lastR;
+      else if (rc === 1) { r = (lastR + 1) % 16; L.r = r; }
+      else if (rc === 2) { r = (lastR + 15) % 16; L.r = r; }
+      else {
+        if (gpsChange) { let md = C.mRn[lastR]; if (!md) md = C.mRn[lastR] = new Model(16); r = decXY.symbol(md); }
+        else { const s = decXY.symbol(C.mRnSame); r = (lastR + s + 2) % 16; }
+        L.r = r;
+      }
+      const m = NRM6[n][r], l = NRL8[n][r];
+      const cpr = (r === 1 ? 2 : 0) + (r >= n ? 1 : 0);
+      const mi = (m << 1) | gpsChange;
+      let diff = C.icDx.decompress(C.xm[mi].v[2], n === 1 ? 1 : 0);
+      L.x = (L.x + diff) | 0; C.xm[mi].add(diff);
+      let kb = C.icDx.k;
+      diff = C.icDy.decompress(C.ym[mi].v[2], (n === 1 ? 1 : 0) + (kb < 20 ? (kb & ~1) : 20));
+      L.y = (L.y + diff) | 0; C.ym[mi].add(diff);
+      if (decZ) {
+        kb = (C.icDx.k + C.icDy.k) >>> 1;
+        L.z = C.icZ.decompress(C.lastZ[l], (n === 1 ? 1 : 0) + (kb < 18 ? (kb & ~1) : 18));
+        C.lastZ[l] = L.z;
+      }
+      if (decC) {
+        const ccc = ((L.cls & 0x1F) << 1) + (cpr === 3 ? 1 : 0);
+        let md = C.mClass[ccc]; if (!md) md = C.mClass[ccc] = new Model(256);
+        L.cls = decC.symbol(md);
+      }
+      L.gpsChange = !!gpsChange;
+      out.X[i] = L.x; out.Y[i] = L.y; out.Z[i] = L.z; out.C[i] = L.cls;
+    }
+  }
+
+  /* ---------- header ---------- */
+  const td = new TextDecoder('ascii');
+  function str(u8, o, n) { let e = o; while (e < o + n && u8[e]) e++; return td.decode(u8.subarray(o, e)).trim(); }
+  async function readHeader(file) {
+    const head = new Uint8Array(await file.slice(0, Math.min(file.size, 375)).arrayBuffer());
+    const dv = new DataView(head.buffer);
+    if (str(head, 0, 4) !== 'LASF') throw new Error('not a LAS/LAZ file (no LASF signature)');
+    const H = {
+      vMaj: head[24], vMin: head[25], headerSize: dv.getUint16(94, true), offPoints: dv.getUint32(96, true),
+      nVlr: dv.getUint32(100, true), fmtRaw: head[104], recLen: dv.getUint16(105, true), nLegacy: dv.getUint32(107, true),
+      scale: [dv.getFloat64(131, true), dv.getFloat64(139, true), dv.getFloat64(147, true)],
+      offset: [dv.getFloat64(155, true), dv.getFloat64(163, true), dv.getFloat64(171, true)],
+      max: [dv.getFloat64(179, true), dv.getFloat64(195, true), dv.getFloat64(211, true)],
+      min: [dv.getFloat64(187, true), dv.getFloat64(203, true), dv.getFloat64(219, true)]
+    };
+    H.fmt = H.fmtRaw & 0x3F;
+    H.count = H.nLegacy;
+    if (H.vMin >= 4 && H.headerSize >= 375) { const c = Number(dv.getBigUint64(247, true)); if (c) H.count = c; }
+    // VLRs
+    const vlrBytes = new Uint8Array(await file.slice(H.headerSize, H.offPoints).arrayBuffer());
+    const vdv = new DataView(vlrBytes.buffer);
+    let p = 0; H.vlrs = [];
+    for (let i = 0; i < H.nVlr && p + 54 <= vlrBytes.length; i++) {
+      const user = str(vlrBytes, p + 2, 16), rid = vdv.getUint16(p + 18, true), len = vdv.getUint16(p + 20, true);
+      H.vlrs.push({ user, rid, data: vlrBytes.subarray(p + 54, p + 54 + len) });
+      p += 54 + len;
+    }
+    const lz = H.vlrs.find(v => v.user === 'laszip encoded' && v.rid === 22204);
+    if (lz) {
+      const d = new DataView(lz.data.buffer, lz.data.byteOffset, lz.data.byteLength);
+      H.laz = { compressor: d.getUint16(0, true), coder: d.getUint16(2, true), version: `${d.getUint8(4)}.${d.getUint8(5)}r${d.getUint16(6, true)}`, chunkSize: d.getUint32(12, true), items: [] };
+      const ni = d.getUint16(32, true);
+      for (let i = 0; i < ni; i++) H.laz.items.push({ type: d.getUint16(34 + i * 6, true), size: d.getUint16(36 + i * 6, true), version: d.getUint16(38 + i * 6, true) });
+    } else if (H.fmtRaw & 0x80) throw new Error('compressed point format flag set but no LASzip VLR found');
+    // CRS: WKT (2112) or GeoKeys (34735)
+    const wkt = H.vlrs.find(v => v.user === 'LASF_Projection' && v.rid === 2112);
+    if (wkt) H.wkt = str(wkt.data, 0, wkt.data.length);
+    const gk = H.vlrs.find(v => v.user === 'LASF_Projection' && v.rid === 34735);
+    if (gk) { const g = new DataView(gk.data.buffer, gk.data.byteOffset, gk.data.byteLength); for (let i = 4; (i + 3) * 2 + 2 <= gk.data.length; i += 4) { const k = g.getUint16(i * 2, true); if (k === 3072 || k === 2048) { H.epsg = g.getUint16(i * 2 + 6, true); break; } } }
+    if (!H.epsg && H.wkt) { const m = H.wkt.match(/AUTHORITY\["EPSG",\s*"(\d+)"\]\s*\]\s*$/) || H.wkt.match(/ID\["EPSG",\s*(\d+)\]\s*\]\s*$/); if (m) H.epsg = +m[1]; }
+    return H;
+  }
+
+  /* ---------- main reader ---------- */
+  // onChunk(out, n) with out = {X,Y,Z: Int32Array, C: Uint8Array}; progress(done, total); isCancelled()
+  async function read(file, H, onChunk, progress, isCancelled, opts) {
+    const N = H.count, fmt = H.fmt;
+    const clsOf = (dv, o) => fmt >= 6 ? dv.getUint8(o + 16) : dv.getUint8(o + 15) & 31;
+    const yieldUI = () => new Promise(r => setTimeout(r, 0));
+    if (!H.laz) {                                   // uncompressed LAS
+      const per = 200000, rl = H.recLen;
+      const out = { X: new Int32Array(per), Y: new Int32Array(per), Z: new Int32Array(per), C: new Uint8Array(per) };
+      for (let s = 0; s < N; s += per) {
+        if (isCancelled()) throw new Error('cancelled');
+        const n = Math.min(per, N - s), a = H.offPoints + s * rl;
+        const dv = new DataView(await file.slice(a, a + n * rl).arrayBuffer());
+        for (let i = 0; i < n; i++) { const o = i * rl; out.X[i] = dv.getInt32(o, true); out.Y[i] = dv.getInt32(o + 4, true); out.Z[i] = dv.getInt32(o + 8, true); out.C[i] = clsOf(dv, o); }
+        onChunk(out, n); progress(s + n, N); await yieldUI();
+      }
+      return;
+    }
+    const Z = H.laz;
+    if (Z.coder !== 0) throw new Error('unsupported LAZ coder ' + Z.coder);
+    const layered = Z.compressor === 3;
+    if (Z.compressor !== 2 && Z.compressor !== 3) throw new Error(`unsupported LAZ compressor ${Z.compressor} (only chunked LAZ is supported – re-save with LAStools/PDAL)`);
+    for (const it of Z.items) {
+      const ok = layered ? ([10, 11, 12, 14].includes(it.type) && it.version >= 2) || it.type === 13
+                         : ([6, 7, 8, 0].includes(it.type) && it.version === 2);
+      if (!ok) throw new Error(`unsupported LAZ item type ${it.type} v${it.version}`);
+    }
+    if (layered && Z.items[0].type !== 10) throw new Error('layered LAZ without POINT14 first');
+    // chunk table
+    const tdv = new DataView(await file.slice(H.offPoints, H.offPoints + 8).arrayBuffer());
+    let tablePos = Number(tdv.getBigInt64(0, true));
+    const chunksStart = H.offPoints + 8;
+    if (tablePos === -1) { const e = new DataView(await file.slice(file.size - 8).arrayBuffer()); tablePos = Number(e.getBigInt64(0, true)); }
+    if (!(tablePos > chunksStart && tablePos < file.size)) throw new Error('LAZ chunk table missing (file was not finalised) – re-save it with LAStools/PDAL');
+    const tbuf = new Uint8Array(await file.slice(tablePos).arrayBuffer());
+    const tv = new DataView(tbuf.buffer);
+    const nChunks = tv.getUint32(4, true), variable = Z.chunkSize === 0xFFFFFFFF;
+    const starts = [chunksStart], counts = [];
+    {
+      const dec = new Decoder(tbuf, 8, tbuf.length); dec.start();
+      const ic = new IC(dec, 32, 2);
+      let pc = 0, pb = 0;
+      for (let i = 0; i < nChunks; i++) {
+        if (variable) { pc = ic.decompress(pc, 0); counts.push(pc); }
+        pb = ic.decompress(pb, 1);
+        starts.push(starts[i] + (pb >>> 0));
+      }
+    }
+    if (!variable) for (let i = 0; i < nChunks; i++) counts.push(Math.min(Z.chunkSize, N - i * Z.chunkSize));
+    const rl = Z.items.reduce((a, b) => a + b.size, 0);
+    const jobs = [];
+    for (let ci = 0; ci < nChunks; ci++) if (counts[ci] > 0) jobs.push({ ci, a: starts[ci], b: starts[ci + 1], cnt: counts[ci] });
+    const nW = Math.max(0, Math.min(opts && opts.workers || 0, jobs.length));
+    let done = 0;
+    const finish = (out, n) => { done += n; onChunk(out, n); progress(done, N); };
+    if (nW > 0 && opts.makeWorker) {
+      let pool = [];
+      try { for (let i = 0; i < nW; i++) pool.push(opts.makeWorker()); }
+      catch (e) { pool.forEach(w => w.terminate()); pool = []; if (opts.log) opts.log('Worker threads unavailable (' + e.message + ') – decoding on the main thread.'); }
+      if (pool.length) {
+        try {
+          await new Promise((resolve, reject) => {
+            let next = 0, active = 0, failed = false;
+            const launch = async (w) => {
+              if (failed) return;
+              if (isCancelled()) { failed = true; reject(new Error('cancelled')); return; }
+              if (next >= jobs.length) { if (active === 0) resolve(); return; }
+              const j = jobs[next++]; active++;
+              const buf = await file.slice(j.a, j.b).arrayBuffer();
+              w.onmessage = (ev) => {
+                active--;
+                const d = ev.data;
+                if (d.error) { failed = true; reject(new Error(d.error)); return; }
+                finish({ X: new Int32Array(d.X), Y: new Int32Array(d.Y), Z: new Int32Array(d.Z), C: new Uint8Array(d.C) }, d.n);
+                launch(w);
+              };
+              w.onerror = (ev) => { failed = true; ev.preventDefault && ev.preventDefault(); reject(new Error('worker error: ' + (ev.message || 'unknown'))); };
+              w.postMessage({ buf, items: Z.items, layered, cnt: j.cnt, rl }, [buf]);
+            };
+            pool.forEach(launch);
+          });
+        } finally { pool.forEach(w => w.terminate()); }
+        return;
+      }
+    }
+    for (const j of jobs) {
+      if (isCancelled()) throw new Error('cancelled');
+      const buf = new Uint8Array(await file.slice(j.a, j.b).arrayBuffer());
+      const r = decodeChunk(buf, Z.items, layered, j.cnt, rl);
+      finish(r, r.n);
+      await yieldUI();
+    }
+  }
+  function decodeChunk(buf, items, layered, cnt, rl) {
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    if (layered) { const fc = dv.getUint32(rl, true); if (fc > 0) cnt = fc; }
+    const out = { X: new Int32Array(cnt), Y: new Int32Array(cnt), Z: new Int32Array(cnt), C: new Uint8Array(cnt), n: cnt };
+    if (!layered) {
+      const dec = new Decoder(buf, rl, buf.length);
+      const readers = []; let o = 0;
+      for (const it of items) {
+        const r = it.type === 6 ? new Point10(dec) : it.type === 7 ? new Gps11(dec) : it.type === 8 ? new Rgb12(dec) : new Byte2(dec, it.size);
+        r.init(dv, o); o += it.size; readers.push(r);
+      }
+      dec.start();
+      const p = readers[0], nr = readers.length;
+      out.X[0] = p.x; out.Y[0] = p.y; out.Z[0] = p.z; out.C[0] = p.cls & 31;
+      for (let i = 1; i < cnt; i++) {
+        for (let k = 0; k < nr; k++) readers[k].read();
+        out.X[i] = p.x; out.Y[i] = p.y; out.Z[i] = p.z; out.C[i] = p.cls & 31;
+      }
+    } else {
+      let o = rl + 4;
+      const sizes = [];
+      for (const it of items) {
+        const nl = it.type === 10 ? 9 : it.type === 11 ? 1 : it.type === 12 ? 2 : it.type === 13 ? 1 : it.size;
+        const s = []; for (let k = 0; k < nl; k++) { s.push(dv.getUint32(o, true)); o += 4; } sizes.push(s);
+      }
+      const ps = sizes[0];
+      const xy = [o, o + ps[0]], zr = ps[1] ? [xy[1], xy[1] + ps[1]] : null, cr = ps[2] ? [xy[1] + ps[1], xy[1] + ps[1] + ps[2]] : null;
+      decodeP14Chunk(buf, new DataView(buf.buffer, buf.byteOffset, 30), cnt, { xy, z: zr, cls: cr }, out);
+    }
+    return out;
+  }
+  return { readHeader, read, decodeChunk };
+}
+const LAZ = lazFactory();
+/* worker source: same decoder, decodes one chunk per message */
+function lazWorkerSource() {
+  return 'const LAZ = (' + lazFactory.toString() + ')();\n' +
+    'onmessage = function (e) { try { const d = e.data; const r = LAZ.decodeChunk(new Uint8Array(d.buf), d.items, d.layered, d.cnt, d.rl);' +
+    ' postMessage({ n: r.n, X: r.X.buffer, Y: r.Y.buffer, Z: r.Z.buffer, C: r.C.buffer }, [r.X.buffer, r.Y.buffer, r.Z.buffer, r.C.buffer]); }' +
+    ' catch (err) { postMessage({ error: String(err && err.message || err) }); } };';
+}
+
+
+/* ===================== LiDAR → BUILDING HEIGHTS ===================== */
+const LAZ_MAX_CELLS = 16e6;
+let lazBusy = false, lazCancel = false, lazWorkerUrl = null;
+const lazCv = document.createElement('canvas'), lazCtx = lazCv.getContext('2d');
+function lazWorkerCount() { const hc = navigator.hardwareConcurrency || 2; return Math.max(1, Math.min(6, hc - 1)); }
+function makeLazWorker() {
+  if (!lazWorkerUrl) lazWorkerUrl = URL.createObjectURL(new Blob([lazWorkerSource()], { type: 'text/javascript' }));
+  return new Worker(lazWorkerUrl);
+}
+const LAS_CLASS = { 0: 'never classified', 1: 'unclassified', 2: 'ground', 3: 'low veg', 4: 'medium veg', 5: 'high veg', 6: 'building', 7: 'low noise', 9: 'water', 10: 'rail', 11: 'road', 13: 'wire guard', 14: 'wire', 15: 'tower', 17: 'bridge', 18: 'high noise' };
+async function loadLidar(file) {
+  if (lazBusy) return;
+  lazBusy = true; lazCancel = false;
+  $('btnLaz').disabled = true; $('btnLazCancel').hidden = false;
+  const t0 = performance.now();
+  try {
+    log(`Reading LiDAR ${file.name} (${(file.size / 1048576).toFixed(1)} MB)…`);
+    const H = await LAZ.readHeader(file);
+    const fmtName = H.laz ? `LAZ (${H.laz.compressor === 3 ? 'layered' : 'pointwise'}, LASzip ${H.laz.version}, items ${H.laz.items.map(i => i.type + 'v' + i.version).join(',')})` : 'uncompressed LAS';
+    log(`LAS ${H.vMaj}.${H.vMin}, point format ${H.fmt}, ${H.count.toLocaleString()} points, ${fmtName}. Extent ${fmt(H.max[0] - H.min[0], 0)} × ${fmt(H.max[1] - H.min[1], 0)} m, Z ${fmt(H.min[2], 1)} – ${fmt(H.max[2], 1)}.`);
+    if (!H.count) throw new Error('file contains no points');
+    // CRS
+    let epsg = H.epsg && H.epsg !== 32767 ? H.epsg : null;
+    if (H.wkt) log(`LiDAR CRS text: “${H.wkt.replace(/\s+/g, ' ').slice(0, 140)}…”`);
+    if (epsg && !zoneFromEpsg(epsg)) { log(`LiDAR EPSG ${epsg} is not GDA94/GDA2020 MGA – checking the description.`, 'warn'); epsg = null; }
+    if (!epsg) epsg = epsgFromText(H.wkt, 'LiDAR');
+    if (Math.abs(H.max[0]) <= 180 && Math.abs(H.max[1]) <= 90) throw new Error('LiDAR coordinates are in degrees – it must be in MGA (metres)');
+    const o = ensureOrigin((H.min[0] + H.max[0]) / 2, (H.min[1] + H.max[1]) / 2, epsg, null, 'LiDAR');
+    if (epsg && o.epsg && datumOf(epsg) && datumOf(o.epsg) && datumOf(epsg) !== datumOf(o.epsg)) log(`LiDAR is ${datumOf(epsg)} but the scenario is ${datumOf(o.epsg)} – positions differ by ~1.8 m.`, 'warn');
+    if (state.terrain) {
+      const T = state.terrain, lx0 = H.min[0] - o.x0, lx1 = H.max[0] - o.x0, ly0 = H.min[1] - o.y0, ly1 = H.max[1] - o.y0;
+      if (lx1 < T.x0 || lx0 > T.x0 + T.w * T.cx || ly1 < T.yTop - T.h * T.cy || ly0 > T.yTop) log('LiDAR does not overlap the loaded DEM – check you picked the matching tile.', 'warn');
+    }
+    // grid
+    let cs = 1; const W0 = H.max[0] - H.min[0], H0 = H.max[1] - H.min[1];
+    while (Math.ceil(W0 / cs + 1) * Math.ceil(H0 / cs + 1) > LAZ_MAX_CELLS) cs *= 2;
+    const gw = Math.ceil(W0 / cs) + 1, gh = Math.ceil(H0 / cs) + 1, gx0 = Math.floor(H.min[0] / cs) * cs, gyTop = Math.ceil(H.max[1] / cs) * cs;
+    const roof = new Float32Array(gw * gh).fill(-Infinity), gsum = new Float32Array(gw * gh), gcnt = new Uint16Array(gw * gh);
+    const hist = new Float64Array(256);
+    const sx = H.scale[0], sy = H.scale[1], sz = H.scale[2], ox = H.offset[0], oy = H.offset[1], oz = H.offset[2];
+    let lastLog = 0;
+    const onChunk = (out, n) => {
+      const X = out.X, Y = out.Y, Zz = out.Z, C = out.C;
+      for (let i = 0; i < n; i++) {
+        const c = C[i]; hist[c]++;
+        if (c !== 6 && c !== 2) continue;
+        const gi = Math.floor((X[i] * sx + ox - gx0) / cs), gj = Math.floor((gyTop - (Y[i] * sy + oy)) / cs);
+        if (gi < 0 || gj < 0 || gi >= gw || gj >= gh) continue;
+        const k = gj * gw + gi, z = Zz[i] * sz + oz;
+        if (c === 6) { if (z > roof[k]) roof[k] = z; }
+        else if (gcnt[k] < 65535) { gsum[k] += z; gcnt[k]++; }
+      }
+    };
+    const progress = (d, N) => {
+      const pct = Math.min(100, Math.floor(100 * d / N));
+      $('busy').textContent = `Decoding LiDAR… ${pct}% (${(d / 1e6).toFixed(1)} M of ${(N / 1e6).toFixed(1)} M points)`;
+      if (pct >= lastLog + 25) { lastLog = pct - pct % 25; log(`LiDAR ${lastLog}% – ${(d / 1e6).toFixed(1)} M points, ${((performance.now() - t0) / 1000).toFixed(1)} s`); }
+    };
+    const nW = H.laz ? lazWorkerCount() : 0;
+    const opts = { workers: nW, makeWorker: makeLazWorker, log: m => log(m, 'warn') };
+    if (nW) log(`Decoding with ${nW} background thread(s)…`);
+    try { await LAZ.read(file, H, onChunk, progress, () => lazCancel, opts); }
+    catch (e) {
+      if (e.message === 'cancelled' || !/worker/i.test(e.message)) throw e;
+      log(`Background threads failed (${e.message}) – retrying on the main thread.`, 'warn');
+      roof.fill(-Infinity); gsum.fill(0); gcnt.fill(0); hist.fill(0); lastLog = 0;
+      await LAZ.read(file, H, onChunk, progress, () => lazCancel, { workers: 0 });
+    }
+    const secs = (performance.now() - t0) / 1000;
+    const total = hist.reduce((a, b) => a + b, 0);
+    const top = [...hist].map((v, c) => [c, v]).filter(a => a[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 7)
+      .map(([c, v]) => `${c} ${LAS_CLASS[c] || ''} ${(100 * v / total).toFixed(1)}%`).join(' · ');
+    log(`LiDAR decoded: ${total.toLocaleString()} points in ${secs.toFixed(1)} s (${(total / secs / 1e6).toFixed(2)} M pts/s). Classes: ${top}.`, 'pass');
+    let nRoof = 0; for (let i = 0; i < roof.length; i++) { if (roof[i] === -Infinity) roof[i] = NaN; else nRoof++; }
+    if (!hist[6]) log('No class 6 (building) points in this file – it may be unclassified. Heights cannot be derived from it.', 'fail');
+    // ground → terrain if no DEM
+    if (!state.terrain && hist[2]) {
+      const g = new Float32Array(gw * gh); for (let i = 0; i < g.length; i++) g[i] = gcnt[i] ? gsum[i] / gcnt[i] : NaN;
+      log('No DEM loaded – building terrain from LiDAR ground (class 2) points.');
+      installTerrain({ W: gw, H: gh, z: g, ox: gx0, oy: gyTop, sx: cs, sy: cs, nodata: null, epsg }, file.name + ' (LiDAR ground)');
+    }
+    state.dsm = { w: gw, h: gh, z: roof, x0: gx0 - o.x0, yTop: gyTop - o.y0, cx: cs, cy: cs, name: file.name, kind: 'lidar', cells: nRoof };
+    buildLazOverlay();
+    $('lazInfo').innerHTML = `<b>${esc(file.name)}</b><br>${total.toLocaleString()} points · format ${H.fmt} · ${(nRoof * cs * cs / 1e4).toFixed(1)} ha of building roof at ${cs} m<br>${secs.toFixed(1)} s · CRS ${epsg ? 'EPSG ' + epsg : 'not recorded (assumed MGA 56)'}`;
+    if (hist[6]) applyDsmHeights();
+    if (!state.buildings.some(b => b.osmId || b.hsrc !== 'manual')) log('Tip: fetch or import OSM footprints – LiDAR heights are applied to them automatically.');
+    requestCompute(false);
+  } catch (err) {
+    log(err.message === 'cancelled' ? 'LiDAR load cancelled.' : `LiDAR load FAILED: ${err.message}`, err.message === 'cancelled' ? 'warn' : 'fail');
+    console.error(err);
+    $('busy').textContent = 'LiDAR load stopped – see log';
+  } finally { lazBusy = false; $('btnLaz').disabled = false; $('btnLazCancel').hidden = true; }
+}
+function buildLazOverlay() {
+  const D = state.dsm; if (!D || D.kind !== 'lidar') return;
+  lazCv.width = D.w; lazCv.height = D.h;
+  const img = lazCtx.createImageData(D.w, D.h), d = img.data;
+  for (let i = 0; i < D.z.length; i++) if (D.z[i] === D.z[i]) { d[i * 4] = 168; d[i * 4 + 1] = 85; d[i * 4 + 2] = 247; d[i * 4 + 3] = 150; }
+  lazCtx.putImageData(img, 0, 0);
+}
+$('btnLaz').addEventListener('click', () => $('fileLaz').click());
+$('btnLazCancel').addEventListener('click', () => { lazCancel = true; log('Cancelling LiDAR load…', 'warn'); });
+$('fileLaz').addEventListener('change', () => { const f = $('fileLaz').files[0]; $('fileLaz').value = ''; if (f) loadLidar(f); });
+$('setLazShow').addEventListener('change', () => requestRender());
+
+/* ======================= FREE BUILDING DATA (OSM) ====================== */
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+const OSM_SKIP = new Set(['roof', 'carport', 'no', 'ruins', 'collapsed', 'demolished', 'proposed', 'canopy']);
+const LEVEL_H = 3.0, ROOF_ALLOW = 1.0;
+const TYPE_H = {
+  house: 7, detached: 7, semidetached_house: 7, terrace: 8, bungalow: 5, residential: 7, cabin: 4, hut: 3,
+  apartments: 13, dormitory: 13, hotel: 15,
+  commercial: 8, retail: 6, office: 12, supermarket: 7, kiosk: 3,
+  industrial: 8, warehouse: 8, manufacture: 8, service: 4, transformer_tower: 4,
+  garage: 3, garages: 3, shed: 3, storage_tank: 6, toilets: 3,
+  school: 8, university: 12, college: 10, kindergarten: 5, hospital: 15,
+  church: 12, chapel: 8, train_station: 8, transportation: 6, public: 8, civic: 8, government: 10, sports_centre: 9, grandstand: 8,
+  construction: 6, yes: 6
+};
+function parseHeight(v) {
+  if (v == null) return null;
+  const s = String(v).trim().toLowerCase().replace(',', '.');
+  const ft = s.match(/^([\d.]+)\s*(ft|')/); if (ft) return parseFloat(ft[1]) * 0.3048;
+  const m = s.match(/^([\d.]+)/); if (!m) return null;
+  const h = parseFloat(m[1]); return isFinite(h) && h > 0 && h < 600 ? h : null;
+}
+function osmHeight(tags) {
+  const h = parseHeight(tags.height) ?? parseHeight(tags['building:height']);
+  if (h != null) return { h, src: 'osm-height' };
+  const lv = parseFloat(tags['building:levels']);
+  if (isFinite(lv) && lv > 0 && lv < 200) return { h: lv * LEVEL_H + ROOF_ALLOW, src: 'osm-levels', levels: lv };
+  const t = tags.building || 'yes';
+  return { h: TYPE_H[t] ?? TYPE_H.yes, src: 'type-default' };
+}
+function isEstimated(b) { return b.hsrc === 'type-default'; }
+function assembleRings(segs) {
+  const rings = [], open = segs.map(s => s.slice()).filter(s => s.length >= 2);
+  const same = (a, b) => Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
+  while (open.length) {
+    let ring = open.shift(), guard = 0;
+    while (!same(ring[0], ring[ring.length - 1]) && guard++ < 1000) {
+      const end = ring[ring.length - 1];
+      let k = open.findIndex(s => same(s[0], end) || same(s[s.length - 1], end));
+      if (k < 0) break;
+      let s = open.splice(k, 1)[0]; if (!same(s[0], end)) s = s.reverse();
+      ring = ring.concat(s.slice(1));
+    }
+    if (ring.length >= 4 && same(ring[0], ring[ring.length - 1])) rings.push(ring);
+  }
+  return rings;
+}
+function viewBoxLocal() { const a = s2w(0, 0), b = s2w(cssW, cssH); return [a[0], b[1], b[0], a[1]]; }
+async function fetchOverpass(query) {
+  let lastErr = null;
+  for (const url of OVERPASS) {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+    try {
+      log(`Overpass: querying ${url.split('/')[2]}…`);
+      const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(query), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
+      clearTimeout(timer);
+      if (!r.ok) { lastErr = new Error(`HTTP ${r.status}${r.status === 429 ? ' (rate limited – wait a minute)' : r.status === 504 ? ' (server busy)' : ''}`); log(`Overpass ${url.split('/')[2]}: ${lastErr.message}`, 'warn'); continue; }
+      return await r.json();
+    } catch (err) {
+      clearTimeout(timer);
+      lastErr = err.name === 'AbortError' ? new Error('timed out after 20 s (likely blocked)') : err;
+      log(`Overpass ${url.split('/')[2]}: ${lastErr.message}${err instanceof TypeError ? ' (blocked by network/proxy, or offline)' : ''}`, 'warn');
+    }
+  }
+  throw lastErr || new Error('no Overpass server responded');
+}
+function osmApiUrl(W, S, E, N) { return `https://api.openstreetmap.org/api/0.6/map?bbox=${W.toFixed(6)},${S.toFixed(6)},${E.toFixed(6)},${N.toFixed(6)}`; }
+async function fetchOsmApi(url) {
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 30000);
+  try {
+    log('OSM API: querying api.openstreetmap.org…');
+    const r = await fetch(url, { signal: ctl.signal });
+    clearTimeout(timer);
+    if (!r.ok) throw new Error(`HTTP ${r.status}${r.status === 400 ? ' (area too big or too many nodes – zoom in)' : r.status === 509 ? ' (bandwidth limit – wait)' : ''}`);
+    return osmXmlToElements(await r.text());
+  } catch (err) {
+    clearTimeout(timer);
+    throw err.name === 'AbortError' ? new Error('timed out after 30 s') : err;
+  }
+}
+function osmXmlToElements(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('not valid OSM XML (proxy block page?)');
+  const root = doc.documentElement;
+  if (!root || root.nodeName !== 'osm') throw new Error(`expected <osm> XML, got <${root ? root.nodeName : '?'}>`);
+  const nodes = new Map();
+  for (const n of doc.getElementsByTagName('node')) nodes.set(n.getAttribute('id'), { lat: +n.getAttribute('lat'), lon: +n.getAttribute('lon') });
+  const tagsOf = el => { const t = {}; for (const c of el.children) if (c.nodeName === 'tag') t[c.getAttribute('k')] = c.getAttribute('v'); return t; };
+  const wayGeom = new Map(), out = [];
+  let missing = 0;
+  for (const w of doc.getElementsByTagName('way')) {
+    const g = [];
+    for (const c of w.children) if (c.nodeName === 'nd') { const p = nodes.get(c.getAttribute('ref')); if (p) g.push(p); else missing++; }
+    wayGeom.set(w.getAttribute('id'), g);
+    const tags = tagsOf(w);
+    if (tags.building) out.push({ type: 'way', id: +w.getAttribute('id'), tags, geometry: g });
+  }
+  for (const r of doc.getElementsByTagName('relation')) {
+    const tags = tagsOf(r);
+    if (!tags.building || tags.type !== 'multipolygon') continue;
+    const members = [];
+    for (const c of r.children) if (c.nodeName === 'member' && c.getAttribute('type') === 'way') {
+      const g = wayGeom.get(c.getAttribute('ref'));
+      if (g) members.push({ type: 'way', role: c.getAttribute('role') || 'outer', geometry: g });
+    }
+    out.push({ type: 'relation', id: +r.getAttribute('id'), tags, members });
+  }
+  log(`OSM XML: ${nodes.size.toLocaleString()} nodes, ${out.length} building element(s)${missing ? `, ${missing} node refs outside file (edge buildings may be clipped)` : ''}.`);
+  return { elements: out };
+}
+let osmBusy = false;
+async function fetchOsmBuildings() {
+  if (osmBusy) return;
+  if (!state.origin || !state.origin.zone) { log('Set the site location first (lat, lon → Go to site) or load a DEM, so the app knows where the map is.', 'warn'); return; }
+  const bb = viewBoxLocal(), w = bb[2] - bb[0], h = bb[3] - bb[1];
+  if (w * h > 1e6) { log(`View is ${fmt(w / 1000, 2)} × ${fmt(h / 1000, 2)} km – zoom in to about 1 km × 1 km or less before fetching (OSM download limit).`, 'warn'); return; }
+  const corners = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]]].map(p => local2ll(p[0], p[1]));
+  const S = Math.min(...corners.map(c => c[0])), N = Math.max(...corners.map(c => c[0])), W = Math.min(...corners.map(c => c[1])), E = Math.max(...corners.map(c => c[1]));
+  const bbox = [S, W, N, E].map(v => v.toFixed(6)).join(',');
+  const q = `[out:json][timeout:80];(way["building"](${bbox});relation["building"]["type"="multipolygon"](${bbox}););out geom;`;
+  osmBusy = true; $('btnOsm').disabled = true; $('busy').textContent = 'Fetching OSM buildings…';
+  const t0 = performance.now();
+  try {
+    log(`Fetching OSM buildings for ${fmt(w, 0)} × ${fmt(h, 0)} m view (bbox ${bbox}).`);
+    const apiUrl = osmApiUrl(W, S, E, N);
+    state.lastOsmUrl = apiUrl;
+    let data = null;
+    try { data = await fetchOsmApi(apiUrl); log('OSM API reachable – using it.', 'pass'); }
+    catch (e1) {
+      log(`OSM API: ${e1.message}${e1 instanceof TypeError ? ' (blocked by network/proxy)' : ''}`, 'warn');
+      data = await fetchOverpass(q);
+    }
+    importOsm(data, t0);
+  } catch (err) {
+    log(`OSM fetch FAILED from inside the app – your network blocks these requests. Manual route (works if your browser can open openstreetmap.org): click “Copy OSM download link”, paste it into a new Edge tab, save the file it downloads (“map” → rename to map.osm), then use “Import buildings” and pick that file.`, 'fail');
+    log(`Download link for this view: ${state.lastOsmUrl}`);
+    console.log('Overpass query (for overpass-turbo.eu):\n' + q);
+    $('busy').textContent = 'OSM fetch failed – see log';
+  } finally { osmBusy = false; $('btnOsm').disabled = false; }
+}
+function importOsm(data, t0) {
+  const els = (data && data.elements) || [];
+  const byId = new Map(state.buildings.filter(b => b.osmId).map(b => [b.osmId, b]));
+  const replace = $('osmReplace').checked;
+  const cnt = { added: 0, replaced: 0, dup: 0, skipped: 0, bad: 0, 'osm-height': 0, 'osm-levels': 0, 'type-default': 0 };
+  for (const el of els) {
+    const tags = el.tags || {};
+    if (OSM_SKIP.has(tags.building)) { cnt.skipped++; continue; }
+    let rings = [];
+    if (el.type === 'way' && Array.isArray(el.geometry)) rings = [el.geometry.map(g => [g.lon, g.lat])];
+    else if (el.type === 'relation' && Array.isArray(el.members)) rings = assembleRings(el.members.filter(m => m.type === 'way' && m.role !== 'inner' && Array.isArray(m.geometry)).map(m => m.geometry.map(g => [g.lon, g.lat])));
+    const hi = osmHeight(tags);
+    rings.forEach((ring, ri) => {
+      const id = `${el.type}/${el.id}${rings.length > 1 ? '#' + ri : ''}`;
+      let pts = ring.map(p => ll2local(p[1], p[0]));
+      if (pts.length > 1 && hyp(pts[0], pts[pts.length - 1]) < 1e-6) pts.pop();
+      if (pts.length < 3) { cnt.bad++; return; }
+      const old = byId.get(id);
+      if (old && !replace) { cnt.dup++; return; }
+      if (old) { state.buildings.splice(state.buildings.indexOf(old), 1); cnt.replaced++; }
+      const name = (tags.name || tags['addr:housenumber'] && (tags['addr:housenumber'] + ' ' + (tags['addr:street'] || '')) || (tags.building !== 'yes' ? tags.building : '') || 'OSM ' + el.id).slice(0, 40);
+      const b = makeBuilding(pts, hi.h, name, { hsrc: hi.src, osmId: id, btype: tags.building || 'yes' });
+      state.buildings.push(b); byId.set(id, b); cnt.added++; cnt[hi.src]++;
+    });
+  }
+  geomChanged();
+  if (state.dsm) applyDsmHeights(true);
+  $('attrib').hidden = !state.buildings.some(b => b.osmId);
+  const ms = performance.now() - (t0 || performance.now());
+  log(`OSM: ${els.length} elements → ${cnt.added} buildings added${cnt.replaced ? ` (${cnt.replaced} replaced)` : ''}${cnt.dup ? `, ${cnt.dup} already loaded` : ''}${cnt.skipped ? `, ${cnt.skipped} roofs/carports/etc skipped` : ''}. Heights: ${cnt['osm-height']} tagged, ${cnt['osm-levels']} from levels, ${cnt['type-default']} estimated by type. ${ms.toFixed(0)} ms.`, cnt.added ? 'pass' : 'warn');
+  const nEst = state.buildings.filter(isEstimated).length;
+  if (cnt.added && nEst / Math.max(1, state.buildings.length) > 0.5) log(`${nEst} building heights are type estimates (dashed). Load LiDAR (.laz) or edit key buildings near the works.`, 'warn');
+  else if (cnt.added && nEst) log(`${nEst} building height(s) still estimated (dashed) – check those near the works.`, 'warn');
+  if (!els.length) log('No buildings returned for this area.', 'warn');
+  if (state.origin && datumOf(state.origin.epsg) === 'GDA94') log('OSM is GDA2020/WGS84 and your data is GDA94 – expect ~1.5–1.8 m offset (not significant for screening).', 'warn');
+  select(null); requestCompute(false);
+}
+
+function installDsm(R, name) {
+  const P = rasterPlacement(R, 1);
+  let bad = 0;
+  for (let i = 0; i < R.z.length; i++) { const v = R.z[i]; if (!isFinite(v) || (R.nodata != null && Math.abs(v - R.nodata) < 1e-6 * Math.max(1, Math.abs(R.nodata))) || v < -1e4 || v > 1e5) { R.z[i] = NaN; bad++; } }
+  state.dsm = { w: R.W, h: R.H, z: R.z, x0: P.x0, yTop: P.yTop, cx: P.cx, cy: P.cy, name };
+  log(`DSM loaded: ${name}, ${R.W}×${R.H} @ ${fmt(P.cx, 2)} m, ${bad.toLocaleString()} NoData cells.`, 'pass');
+  applyDsmHeights();
+}
+function applyDsmHeights(quiet) {
+  const D = state.dsm; if (!D) return;
+  if (!state.terrain) { log('DSM needs a DEM (ground) to turn roof levels into building heights – load the DEM too.', 'warn'); return; }
+  let set = 0, few = 0, keep = 0, manual = 0;
+  const tag = D.kind === 'lidar' ? 'lidar' : 'dsm', what = D.kind === 'lidar' ? 'LiDAR' : 'DSM';
+  for (const b of state.buildings) {
+    if (b.hsrc === 'manual' || b.hsrc === 'file') { manual++; continue; }
+    const vals = [];
+    const i0 = Math.max(0, Math.floor((b.bbox[0] - D.x0) / D.cx)), i1 = Math.min(D.w - 1, Math.floor((b.bbox[2] - D.x0) / D.cx));
+    const j0 = Math.max(0, Math.floor((D.yTop - b.bbox[3]) / D.cy)), j1 = Math.min(D.h - 1, Math.floor((D.yTop - b.bbox[1]) / D.cy));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const x = D.x0 + (i + 0.5) * D.cx, y = D.yTop - (j + 0.5) * D.cy;
+      if (!pip(x, y, b.pts)) continue;
+      const v = D.z[j * D.w + i]; if (v === v) vals.push(v);
+    }
+    if (vals.length < 4) { few++; b.lidarN = vals.length; continue; }
+    vals.sort((a, c) => a - c);
+    const p90 = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.9))];
+    updateBase(b);
+    const h = p90 - b.base;
+    if (h < 2) { keep++; continue; }
+    b.h = Math.min(300, h); b.roofRL = null; b.hsrc = tag; b.lidarN = vals.length; set++;
+  }
+  geomChanged();
+  if (!quiet || set) log(`${what} heights applied to ${set} building(s)${few ? `; ${few} with no/too few ${what} roof cells (outside tile, new, or demolished – check)` : ''}${keep ? `; ${keep} kept (roof < 2 m above ground)` : ''}${manual ? `; ${manual} hand-entered/file heights left alone` : ''}.`, set ? 'pass' : 'warn');
+  renderSelPanel(); requestCompute(false);
+}
+
+function updateSiteInfo() {
+  const o = state.origin, el = $('siteInfo'); if (!el) return;
+  if (!o) { el.innerHTML = '<span class="muted">No location yet – enter the site lat, lon or load a DEM.</span>'; return; }
+  const ll = mga2ll(o.x0, o.y0, o.zone || 56);
+  el.textContent = `Origin E ${o.x0}, N ${o.y0} · MGA zone ${o.zone || '?'}${o.epsg ? ' · EPSG ' + o.epsg : ''} · ${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;
+}
+function goToSite() {
+  const m = $('siteLL').value.trim().match(/^(-?\d+(?:\.\d+)?)[\s,]+(-?\d+(?:\.\d+)?)$/);
+  if (!m) { $('siteLL').classList.add('bad'); log('Enter the site as “lat, lon”, e.g. -33.8890, 151.2370 (right-click a spot in Google Maps to copy it).', 'warn'); return; }
+  const lat = +m[1], lon = +m[2];
+  if (!(lat >= -45 && lat <= -9 && lon >= 108 && lon <= 160)) { $('siteLL').classList.add('bad'); log('That location is outside Australia (MGA zones 49–56).', 'warn'); return; }
+  $('siteLL').classList.remove('bad');
+  const z = (state.origin && state.origin.zone) || zoneOf(lon), p = ll2mga(lat, lon, z);
+  const first = !state.origin;
+  ensureOrigin(p[0], p[1], null, z, 'site location');
+  const loc = ll2local(lat, lon);
+  if (first && state.sources.length && state.buildings.every(b => !b.osmId)) log('Tip: “Clear buildings” removes the demo blocks before you fetch real ones.', 'warn');
+  state.view.cx = loc[0]; state.view.cy = loc[1]; state.view.scale = Math.max(state.view.scale, 2);
+  log(`Moved to site ${lat.toFixed(5)}, ${lon.toFixed(5)} → E ${fmt(p[0] , 1)}, N ${fmt(p[1], 1)}.`);
+  updateSiteInfo(); requestCompute(false);
+}
+$('btnSite').addEventListener('click', goToSite);
+$('siteLL').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); goToSite(); } });
+$('btnOsm').addEventListener('click', fetchOsmBuildings);
+$('btnOsmLink').addEventListener('click', async () => {
+  if (!state.origin || !state.origin.zone) { log('Set the site location first (Go to site) or load a DEM.', 'warn'); return; }
+  const bb = viewBoxLocal(), w = bb[2] - bb[0], h = bb[3] - bb[1];
+  if (w * h > 1e6) { log('Zoom in to about 1 km × 1 km or less first (OSM download limit).', 'warn'); return; }
+  const c = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]]].map(p => local2ll(p[0], p[1]));
+  const url = osmApiUrl(Math.min(...c.map(p => p[1])), Math.min(...c.map(p => p[0])), Math.max(...c.map(p => p[1])), Math.max(...c.map(p => p[0])));
+  state.lastOsmUrl = url;
+  let copied = false;
+  try { await navigator.clipboard.writeText(url); copied = true; } catch (e) { /* clipboard blocked */ }
+  if (!copied) { const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select(); try { copied = document.execCommand('copy'); } catch (e) {} ta.remove(); }
+  log(`${copied ? 'Copied' : 'Could not copy – select it here'}: ${url}`, copied ? 'pass' : 'warn');
+  log('Paste into a new Edge tab → it downloads a file called “map” → rename to map.osm → Import buildings (GeoJSON / .osm).');
+});
+$('btnDsm').addEventListener('click', () => $('fileDsm').click());
+$('fileDsm').addEventListener('change', async () => {
+  const input = $('fileDsm'), f = input.files[0]; if (!f) return; input.value = '';
+  log(`Reading DSM ${f.name} (${(f.size / 1048576).toFixed(1)} MB)…`);
+  try {
+    const ext = f.name.toLowerCase().split('.').pop(); let R;
+    if (ext === 'tif' || ext === 'tiff') R = await parseGeoTIFF(await f.arrayBuffer());
+    else { const txt = await f.text(); R = /^\s*ncols/i.test(txt) ? parseASC(txt) : parseXYZ(txt); }
+    if (R.W * R.H > 16e6) throw new Error(`${R.W}×${R.H} is too large for a DSM – clip it to the site`);
+    installDsm(R, f.name);
+  } catch (err) { log(`DSM load FAILED: ${err.message}`, 'fail'); console.error(err); }
+});
+
+/* =========================== SCENARIO / FILES ========================== */
+function zoomExtents() {
+  const pts = [];
+  state.buildings.forEach(b => { pts.push([b.bbox[0], b.bbox[1]], [b.bbox[2], b.bbox[3]]); });
+  state.hoardings.forEach(h => h.pts.forEach(p => pts.push(p)));
+  state.sources.forEach(s => pts.push([s.x, s.y]));
+  if (!pts.length && state.terrain) { const T = state.terrain; pts.push([T.x0, T.yTop], [T.x0 + T.w * T.cx, T.yTop - T.h * T.cy]); }
+  if (!pts.length) { state.view = { cx: 0, cy: 0, scale: 3 }; requestCompute(false); return; }
+  const bb = bboxOf(pts), w = Math.max(bb[2] - bb[0], 20), h = Math.max(bb[3] - bb[1], 20);
+  state.view.cx = (bb[0] + bb[2]) / 2; state.view.cy = (bb[1] + bb[3]) / 2;
+  state.view.scale = Math.min(60, Math.max(0.02, Math.min(cssW / (w * 1.4), cssH / (h * 1.4))));
+  requestCompute(false);
+}
+function zoomTerrain() {
+  const T = state.terrain; if (!T) return;
+  const w = T.w * T.cx, h = T.h * T.cy;
+  state.view.cx = T.x0 + w / 2; state.view.cy = T.yTop - h / 2;
+  state.view.scale = Math.min(60, Math.max(0.02, Math.min(cssW / (w * 1.05), cssH / (h * 1.05))));
+  requestCompute(false);
+}
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+$('btnSave').addEventListener('click', () => {
+  const data = {
+    app: 'noise-poc', version: VERSION, saved: new Date().toISOString(), origin: state.origin,
+    dem: state.terrain ? state.terrain.name : null, settings: state.settings, view: state.view,
+    sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, h: s.h, x: s.x, y: s.y })),
+    buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype, pts: b.pts })),
+    hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts }))
+  };
+  download('noise_scenario.json', JSON.stringify(data));
+  log(`Saved scenario (${data.sources.length} sources, ${data.buildings.length} buildings, ${data.hoardings.length} hoardings).`);
+});
+$('btnLoad').addEventListener('click', () => $('fileLoad').click());
+$('btnGeo').addEventListener('click', () => $('fileGeo').click());
+$('btnDem').addEventListener('click', () => $('fileDem').click());
+function readJSONFile(input, cb) {
+  input.addEventListener('change', () => {
+    const f = input.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { try { cb(JSON.parse(r.result), f.name); } catch (err) { log(`Could not read ${f.name}: ${err.message}`, 'fail'); } input.value = ''; };
+    r.readAsText(f);
+  });
+}
+function validPts(pts, min) {
+  if (!Array.isArray(pts)) return null;
+  const out = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).map(p => [+p[0], +p[1]]);
+  return out.length >= (min || 3) ? out : null;
+}
+readJSONFile($('fileLoad'), (d, name) => {
+  if (!d || !Array.isArray(d.sources) || !Array.isArray(d.buildings)) throw new Error('not a noise-poc scenario');
+  let dx = 0, dy = 0;
+  if (d.origin && d.origin.type === 'projected') {
+    if (state.origin && state.origin.type === 'projected') { dx = d.origin.x0 - state.origin.x0; dy = d.origin.y0 - state.origin.y0; if (dx || dy) log(`Scenario shifted by (${dx}, ${dy}) m to match the loaded DEM.`); }
+    else state.origin = d.origin;
+  }
+  const sh = p => [+p[0] + dx, +p[1] + dy];
+  state.settings = Object.assign({}, state.settings, d.settings || {});
+  state.sources = d.sources.filter(s => isFinite(s.x) && isFinite(s.y)).map(s => {
+    const [x, y] = sh([s.x, s.y]);
+    const o = makeSource(x, y, Number.isInteger(s.eq) && EQUIP[s.eq] ? s.eq : CUSTOM_EQ);
+    o.name = String(s.name || o.name).slice(0, 40); o.lw = num(s.lw, 40, 150) ?? o.lw; o.h = num(s.h, 0, 200) ?? 1.5; return o;
+  });
+  state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null }) : null; }).filter(Boolean);
+  state.hoardings = (d.hoardings || []).map(h => { const p = validPts(h.pts, 2); return p ? makeHoarding(p.map(sh), num(h.h, 0.3, 20) ?? 2.4, String(h.name || '').slice(0, 40) || undefined) : null; }).filter(Boolean);
+  geomChanged(); syncSettingsUI(); select(null); updateSiteInfo();
+  $('attrib').hidden = !state.buildings.some(b => b.osmId);
+  log(`Loaded ${name}: ${state.sources.length} sources, ${state.buildings.length} buildings, ${state.hoardings.length} hoardings.`);
+  if (d.dem && !state.terrain) log(`This scenario used DEM “${d.dem}” – load it to restore terrain.`, 'warn');
+  zoomExtents();
+});
+$('fileGeo').addEventListener('change', () => {
+  const input = $('fileGeo'), f = input.files[0]; if (!f) return; input.value = '';
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const txt = String(r.result), head = txt.slice(0, 400).trim();
+      if (head.startsWith('<')) {
+        const data = osmXmlToElements(txt);
+        if (!state.origin || !state.origin.zone) {
+          const all = []; data.elements.forEach(e => (e.geometry || []).forEach(p => all.push([p.lon, p.lat])));
+          if (!all.length) throw new Error('no building geometry in the file');
+          const bb = bboxOf(all), lon = (bb[0] + bb[2]) / 2, lat = (bb[1] + bb[3]) / 2, z = zoneOf(lon), c = ll2mga(lat, lon, z);
+          ensureOrigin(c[0], c[1], null, z, 'OSM file');
+        }
+        log(`Importing ${f.name} as OSM XML.`); importOsm(data, performance.now()); zoomExtents(); return;
+      }
+      const j = JSON.parse(txt);
+      if (Array.isArray(j.elements)) { log(`Importing ${f.name} as Overpass JSON.`); importOsm(j, performance.now()); zoomExtents(); return; }
+      importGeoJSON(j, f.name);
+    } catch (err) { log(`Could not read ${f.name}: ${err.message}`, 'fail'); console.error(err); }
+  };
+  r.readAsText(f);
+});
+function importGeoJSON(gj, name) {
+  const feats = gj.type === 'FeatureCollection' ? gj.features : gj.type === 'Feature' ? [gj] : [];
+  const rings = [];
+  for (const f of feats) {
+    const g = f && f.geometry; if (!g) continue;
+    const props = f.properties || {};
+    if (g.type === 'Polygon') rings.push({ ring: g.coordinates[0], props, fid: f.id });
+    else if (g.type === 'MultiPolygon') g.coordinates.forEach(pc => rings.push({ ring: pc[0], props }));
+  }
+  if (!rings.length) throw new Error('no Polygon / MultiPolygon features found');
+  const all = []; rings.forEach(r => r.ring.forEach(p => all.push(p)));
+  const bb = bboxOf(all), lonlat = bb[0] >= -180 && bb[2] <= 180 && bb[1] >= -90 && bb[3] <= 90;
+  const cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
+  let tf, isOsm = feats.some(f => f && f.properties && (f.properties.building || f.properties['@id'] || f.id && /^(way|relation)\//.test(f.id)));
+  if (lonlat) {
+    const z = (state.origin && state.origin.zone) || zoneOf(cx), c = ll2mga(cy, cx, z);
+    ensureOrigin(c[0], c[1], null, z, 'GeoJSON (lat/lon)');
+    tf = p => ll2local(p[1], p[0]);
+  } else {
+    const o = ensureOrigin(cx, cy, null, null, 'GeoJSON (projected)'); tf = p => [p[0] - o.x0, p[1] - o.y0];
+  }
+  let added = 0, defH = 0, withRoof = 0;
+  const pick = (pr, keys) => { for (const k of keys) if (pr[k] != null && isFinite(+pr[k])) return +pr[k]; return null; };
+  for (const r of rings) {
+    let pts = validPts(r.ring); if (!pts) continue;
+    pts = pts.map(tf);
+    if (hyp(pts[0], pts[pts.length - 1]) < 1e-6) pts.pop();
+    if (pts.length < 3) continue;
+    const pr = r.props;
+    const roof = pick(pr, ['roof_rl', 'ROOF_RL', 'roofRL', 'roof', 'max_z', 'MAX_Z']);
+    const base = pick(pr, ['base_rl', 'BASE_RL', 'baseRL', 'ground_rl', 'min_z', 'MIN_Z']);
+    let h = num(pick(pr, ['height', 'HEIGHT', 'h', 'bldg_height', 'Height']), 0.5, 300), hsrc = 'file';
+    if (h === null && roof === null && isOsm) { const oh = osmHeight(pr); h = oh.h; hsrc = oh.src; }
+    else if (h === null && roof === null) { h = state.settings.newH; defH++; hsrc = 'type-default'; }
+    if (roof !== null) withRoof++;
+    state.buildings.push(makeBuilding(pts, h ?? state.settings.newH, String(pr.name || pr.NAME || '').slice(0, 40) || undefined, { baseRL: base, roofRL: roof, hsrc, btype: pr.building || null, osmId: isOsm ? String(pr['@id'] || r.fid || '') || null : null })); added++;
+  }
+  geomChanged(); if (state.dsm) applyDsmHeights(true);
+  $('attrib').hidden = !state.buildings.some(b => b.osmId);
+  log(`Imported ${added} building(s) from ${name}${withRoof ? `; ${withRoof} with roof RL` : ''}${defH ? `; ${defH} without height → ${state.settings.newH} m` : ''}.`);
+  zoomExtents();
+}
+$('fileDem').addEventListener('change', async () => {
+  const input = $('fileDem'), f = input.files[0]; if (!f) return;
+  input.value = '';
+  log(`Reading DEM ${f.name} (${(f.size / 1048576).toFixed(1)} MB)…`);
+  $('busy').textContent = 'Reading DEM…';
+  try {
+    const ext = f.name.toLowerCase().split('.').pop();
+    let R;
+    if (ext === 'tif' || ext === 'tiff') R = await parseGeoTIFF(await f.arrayBuffer());
+    else { const txt = await f.text(); R = /^\s*ncols/i.test(txt) ? parseASC(txt) : parseXYZ(txt); }
+    const hadTerrain = !!state.terrain;
+    installTerrain(R, f.name);
+    if (!hadTerrain && state.sources.length && state.buildings.length && state.buildings.every(b => b.name && !b.name.startsWith('Building'))) log('Demo objects now sit at the DEM centre. Use “Clear buildings” and draw/import your own.', 'warn');
+    zoomTerrain();
+  } catch (err) {
+    log(`DEM load FAILED: ${err.message}`, 'fail'); console.error(err);
+    $('busy').textContent = 'DEM load failed – see log';
+  }
+});
+$('btnDemClear').addEventListener('click', () => {
+  if (!state.terrain) return;
+  state.terrain = null; for (const b of state.buildings) updateBase(b);
+  updateDemInfo(); log('DEM removed – ground flat at RL 0.'); requestCompute(false);
+});
+$('btnClearB').addEventListener('click', () => { const n = state.buildings.length; state.buildings = []; geomChanged(); select(null); log(`Cleared ${n} building(s).`); requestCompute(false); });
+$('btnDemo').addEventListener('click', () => { loadDemo(); zoomExtents(); });
+$('btnFit').addEventListener('click', zoomExtents);
+
+function loadDemo() {
+  state.buildings = [
+    makeBuilding(rect(30, 10, 95, 24), 7, 'Terrace row'),
+    makeBuilding(rect(-75, -30, -45, 25), 14, 'Apartment block'),
+    makeBuilding(rect(6, -26, 18, -19), 3, 'Site shed'),
+    makeBuilding([[20, -75], [65, -75], [65, -60], [35, -60], [35, -40], [20, -40]], 10, 'Office (L-shape)'),
+    makeBuilding(rect(-30, 45, 10, 60), 5, 'Shops')
+  ];
+  state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
+  state.sources = [makeSource(0, 0, 0)];
+  geomChanged(); select(null);
+  log('Demo loaded: 1 excavator (Lw 105), 5 buildings, 1 hoarding (2.4 m).');
+  requestCompute(false);
+}
+
+/* ============================== SELF-TESTS ============================= */
+function selfTest() {
+  const S0 = { hr: 1.5, ground: 'hard', air: false, barriers: true, terrain: true };
+  let pass = 0, fail = 0;
+  const saved = { b: state.buildings, h: state.hoardings, t: state.terrain };
+  function check(name, got, exp, tol) {
+    const ok = Math.abs(got - exp) <= tol; ok ? pass++ : fail++;
+    log(`${ok ? 'PASS' : 'FAIL'} ${name}: engine ${got.toFixed(2)}, hand calc ${exp.toFixed(2)} dB`, ok ? 'pass' : 'fail');
+  }
+  const single = (zs, zr, xb, hb, d) => {
+    const a = Math.hypot(xb, hb - zs), b = Math.hypot(d - xb, hb - zr), dir = Math.hypot(d, zs - zr), z = a + b - dir;
+    const km = Math.exp(-(1 / 2000) * Math.sqrt(a * b * dir / (2 * z)));
+    return 10 * Math.log10(3 + (20 / LAMBDA) * z * km);
+  };
+  try {
+    state.buildings = []; state.hoardings = []; state.terrain = null; geomChanged();
+    const src = { x: 0, y: 0, h: 1.5, lw: 105 }; prep([src]);
+    check('Free field 50 m', contrib(src, 50, 0, S0, [], false), 105 - (20 * Math.log10(50) + 11), 0.01);
+    check('Soft ground 100 m', contrib(src, 100, 0, Object.assign({}, S0, { ground: 'soft' }), [], false), 105 - 51 - 4.2, 0.01);
+
+    const wall = makeBuilding(rect(24.9, -100, 25.1, 100), 10, 'test wall');
+    state.buildings = [wall]; geomChanged(); prep([src]);
+    check('10 m wall @ 25 m (Dz)', contrib(src, 50, 0, S0, state.buildings, true).Abar, single(1.5, 1.5, 25, 10, 50), 0.15);
+    const hi = { x: 0, y: 0, h: 30, lw: 105 }; prep([hi]);
+    check('Line of sight over wall', contrib(hi, 50, 0, S0, state.buildings, true).Abar, 0, 0.001);
+
+    state.buildings = []; geomChanged();
+    state.hoardings = [makeHoarding([[5, -50], [5, 50]], 2.4, 'test hoarding')]; prep([src]);
+    check('2.4 m hoarding @ 5 m', contrib(src, 50, 0, S0, [], true).Abar, single(1.5, 1.5, 5, 2.4, 50), 0.05);
+    state.hoardings = [];
+
+    const mkT = (fn) => { const w = 121, h = 41, z = new Float32Array(w * h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) z[j * w + i] = fn(i - 10, 20 - j); return { w, h, cx: 1, cy: 1, x0: -10.5, yTop: 20.5, z, zmin: 0, zmax: 0 }; };
+    state.terrain = mkT(() => 30); prep([src]);
+    check('Flat terrain RL 30 = free field', contrib(src, 50, 0, S0, [], false), 105 - (20 * Math.log10(50) + 11), 0.01);
+    state.terrain = mkT(x => 30 + (x === 25 ? 6 : 0)); prep([src]);
+    check('Terrain ridge 6 m @ 25 m', contrib(src, 50, 0, S0, [], true).Abar, single(31.5, 31.5, 25, 36, 50), 0.15);
+    state.terrain = mkT(x => (x <= 10 ? 26 : 30)); prep([src]);
+    const r = contrib(src, 40, 0, S0, [], true);
+    check('Source in 4 m cut, edge @ 10 m', r.Abar, single(27.5, 31.5, 11, 30, 40), 0.3);
+  } catch (err) { fail++; log('Self-test error: ' + err.message, 'fail'); console.error(err); }
+  state.buildings = saved.b; state.hoardings = saved.h; state.terrain = saved.t; geomChanged();
+  log(`Self-test: ${pass} passed, ${fail} failed.`, fail ? 'fail' : 'pass');
+}
+
+/* ================================ INIT ================================= */
+$('ver').textContent = 'v' + VERSION;
+log(`Noise POC v${VERSION} starting. λ = ${LAMBDA.toFixed(3)} m (${F_BAND} Hz). DecompressionStream: ${typeof DecompressionStream !== 'undefined' ? 'yes' : 'NO'}.`);
+selfTest();
+nextId = 1;
+syncSettingsUI(); setMode('select'); loadDemo(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
+if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
+resize();
+requestAnimationFrame(() => zoomExtents());
+window.__noise = { LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
+})();
+</script>
+</body>
+</html>
