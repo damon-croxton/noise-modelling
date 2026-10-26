@@ -173,7 +173,12 @@
       </div>
       <input type="file" id="fileLoad" accept=".json,application/json" hidden>
       <input type="file" id="fileGeo" hidden>
-      <p class="disclaimer">Screening tool only. Not a validated compliance model. Lw values are indicative; replace them with project or consultant data. The DEM is not saved in the JSON – reload it after loading a scenario.</p>
+      <p class="disclaimer">Screening and planning aid only. It does not replace an assessment by a qualified acoustic consultant and is not a validated compliance model. Plant levels and assessment defaults come from Transport for NSW documents – verify them against the current client strategy and replace them with project data where available. The DEM and LiDAR are not saved in the JSON – reload them after loading a scenario.</p>
+    </section>
+
+    <section>
+      <h2>About and licences</h2>
+      <p class="kv">Buildings: © OpenStreetMap contributors (ODbL). LAZ decoding: JavaScript port of LASzip by rapidlasso GmbH (Apache License 2.0). Plant levels, air and ground values: Transport for NSW, CNVG-PTI EMF-NV-GD-0060 v4.6 and the Construction Noise Estimator EMF-NV-TT-0068, used with acknowledgement. Methods: ISO 9613-1, ISO 9613-2, CONCAWE. Details: THIRD_PARTY_NOTICES.md in the source repository.</p>
     </section>
 
     <section>
@@ -1668,7 +1673,7 @@ const DATA = {
  }
 };
 /* ============================== CONSTANTS ============================== */
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
 /* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
    the three bands – the same values and conditions as the TfNSW Construction
@@ -2922,6 +2927,7 @@ canvas.addEventListener('wheel', e => {
 document.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;   // leave browser shortcuts (Ctrl+S, Ctrl+V …) alone
   const k = e.key.toLowerCase();
   if (k === 'v') setMode('select'); else if (k === 's') setMode('source'); else if (k === 'b') setMode('building'); else if (k === 'h') setMode('hoarding');
   else if (k === 'escape') { if (state.draft.length) cancelDraft(); else select(null); }
@@ -3510,7 +3516,9 @@ function lazFactory() {
               if (isCancelled()) { failed = true; reject(new Error('cancelled')); return; }
               if (next >= jobs.length) { if (active === 0) resolve(); return; }
               const j = jobs[next++]; active++;
-              const buf = await file.slice(j.a, j.b).arrayBuffer();
+              let buf;
+              try { buf = await file.slice(j.a, j.b).arrayBuffer(); }
+              catch (e) { failed = true; reject(new Error(`could not read chunk ${j.ci} from the file: ${e.message}`)); return; }
               w.onmessage = (ev) => {
                 active--;
                 const d = ev.data;
@@ -3812,11 +3820,12 @@ async function fetchOsmBuildings() {
     log(`Fetching OSM buildings for ${fmt(w, 0)} × ${fmt(h, 0)} m view (bbox ${bbox}).`);
     const apiUrl = osmApiUrl(W, S, E, N);
     state.lastOsmUrl = apiUrl;
+    // Overpass first: the OSM editing API is a fallback (OSMF API usage policy).
     let data = null;
-    try { data = await fetchOsmApi(apiUrl); log('OSM API reachable – using it.', 'pass'); }
+    try { data = await fetchOverpass(q); log('Overpass reachable – using it.', 'pass'); }
     catch (e1) {
-      log(`OSM API: ${e1.message}${e1 instanceof TypeError ? ' (blocked by network/proxy)' : ''}`, 'warn');
-      data = await fetchOverpass(q);
+      log(`Overpass: ${e1.message} – trying the OSM API.`, 'warn');
+      data = await fetchOsmApi(apiUrl);
     }
     importOsm(data, t0);
   } catch (err) {

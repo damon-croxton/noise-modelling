@@ -481,7 +481,9 @@ function lazFactory() {
               if (isCancelled()) { failed = true; reject(new Error('cancelled')); return; }
               if (next >= jobs.length) { if (active === 0) resolve(); return; }
               const j = jobs[next++]; active++;
-              const buf = await file.slice(j.a, j.b).arrayBuffer();
+              let buf;
+              try { buf = await file.slice(j.a, j.b).arrayBuffer(); }
+              catch (e) { failed = true; reject(new Error(`could not read chunk ${j.ci} from the file: ${e.message}`)); return; }
               w.onmessage = (ev) => {
                 active--;
                 const d = ev.data;

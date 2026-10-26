@@ -123,11 +123,12 @@ async function fetchOsmBuildings() {
     log(`Fetching OSM buildings for ${fmt(w, 0)} × ${fmt(h, 0)} m view (bbox ${bbox}).`);
     const apiUrl = osmApiUrl(W, S, E, N);
     state.lastOsmUrl = apiUrl;
+    // Overpass first: the OSM editing API is a fallback (OSMF API usage policy).
     let data = null;
-    try { data = await fetchOsmApi(apiUrl); log('OSM API reachable – using it.', 'pass'); }
+    try { data = await fetchOverpass(q); log('Overpass reachable – using it.', 'pass'); }
     catch (e1) {
-      log(`OSM API: ${e1.message}${e1 instanceof TypeError ? ' (blocked by network/proxy)' : ''}`, 'warn');
-      data = await fetchOverpass(q);
+      log(`Overpass: ${e1.message} – trying the OSM API.`, 'warn');
+      data = await fetchOsmApi(apiUrl);
     }
     importOsm(data, t0);
   } catch (err) {

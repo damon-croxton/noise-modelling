@@ -199,6 +199,7 @@ canvas.addEventListener('wheel', e => {
 document.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;   // leave browser shortcuts (Ctrl+S, Ctrl+V …) alone
   const k = e.key.toLowerCase();
   if (k === 'v') setMode('select'); else if (k === 's') setMode('source'); else if (k === 'b') setMode('building'); else if (k === 'h') setMode('hoarding');
   else if (k === 'escape') { if (state.draft.length) cancelDraft(); else select(null); }
