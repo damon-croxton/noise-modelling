@@ -2396,9 +2396,11 @@ function loadDemo() {
 function selfTest() {
   const S0 = { hr: 1.5, ground: 'hard', air: false, barriers: true, terrain: true };
   let pass = 0, fail = 0;
+  const results = [];
   const saved = { b: state.buildings, h: state.hoardings, t: state.terrain };
   function check(name, got, exp, tol) {
     const ok = Math.abs(got - exp) <= tol; ok ? pass++ : fail++;
+    results.push({ name, got, exp, tol, ok });
     log(`${ok ? 'PASS' : 'FAIL'} ${name}: engine ${got.toFixed(2)}, hand calc ${exp.toFixed(2)} dB`, ok ? 'pass' : 'fail');
   }
   const single = (zs, zr, xb, hb, d) => {
@@ -2431,21 +2433,22 @@ function selfTest() {
     state.terrain = mkT(x => (x <= 10 ? 26 : 30)); prep([src]);
     const r = contrib(src, 40, 0, S0, [], true);
     check('Source in 4 m cut, edge @ 10 m', r.Abar, single(27.5, 31.5, 11, 30, 40), 0.3);
-  } catch (err) { fail++; log('Self-test error: ' + err.message, 'fail'); console.error(err); }
+  } catch (err) { fail++; results.push({ name: 'exception', error: err.message, ok: false }); log('Self-test error: ' + err.message, 'fail'); console.error(err); }
   state.buildings = saved.b; state.hoardings = saved.h; state.terrain = saved.t; geomChanged();
   log(`Self-test: ${pass} passed, ${fail} failed.`, fail ? 'fail' : 'pass');
+  return { pass, fail, results };
 }
 
 /* ================================ INIT ================================= */
 $('ver').textContent = 'v' + VERSION;
 log(`Noise POC v${VERSION} starting. λ = ${LAMBDA.toFixed(3)} m (${F_BAND} Hz). DecompressionStream: ${typeof DecompressionStream !== 'undefined' ? 'yes' : 'NO'}.`);
-selfTest();
+const selftest = selfTest();
 nextId = 1;
 syncSettingsUI(); setMode('select'); loadDemo(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
 if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
 resize();
 requestAnimationFrame(() => zoomExtents());
-window.__noise = { LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
+window.__noise = { selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
 })();
 </script>
 </body>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Construction Noise POC v0.4</title>
+<style>
+/*@@CSS@@*/
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <h1>Construction Noise POC <span id="ver"></span></h1>
+    <p class="sub">ISO 9613-2 screening · A-weighted · terrain + buildings + hoarding</p>
+
+    <section>
+      <h2>Mode</h2>
+      <div class="seg">
+        <button type="button" data-mode="select">Select / move (V)</button>
+        <button type="button" data-mode="source">Add source (S)</button>
+        <button type="button" data-mode="building">Draw building (B)</button>
+        <button type="button" data-mode="hoarding">Draw hoarding (H)</button>
+      </div>
+      <p id="hint" class="hint"></p>
+      <div class="btns" style="margin-top:6px">
+        <button type="button" id="finishPoly" hidden>Finish (Enter)</button>
+        <button type="button" id="cancelPoly" hidden>Cancel (Esc)</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Selection</h2>
+      <div id="selBody"></div>
+    </section>
+
+    <section>
+      <h2>Building heights from LiDAR</h2>
+      <div class="btns">
+        <button type="button" id="btnLaz" class="primary">Load LiDAR (.laz / .las)</button>
+        <button type="button" id="btnLazCancel" class="danger" hidden>Cancel</button>
+      </div>
+      <input type="file" id="fileLaz" accept=".laz,.las" hidden>
+      <div id="lazInfo" class="kv"><span class="muted">No LiDAR loaded. Uses class 6 (building) points for roof levels; class 2 (ground) builds the terrain if no DEM is loaded. The file is read locally – nothing is uploaded.</span></div>
+      <label class="chk"><input type="checkbox" id="setLazShow" checked> Show LiDAR building points</label>
+    </section>
+
+    <section>
+      <h2>Buildings from free data</h2>
+      <div class="row"><label for="siteLL">Site (lat, lon)</label><input type="text" id="siteLL" placeholder="-33.8890, 151.2370"></div>
+      <div class="btns">
+        <button type="button" id="btnSite">Go to site</button>
+        <button type="button" id="btnOsm" class="primary">Fetch OSM buildings in view</button>
+        <button type="button" id="btnOsmLink">Copy OSM download link</button>
+        <button type="button" id="btnDsm">Load DSM for roof heights</button>
+      </div>
+      <input type="file" id="fileDsm" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
+      <label class="chk"><input type="checkbox" id="osmReplace"> Re-fetch replaces existing OSM buildings</label>
+      <div id="siteInfo" class="kv"></div>
+      <p class="kv muted">Footprints: OpenStreetMap. Heights: OSM <i>height</i> → <i>levels</i> × 3 m → typical height for the building type (dashed outline = estimated). A DSM (roof surface) overrides estimates.</p>
+    </section>
+
+    <section>
+      <h2>Terrain (DEM)</h2>
+      <div class="btns">
+        <button type="button" id="btnDem" class="primary">Load DEM (.tif / .asc / .xyz)</button>
+        <button type="button" id="btnDemClear" class="danger">Remove DEM</button>
+      </div>
+      <input type="file" id="fileDem" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
+      <div id="demInfo" class="kv"><span class="muted">No DEM loaded – ground is flat at RL 0.</span></div>
+      <label class="chk"><input type="checkbox" id="setTerr" checked> Terrain blocks sound</label>
+      <label class="chk"><input type="checkbox" id="setShade" checked> Show hillshade</label>
+    </section>
+
+    <section>
+      <h2>Model</h2>
+      <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
+      <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (1.9 dB/km @ 500 Hz)</label>
+      <div class="row"><label for="setGround">Ground</label>
+        <select id="setGround"><option value="hard">Hard (Agr = 0)</option><option value="soft">Soft (ISO eq. 10)</option></select></div>
+      <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
+      <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
+      <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
+    </section>
+
+    <section>
+      <h2>Display</h2>
+      <div class="row"><label for="setCell">Map detail</label>
+        <select id="setCell"><option value="3">Fine (3 px)</option><option value="5" selected>Normal (5 px)</option><option value="8">Coarse (8 px)</option></select></div>
+      <div class="row"><label for="setMin">Hide below</label>
+        <select id="setMin"><option>30</option><option selected>35</option><option>40</option><option>45</option><option>50</option></select></div>
+      <div class="row"><label for="setOp">Opacity</label><input type="range" id="setOp" min="0.2" max="1" step="0.05" value="0.7"></div>
+      <div id="legend" aria-label="Legend, dB(A)"></div>
+    </section>
+
+    <section>
+      <h2>Probe (hover the map)</h2>
+      <div id="probe" aria-live="polite"><p class="muted">Hover the map to see the calculation breakdown.</p></div>
+    </section>
+
+    <section>
+      <h2>Scenario</h2>
+      <div class="btns">
+        <button type="button" id="btnFit">Zoom to extents</button>
+        <button type="button" id="btnSave">Save JSON</button>
+        <button type="button" id="btnLoad">Load JSON</button>
+        <button type="button" id="btnGeo">Import buildings (GeoJSON / .osm)</button>
+        <button type="button" id="btnClearB" class="danger">Clear buildings</button>
+        <button type="button" id="btnDemo">Reset demo</button>
+      </div>
+      <input type="file" id="fileLoad" accept=".json,application/json" hidden>
+      <input type="file" id="fileGeo" hidden>
+      <p class="disclaimer">Screening tool only. Not a validated compliance model. Lw values are indicative; replace them with project or consultant data. The DEM is not saved in the JSON – reload it after loading a scenario.</p>
+    </section>
+
+    <section>
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </section>
+  </aside>
+  <main id="wrap">
+    <canvas id="map" aria-label="Noise map"></canvas>
+    <div id="busy"></div>
+    <div id="hud">–</div>
+    <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
+  </main>
+</div>
+
+<script>
+/*@@JS@@*/
+</script>
+</body>
+</html>
