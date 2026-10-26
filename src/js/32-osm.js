@@ -176,9 +176,10 @@ function importOsm(data, t0) {
 }
 
 function installDsm(R, name) {
-  const P = rasterPlacement(R, 1);
   let bad = 0;
   for (let i = 0; i < R.z.length; i++) { const v = R.z[i]; if (!isFinite(v) || (R.nodata != null && Math.abs(v - R.nodata) < 1e-6 * Math.max(1, Math.abs(R.nodata))) || v < -1e4 || v > 1e5) { R.z[i] = NaN; bad++; } }
+  R = toScenarioZone(R, 'DSM');
+  const P = rasterPlacement(R, 1);
   state.dsm = { w: R.W, h: R.H, z: R.z, x0: P.x0, yTop: P.yTop, cx: P.cx, cy: P.cy, name };
   log(`DSM loaded: ${name}, ${R.W}×${R.H} @ ${fmt(P.cx, 2)} m, ${bad.toLocaleString()} NoData cells.`, 'pass');
   applyDsmHeights();

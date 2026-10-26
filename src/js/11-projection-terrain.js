@@ -39,7 +39,9 @@ function zoneFromEpsg(epsg) {
 function datumOf(epsg) { return epsg >= 28348 && epsg <= 28358 ? 'GDA94' : epsg >= 7848 && epsg <= 7858 ? 'GDA2020' : null; }
 function ensureOrigin(E, N, epsg, zone, why) {
   if (state.origin && state.origin.type === 'projected') {
-    if (!state.origin.zone && (zone || zoneFromEpsg(epsg))) state.origin.zone = zone || zoneFromEpsg(epsg);
+    const fz = zone || zoneFromEpsg(epsg);
+    if (!state.origin.zone && fz) state.origin.zone = fz;
+    else if (fz && fz !== state.origin.zone) log(`${why}: data is MGA zone ${fz} but the scenario is zone ${state.origin.zone}.`, 'warn');
     if (!state.origin.epsg && epsg) state.origin.epsg = epsg;
     if (epsg && state.origin.epsg && epsg !== state.origin.epsg) log(`${why}: EPSG ${epsg} differs from scenario EPSG ${state.origin.epsg}.`, 'warn');
     return state.origin;
@@ -55,9 +57,84 @@ function ensureOrigin(E, N, epsg, zone, why) {
 function ll2local(lat, lon) { const o = state.origin, p = ll2mga(lat, lon, o.zone); return [p[0] - o.x0, p[1] - o.y0]; }
 function local2ll(x, y) { const o = state.origin; return mga2ll(x + o.x0, y + o.y0, o.zone); }
 
+function isGeographic(R) { return R.modelType === 2 || (Math.abs(R.sx) < 0.01 && Math.abs(R.ox) <= 180 && Math.abs(R.oy) <= 90); }
+function epsgInZone(epsg, zone) { return datumOf(epsg) === 'GDA94' ? 28300 + zone : 7800 + zone; }
+/* E/N in MGA zone `zs` → E/N in zone `zd` (same datum). */
+function mgaZoneToZone(E, N, zs, zd) { const ll = mga2ll(E, N, zs); return ll2mga(ll[0], ll[1], zd); }
+
+/* Bring a projected raster into the scenario's MGA zone. A file in another zone
+   (common near the 144°/150° boundaries) is resampled; without this it would be
+   read as if it were in the scenario zone and land hundreds of km away. Exact
+   transforms are computed on a lattice every LAT cells and interpolated in
+   between (error well under 1 mm at these spacings). */
+function toScenarioZone(R, what) {
+  if (isGeographic(R)) return R;
+  if (!state.origin) ensureOrigin(R.ox + R.W * R.sx / 2, R.oy - R.H * R.sy / 2, R.epsg, null, what);
+  const zs = zoneFromEpsg(R.epsg), zd = state.origin.zone;
+  if (!zs || !zd || zs === zd) return R;
+  const t0 = performance.now(), LAT = 32, csx = R.sx, csy = R.sy;
+  const edge = [];
+  for (let k = 0; k <= 16; k++) {
+    const fx = R.ox + k / 16 * R.W * csx, fy = R.oy - k / 16 * R.H * csy;
+    edge.push(mgaZoneToZone(fx, R.oy, zs, zd), mgaZoneToZone(fx, R.oy - R.H * csy, zs, zd), mgaZoneToZone(R.ox, fy, zs, zd), mgaZoneToZone(R.ox + R.W * csx, fy, zs, zd));
+  }
+  const bb = bboxOf(edge), W = Math.ceil((bb[2] - bb[0]) / csx), H = Math.ceil((bb[3] - bb[1]) / csy);
+  const ox = bb[0], oy = bb[3], lw = Math.ceil(W / LAT) + 1, lh = Math.ceil(H / LAT) + 1;
+  const LX = new Float64Array(lw * lh), LY = new Float64Array(lw * lh);
+  for (let b = 0; b < lh; b++) for (let a = 0; a < lw; a++) {
+    const p = mgaZoneToZone(ox + (a * LAT + 0.5) * csx, oy - (b * LAT + 0.5) * csy, zd, zs);
+    LX[b * lw + a] = (p[0] - R.ox) / csx - 0.5; LY[b * lw + a] = (R.oy - p[1]) / csy - 0.5;   // source col/row
+  }
+  const z = new Float32Array(W * H).fill(NaN), sz = R.z, SW = R.W, SH = R.H;
+  let inside = 0;
+  for (let j = 0; j < H; j++) {
+    const b = Math.floor(j / LAT), v = j / LAT - b;
+    for (let i = 0; i < W; i++) {
+      const a = Math.floor(i / LAT), u = i / LAT - a, k = b * lw + a;
+      const c = (LX[k] * (1 - u) + LX[k + 1] * u) * (1 - v) + (LX[k + lw] * (1 - u) + LX[k + lw + 1] * u) * v;
+      const r = (LY[k] * (1 - u) + LY[k + 1] * u) * (1 - v) + (LY[k + lw] * (1 - u) + LY[k + lw + 1] * u) * v;
+      if (c < -0.5 || r < -0.5 || c > SW - 0.5 || r > SH - 0.5) continue;
+      const c0 = Math.max(0, Math.min(SW - 2, Math.floor(c))), r0 = Math.max(0, Math.min(SH - 2, Math.floor(r)));
+      const fu = Math.max(0, Math.min(1, c - c0)), fv = Math.max(0, Math.min(1, r - r0));
+      const q = r0 * SW + c0, z00 = sz[q], z01 = sz[q + 1], z10 = sz[q + SW], z11 = sz[q + SW + 1];
+      let val = (z00 * (1 - fu) + z01 * fu) * (1 - fv) + (z10 * (1 - fu) + z11 * fu) * fv;
+      if (val !== val) val = sz[Math.min(SH - 1, Math.round(r)) * SW + Math.min(SW - 1, Math.round(c))];   // NoData nearby: nearest cell
+      z[j * W + i] = val; inside++;
+    }
+  }
+  log(`${what}: file is MGA zone ${zs}, scenario is zone ${zd} – resampled ${R.W}×${R.H} → ${W}×${H} cells into zone ${zd} (${inside.toLocaleString()} cells with data, ${(performance.now() - t0).toFixed(0)} ms).`, 'warn');
+  return Object.assign({}, R, { W, H, z, ox, oy, epsg: epsgInZone(R.epsg, zd), reprojectedFrom: zs });
+}
+
+/* Fill NoData cells from their nearest valid neighbours, breadth-first: each
+   ring of holes takes the mean of its already-known 4-neighbours. Linear in the
+   cell count (the old 400-pass sweep took ~16 s on a coastal tile). Returns the
+   number of cells filled. */
+function fillHoles(z, w, h) {
+  const n = z.length, known = new Uint8Array(n), queue = new Int32Array(n);   // known: 0 hole, 1 value, 2 queued
+  let qt = 0, holes = 0;
+  for (let k = 0; k < n; k++) if (z[k] === z[k]) known[k] = 1; else holes++;
+  if (!holes || holes === n) return 0;
+  const push = k => { if (known[k] === 0) { known[k] = 2; queue[qt++] = k; } };
+  const around = (k, fn) => { const i = k % w; if (i > 0) fn(k - 1); if (i < w - 1) fn(k + 1); if (k >= w) fn(k - w); if (k < n - w) fn(k + w); };
+  for (let k = 0; k < n; k++) if (known[k] === 1) around(k, push);
+  let qh = 0;
+  while (qh < qt) {
+    const end = qt;
+    for (let q = qh; q < end; q++) {
+      const k = queue[q]; let s = 0, c = 0;
+      around(k, m => { if (known[m] === 1) { s += z[m]; c++; } });
+      z[k] = s / c;
+    }
+    for (let q = qh; q < end; q++) known[queue[q]] = 1;
+    for (let q = qh; q < end; q++) around(queue[q], push);
+    qh = end;
+  }
+  return holes;
+}
+
 function rasterPlacement(R, f) {
-  const geographic = R.modelType === 2 || (Math.abs(R.sx) < 0.01 && Math.abs(R.ox) <= 180 && Math.abs(R.oy) <= 90);
-  if (geographic) {
+  if (isGeographic(R)) {
     const lonC = R.ox + R.W * R.sx / 2, latC = R.oy - R.H * R.sy / 2;
     const z = zoneOf(lonC), c = ll2mga(latC, lonC, z);
     ensureOrigin(c[0], c[1], null, z, 'raster in degrees');
@@ -79,27 +156,15 @@ function installTerrain(R, fileName) {
     if (!isFinite(v) || (R.nodata != null && Math.abs(v - R.nodata) < 1e-6 * Math.max(1, Math.abs(R.nodata))) || v < -1e4 || v > 1e5) { z[i] = NaN; bad++; }
   }
   if (bad === z.length) throw new Error('all cells are NoData');
+  R = toScenarioZone(R, 'DEM');
   const f = Math.max(1, Math.ceil(Math.sqrt(R.W * R.H / MAX_DEM_CELLS)));
   const w = Math.ceil(R.W / f), h = Math.ceil(R.H / f), zz = new Float32Array(w * h);
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
     let s = 0, c = 0;
-    for (let b = 0; b < f; b++) { const y = j * f + b; if (y >= R.H) break; for (let a = 0; a < f; a++) { const x = i * f + a; if (x >= R.W) break; const v = z[y * R.W + x]; if (v === v) { s += v; c++; } } }
+    for (let b = 0; b < f; b++) { const y = j * f + b; if (y >= R.H) break; for (let a = 0; a < f; a++) { const x = i * f + a; if (x >= R.W) break; const v = R.z[y * R.W + x]; if (v === v) { s += v; c++; } } }
     zz[j * w + i] = c ? s / c : NaN;
   }
-  let holes = 0; for (let i = 0; i < zz.length; i++) if (zz[i] !== zz[i]) holes++;
-  const holes0 = holes;
-  for (let pass = 0; holes > 0 && pass < 400; pass++) {
-    const src = zz.slice(); holes = 0;
-    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-      const k = j * w + i; if (src[k] === src[k]) continue;
-      let s = 0, c = 0;
-      if (i > 0 && src[k - 1] === src[k - 1]) { s += src[k - 1]; c++; }
-      if (i < w - 1 && src[k + 1] === src[k + 1]) { s += src[k + 1]; c++; }
-      if (j > 0 && src[k - w] === src[k - w]) { s += src[k - w]; c++; }
-      if (j < h - 1 && src[k + w] === src[k + w]) { s += src[k + w]; c++; }
-      if (c) zz[k] = s / c; else holes++;
-    }
-  }
+  const holes0 = fillHoles(zz, w, h);
   let zmin = Infinity, zmax = -Infinity;
   for (let i = 0; i < zz.length; i++) { if (zz[i] !== zz[i]) zz[i] = 0; else { if (zz[i] < zmin) zmin = zz[i]; if (zz[i] > zmax) zmax = zz[i]; } }
 

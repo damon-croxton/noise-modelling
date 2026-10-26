@@ -95,6 +95,26 @@ async function inflate(bytes) {
   }
 }
 
+/* Resolve a GeoKeyDirectory (flat array of shorts, 4-short header included)
+   to { epsg, modelType, pixelIsPoint }. Keys are stored in numeric order, so
+   GeographicTypeGeoKey (2048) comes before ProjectedCSTypeGeoKey (3072). A
+   projected file may carry both; the projected code is the one that places it. */
+function crsFromGeoKeys(k) {
+  const out = { epsg: null, modelType: null, pixelIsPoint: false };
+  if (!k || k.length < 4) return out;
+  let proj = null, geog = null;
+  for (let i = 4; i + 3 < k.length; i += 4) {
+    if (k[i + 1] !== 0) continue;           // value held in another tag, not inline
+    const id = k[i], v = k[i + 3];
+    if (id === 1024) out.modelType = v;
+    else if (id === 1025) out.pixelIsPoint = v === 2;
+    else if (id === 2048) geog = v;
+    else if (id === 3072) proj = v;
+  }
+  const code = v => (v && v !== 32767 ? v : null);
+  out.epsg = out.modelType === 2 ? code(geog) : code(proj) || (out.modelType == null ? code(geog) : null);
+  return out;
+}
 function epsgFromText(cite, what) {
   if (!cite) return null;
   const zm = cite.match(/zone\s*_?(\d{2})/i) || cite.match(/MGA\s*_?(\d{2})/i), z = zm ? +zm[1] : null;
@@ -130,16 +150,7 @@ async function parseGeoTIFF(buf) {
     const m = t[34264]; sx = m[0]; sy = -m[5]; ox = m[3]; oy = m[7];
     if (Math.abs(m[1]) > 1e-9 || Math.abs(m[4]) > 1e-9) log('DEM has rotation terms – ignored.', 'warn');
   } else throw new Error('no georeferencing tags (not a GeoTIFF). Export with a .tfw-free GeoTIFF or use .asc');
-  let epsg = null, modelType = null, pixelIsPoint = false;
-  if (t[34735]) {
-    const k = t[34735];
-    for (let i = 4; i + 3 < k.length; i += 4) {
-      if (k[i] === 1024) modelType = k[i + 3];
-      if (k[i] === 3072 || k[i] === 2048) epsg = epsg || k[i + 3];
-      if (k[i] === 1025) pixelIsPoint = k[i + 3] === 2;
-    }
-  }
-  if (epsg === 32767 || epsg === 0) epsg = null;
+  let { epsg, modelType, pixelIsPoint } = crsFromGeoKeys(t[34735]);
   const cite = [t[34737], t[270]].filter(v => typeof v === 'string').map(v => v.replace(/\|/g, ' ').trim()).filter(Boolean).join(' · ');
   if (cite.trim()) log(`GeoTIFF CRS text: “${cite.replace(/\s+/g, ' ').slice(0, 160)}”`);
   if (!epsg) epsg = epsgFromText(cite, 'GeoTIFF');

@@ -20,15 +20,18 @@ async function loadLidar(file) {
     log(`LAS ${H.vMaj}.${H.vMin}, point format ${H.fmt}, ${H.count.toLocaleString()} points, ${fmtName}. Extent ${fmt(H.max[0] - H.min[0], 0)} × ${fmt(H.max[1] - H.min[1], 0)} m, Z ${fmt(H.min[2], 1)} – ${fmt(H.max[2], 1)}.`);
     if (!H.count) throw new Error('file contains no points');
     // CRS
-    let epsg = H.epsg && H.epsg !== 32767 ? H.epsg : null;
+    let epsg = crsFromGeoKeys(H.geoKeys).epsg || H.epsg || null;
     if (H.wkt) log(`LiDAR CRS text: “${H.wkt.replace(/\s+/g, ' ').slice(0, 140)}…”`);
     if (epsg && !zoneFromEpsg(epsg)) { log(`LiDAR EPSG ${epsg} is not GDA94/GDA2020 MGA – checking the description.`, 'warn'); epsg = null; }
     if (!epsg) epsg = epsgFromText(H.wkt, 'LiDAR');
     if (Math.abs(H.max[0]) <= 180 && Math.abs(H.max[1]) <= 90) throw new Error('LiDAR coordinates are in degrees – it must be in MGA (metres)');
     const o = ensureOrigin((H.min[0] + H.max[0]) / 2, (H.min[1] + H.max[1]) / 2, epsg, null, 'LiDAR');
     if (epsg && o.epsg && datumOf(epsg) && datumOf(o.epsg) && datumOf(epsg) !== datumOf(o.epsg)) log(`LiDAR is ${datumOf(epsg)} but the scenario is ${datumOf(o.epsg)} – positions differ by ~1.8 m.`, 'warn');
+    const srcZone = zoneFromEpsg(epsg) || o.zone;
+    if (srcZone !== o.zone) log(`LiDAR is MGA zone ${srcZone}, scenario is zone ${o.zone} – the derived grids will be resampled into zone ${o.zone}.`, 'warn');
     if (state.terrain) {
-      const T = state.terrain, lx0 = H.min[0] - o.x0, lx1 = H.max[0] - o.x0, ly0 = H.min[1] - o.y0, ly1 = H.max[1] - o.y0;
+      const c = [[H.min[0], H.min[1]], [H.max[0], H.max[1]], [H.min[0], H.max[1]], [H.max[0], H.min[1]]].map(p => srcZone === o.zone ? p : mgaZoneToZone(p[0], p[1], srcZone, o.zone));
+      const bbL = bboxOf(c), T = state.terrain, lx0 = bbL[0] - o.x0, lx1 = bbL[2] - o.x0, ly0 = bbL[1] - o.y0, ly1 = bbL[3] - o.y0;
       if (lx1 < T.x0 || lx0 > T.x0 + T.w * T.cx || ly1 < T.yTop - T.h * T.cy || ly0 > T.yTop) log('LiDAR does not overlap the loaded DEM – check you picked the matching tile.', 'warn');
     }
     // grid
@@ -79,7 +82,8 @@ async function loadLidar(file) {
       log('No DEM loaded – building terrain from LiDAR ground (class 2) points.');
       installTerrain({ W: gw, H: gh, z: g, ox: gx0, oy: gyTop, sx: cs, sy: cs, nodata: null, epsg }, file.name + ' (LiDAR ground)');
     }
-    state.dsm = { w: gw, h: gh, z: roof, x0: gx0 - o.x0, yTop: gyTop - o.y0, cx: cs, cy: cs, name: file.name, kind: 'lidar', cells: nRoof };
+    const RD = toScenarioZone({ W: gw, H: gh, z: roof, ox: gx0, oy: gyTop, sx: cs, sy: cs, epsg }, 'LiDAR roofs');
+    state.dsm = { w: RD.W, h: RD.H, z: RD.z, x0: RD.ox - o.x0, yTop: RD.oy - o.y0, cx: cs, cy: cs, name: file.name, kind: 'lidar', cells: nRoof };
     buildLazOverlay();
     $('lazInfo').innerHTML = `<b>${esc(file.name)}</b><br>${total.toLocaleString()} points · format ${H.fmt} · ${(nRoof * cs * cs / 1e4).toFixed(1)} ha of building roof at ${cs} m<br>${secs.toFixed(1)} s · CRS ${epsg ? 'EPSG ' + epsg : 'not recorded (assumed MGA 56)'}`;
     if (hist[6]) applyDsmHeights();

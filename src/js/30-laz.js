@@ -408,7 +408,7 @@ function lazFactory() {
     const wkt = H.vlrs.find(v => v.user === 'LASF_Projection' && v.rid === 2112);
     if (wkt) H.wkt = str(wkt.data, 0, wkt.data.length);
     const gk = H.vlrs.find(v => v.user === 'LASF_Projection' && v.rid === 34735);
-    if (gk) { const g = new DataView(gk.data.buffer, gk.data.byteOffset, gk.data.byteLength); for (let i = 4; (i + 3) * 2 + 2 <= gk.data.length; i += 4) { const k = g.getUint16(i * 2, true); if (k === 3072 || k === 2048) { H.epsg = g.getUint16(i * 2 + 6, true); break; } } }
+    if (gk) { const g = new DataView(gk.data.buffer, gk.data.byteOffset, gk.data.byteLength); H.geoKeys = []; for (let i = 0; i * 2 + 2 <= gk.data.length; i++) H.geoKeys.push(g.getUint16(i * 2, true)); }
     if (!H.epsg && H.wkt) { const m = H.wkt.match(/AUTHORITY\["EPSG",\s*"(\d+)"\]\s*\]\s*$/) || H.wkt.match(/ID\["EPSG",\s*(\d+)\]\s*\]\s*$/); if (m) H.epsg = +m[1]; }
     return H;
   }
