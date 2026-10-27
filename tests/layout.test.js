@@ -18,7 +18,8 @@ module.exports = [
       assert.deepStrictEqual(await page.$$eval('#rtabs button', b => b.map(x => x.textContent)), ['Results', 'Site', 'Method']);
       await page.click('[data-menu=mView]'); await pick(page, 'input[name=uiLayout][value=guided]');
       w = await where(page);
-      assert.ok(w.slice(0, 17).every(p => p === 'left') && !(await page.isVisible('#right')), 'guided: one panel');
+      assert.ok(w.slice(0, 17).every((p, i) => p === (i === 2 ? 'right' : 'left')), 'guided: steps on the left, Selected on the right: ' + w);
+      assert.ok(!(await page.isVisible('#right')), 'right panel closed while nothing is selected');
       assert.deepStrictEqual(await page.$$eval('#steps button', b => b.map(x => x.textContent)), ['1 Site', '2 Shifts', '3 Method', '4 Results', '5 Report']);
       assert.ok(await page.isVisible('#btnOsm'), 'step 1 shows the site card');
       await page.click('#stepNext'); assert.ok(await page.isVisible('#shName') && !(await page.isVisible('#btnOsm')), 'step 2: shifts');
@@ -26,6 +27,12 @@ module.exports = [
       assert.ok(await page.isVisible('#btnAssess'), 'step 4: results');
       await page.click('#stepBack'); assert.ok(await page.isVisible('#setMethod'), 'back to step 3');
       assert.ok(!(await page.isVisible('#selBody')), 'Selected card hidden while nothing is selected');
+      // selecting the plant opens it on the right, whichever step is showing; closing deselects
+      await page.evaluate(() => { const st = window.__noise.state; window.__noise._t.select('source', st.sources[0].id); });
+      assert.ok(await page.isVisible('#right') && await page.isVisible('#sName'), 'Selected panel open on the right');
+      assert.ok(await page.isVisible('#setMethod'), 'step 3 still showing on the left');
+      await page.click('#hideRight');
+      assert.ok(!(await page.isVisible('#right')) && await page.evaluate(() => !window.__noise.state.sel), 'closing the panel deselects');
       await page.evaluate(() => window.__noise._t && 0);
       await page.click('[data-menu=mView]'); await pick(page, 'input[name=uiLayout][value=single]');
       w = await where(page);

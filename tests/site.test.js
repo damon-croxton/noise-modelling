@@ -5,6 +5,14 @@
 
 const PNG1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/C/HgAGgwJ/lK3Q6wAAAABJRU5ErkJggg==', 'base64');
 const SITE = [-33.88901, 151.23702];
+/* A 1 px PNG of one colour (tiles that are easy to find in a picture). */
+function pngOf([r, g, b]) {
+  const zlib = require('zlib'), crcT = [...Array(256)].map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = buf => { let c = 0xffffffff; for (const x of buf) c = crcT[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => { const l = Buffer.alloc(4), c = Buffer.alloc(4), td = Buffer.concat([Buffer.from(type), data]); l.writeUInt32BE(data.length); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
+  const ihdr = Buffer.from([0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0]);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(Buffer.from([0, r, g, b]))), chunk('IEND', Buffer.alloc(0))]);
+}
 const OSM_XML = `<?xml version="1.0"?><osm version="0.6">
   <node id="1" lat="-33.8889" lon="151.2368"/><node id="2" lat="-33.8889" lon="151.2371"/><node id="3" lat="-33.8891" lon="151.2371"/><node id="4" lat="-33.8891" lon="151.2368"/>
   <way id="10"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/><tag k="building" v="apartments"/><tag k="building:levels" v="5"/></way></osm>`;
@@ -97,6 +105,42 @@ module.exports = [
       assert.ok(hosts.includes('api.openstreetmap.org') && !hosts.some(h => /overpass/.test(h)), hosts.join(','));
       assert.ok(!/Overpass/.test(await page.textContent('#log')));
       assert.ok((await page.getAttribute('#card-site li[data-step=osm]', 'class')).includes('done'));
+    }
+  },
+  {
+    name: 'report maps over the background map: drawn with the tiles and credited when the server allows it; plain map and a warning when it does not; none with the layer off',
+    async run({ page, assert }) {
+      let n = 0;
+      await page.route('https://maps.six.nsw.gov.au/**', r => { n++; return r.fulfill({ body: pngOf([200, 30, 30]), contentType: 'image/png',
+        headers: { 'access-control-allow-origin': '*' } }); });
+      await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v3', JSON.stringify({ auto: false, layout: 'workspace', start: 'map', layers: { osm: true } })));
+      await page.reload(); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
+      await page.fill('#siteLL', SITE.join(', ')); await page.click('#btnSite');
+      await page.evaluate(() => { const N = window.__noise, st = N.state; st.sources.push({ id: 'rp1', name: 'Saw', x: 0, y: 0, h: 1.5, lw: 110, shift: N._t.curShift().id });
+        st.buildings.push(N._t.makeBuilding([[30, 10], [45, 10], [45, 25], [30, 25]], 7, 'House', { tags: { building: 'house' } })); });
+      // share of the map that is not plain white (the background map covers it)
+      const covered = url => page.evaluate(u => new Promise(ok => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+        const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data; let k = 0; for (let i = 0; i < d.length; i += 4) if (d[i] < 250 || d[i + 1] < 250 || d[i + 2] < 250) k++; ok(k / (d.length / 4)); }; im.src = u; }), url);
+      let m = await page.evaluate(() => window.__noise._t.reportMaps());
+      assert.strictEqual(m.bg, 'nswbase', 'NSW base map used from disk');
+      assert.ok(n > 0 && n <= 120, n + ' tile requests');
+      assert.ok(await covered(m.works) > 0.9 && await covered(m.impact) > 0.9, 'background under both maps');
+      await page.evaluate(() => window.__noise.runAssessment());
+      const html = await page.evaluate(m => window.__noise.buildReport(m), m);
+      assert.ok(html.includes('Background map (report maps)') && html.includes('Spatial Services NSW (CC BY 4.0)'), 'credited in Appendix C');
+      assert.ok(/NSW base map \(Spatial Services\) background, zoom \d+/.test(await page.textContent('#log')));
+      // a server that doesn't allow it taints the canvas, so it can't be saved. (Playwright's route.fulfill adds the CORS header
+      // itself, so the refusal is simulated where the browser reports it: the first map's toDataURL throws.)
+      m = await page.evaluate(async () => { const P = HTMLCanvasElement.prototype, o = P.toDataURL; let k = 0;
+        P.toDataURL = function (...a) { if (k++ === 0) throw new DOMException('Tainted canvases may not be exported.', 'SecurityError'); return o.apply(this, a); };
+        try { return await window.__noise._t.reportMaps(); } finally { P.toDataURL = o; } });
+      assert.ok(await covered(m.works) < 0.5, 'works map drawn plain');
+      assert.ok(await covered(m.impact) > 0.9, 'impact map keeps its background');
+      assert.ok(/NSW base map \(Spatial Services\) could not be included/.test(await page.textContent('#log')));
+      // layer off: no tiles asked for
+      await page.uncheck('#lyOsm'); n = 0;
+      m = await page.evaluate(() => window.__noise._t.reportMaps());
+      assert.strictEqual(m.bg, null); assert.strictEqual(n, 0);
     }
   },
   {

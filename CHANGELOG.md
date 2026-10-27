@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.14.0 – Selected panel, report background map, build versus buy
+
+### Changed
+- **Guided layout: the selected item opens in a panel on the right.** It used to sit at the top of every step. The panel shows only while something is selected, and the step you are on stays open on the left. Closing the panel (›) deselects.
+- **The report maps include the background map.** This is the one chosen under *View*: the NSW base map, NSW aerial imagery, or OpenStreetMap in the online copy.
+  - It is drawn faded under the buildings and plant, and credited on the map and in Appendix C.
+  - The tiles are loaded with CORS so the map can be saved into the report. If the tile server doesn't allow that, or there is no real location (samples), or the layer is off, the map is drawn plain and the log says why.
+  - Creating a report now waits up to 10 s for the tiles.
+
+### Docs
+- **`docs/BUILD_VS_BUY.md`:** compares the built tool with general-purpose packages and with OOHW platforms, lists the built tool's caveats, and gives the recommendation. The recommendation is to keep building for screening and OOHW planning and to rely on consultants' tools for compliance work, on three conditions: calibrate against one real project, get an independent technical review, and name an owner.
+- `GAP_REGISTER.md` and the README point to it.
+
+### Tests
+- Layout: in the guided layout the Selected panel is on the right, closed while nothing is selected, opened by selecting, and closing it deselects.
+- Site: the report maps are drawn over stubbed NSW tiles and credited in Appendix C. When the browser refuses to export the map (simulated, because Playwright's stubbed responses always allow CORS), the map is drawn plain with a warning. With the layer off, no tiles are requested.
+- 110 tests pass, also with the CPU slowed 3×.
+
 ## 0.13.0 – Map-first start and performance
 
 ### Changed

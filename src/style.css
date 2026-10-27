@@ -74,7 +74,8 @@
   #bottom .card > h2 { display: none; }
   .app-focus #left, .app-focus #right, .app-focus #bottom, .app-focus #topbar #tools { display: none; }
   .noleft #left { display: none; } .noright #right { display: none; } .nobottom #bottom { display: none; }
-  .layout-guided #right, .layout-single #right { display: none; }
+  .layout-single #right, .sel-closed #right { display: none; }
+  .layout-guided #right { width: 340px; }
   .layout-guided #left, .layout-single #left { width: 380px; }
 
   /* ---- cards ---- */

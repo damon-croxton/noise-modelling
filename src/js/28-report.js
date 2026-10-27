@@ -6,26 +6,68 @@
    the rules applied and the data sources. */
 const REPORT_DISCLAIMER = 'Screening and planning aid only. This report was produced by a screening tool. It does not replace an assessment by a qualified acoustic consultant and is not a validated compliance model. Plant levels and assessment defaults come from Transport for NSW documents – verify them against the current client strategy, project approval and EPL conditions.';
 
-/* Map for the report on its own canvas: 'works' (plant locations) or
-   'impact' (buildings by worst category). Returns a PNG data URL. */
-function reportMap(kind, W, H) {
-  const R = state.assess.results, srcs = state.sources, pts = srcs.map(s => [s.x, s.y]);
+/* Extent of a report map: 'works' (plant locations, with surroundings) or
+   'impact' (the affected buildings). */
+function reportFrame(kind, W, H) {
+  const R = state.assess.results, pts = state.sources.map(s => [s.x, s.y]);
   if (kind === 'impact' && R) for (const b of state.buildings) { const bb = R.byBuilding.get(b.id); if (bb && bb.maxLeq != null && bb.worst !== 'Below NML' && bb.worst !== 'Not assessed') pts.push([b.bbox[0], b.bbox[1]], [b.bbox[2], b.bbox[3]]); }
   if (!pts.length) state.buildings.forEach(b => pts.push([b.bbox[0], b.bbox[1]], [b.bbox[2], b.bbox[3]]));
   if (!pts.length) pts.push([0, 0]);
   const bb = bboxOf(pts), span = Math.max(bb[2] - bb[0], bb[3] - bb[1], 60), pad = kind === 'works' ? Math.max(60, span * 0.5) : Math.max(25, span * 0.08);
-  const cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, sc = Math.min(W / (bb[2] - bb[0] + 2 * pad), H / (bb[3] - bb[1] + 2 * pad));
+  return { kind, W, H, cx: (bb[0] + bb[2]) / 2, cy: (bb[1] + bb[3]) / 2, sc: Math.min(W / (bb[2] - bb[0] + 2 * pad), H / (bb[3] - bb[1] + 2 * pad)) };
+}
+/* Background-map tiles for a report map, loaded with CORS so the finished
+   canvas can still be saved as an image. null when there is no background
+   (no real location, layer off, or OSM from disk). Waits up to 10 s. */
+async function reportTiles(fr) {
+  if (!basemapOn()) return null;
+  const bm = basemapKey(), B = BASEMAPS[bm];
+  if (B.needsHttp && fromDisk()) return null;
+  const lat = local2ll(fr.cx, fr.cy)[0];
+  let z = Math.max(2, Math.min(B.maxZ, Math.round(Math.log2(156543.034 * Math.cos(lat * Math.PI / 180) * fr.sc * 1.2))));
+  const corners = [[0, 0], [fr.W, 0], [0, fr.H], [fr.W, fr.H]].map(([px, py]) => local2ll(fr.cx + (px - fr.W / 2) / fr.sc, fr.cy - (py - fr.H / 2) / fr.sc));
+  let x0, x1, y0, y1;
+  for (;;) {
+    x0 = Math.floor(Math.min(...corners.map(p => lon2tx(p[1], z)))); x1 = Math.floor(Math.max(...corners.map(p => lon2tx(p[1], z))));
+    y0 = Math.floor(Math.min(...corners.map(p => lat2ty(p[0], z)))); y1 = Math.floor(Math.max(...corners.map(p => lat2ty(p[0], z))));
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) <= 60 || z <= 2) break;
+    z--;
+  }
+  const tiles = [];
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    const p = new Promise(ok => { img.onload = () => ok(true); img.onerror = () => ok(false); });
+    img.src = B.url(z, tx, ty); tiles.push({ tx, ty, img, p });
+  }
+  await Promise.race([Promise.all(tiles.map(t => t.p)), new Promise(ok => setTimeout(ok, 10000))]);
+  const ok = tiles.filter(t => t.img.complete && t.img.naturalWidth > 0);
+  return ok.length ? { bm, z, tiles: ok, missing: tiles.length - ok.length } : null;
+}
+/* Map for the report on its own canvas, optionally over the background map.
+   Returns a PNG data URL. */
+function reportMap(kind, W, H, bg) {
+  const R = state.assess.results, srcs = state.sources, fr = reportFrame(kind, W, H), { cx, cy, sc } = fr;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const g = cv.getContext('2d'), tf = (x, y) => [(x - cx) * sc + W / 2, H / 2 - (y - cy) * sc];
   const path = (P, close) => { g.beginPath(); P.forEach((p, i) => { const [x, y] = tf(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); if (close) g.closePath(); };
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  if (bg) {
+    const B = BASEMAPS[bg.bm], scr = (tx, ty) => { const l = ll2local(ty2lat(ty, bg.z), tx2lon(tx, bg.z)); return tf(l[0], l[1]); };
+    g.save(); g.globalAlpha = B.grey ? 0.7 : 0.85; g.filter = B.grey ? 'grayscale(0.6)' : 'none';
+    for (const t of bg.tiles) {
+      const a = scr(t.tx, t.ty), b = scr(t.tx + 1, t.ty), d = scr(t.tx, t.ty + 1);
+      g.setTransform((b[0] - a[0]) / 256, (b[1] - a[1]) / 256, (d[0] - a[0]) / 256, (d[1] - a[1]) / 256, a[0], a[1]);
+      g.drawImage(t.img, 0, 0, 257, 257);
+    }
+    g.restore();
+  }
   for (const n of state.ncas) { path(n.pts, true); g.fillStyle = 'rgba(13,148,136,0.05)'; g.fill(); g.setLineDash([10, 5]); g.lineWidth = 2; g.strokeStyle = '#0f766e'; g.stroke(); g.setLineDash([]); }
   const cats = new Set();
   for (const b of state.buildings) {
     path(b.pts, true);
     const r = kind === 'impact' && R ? R.byBuilding.get(b.id) : null;
     if (r && r.worst !== 'Not assessed') cats.add(r.worst);
-    g.fillStyle = r && r.worst !== 'Not assessed' ? categoryColor(r.worst) : '#e5e7eb'; g.fill();
+    g.fillStyle = r && r.worst !== 'Not assessed' ? categoryColor(r.worst) : bg ? 'rgba(229,231,235,0.85)' : '#e5e7eb'; g.fill();
     g.lineWidth = 1; g.strokeStyle = '#4b5563'; g.stroke();
   }
   for (const ho of state.hoardings) { path(ho.pts, false); g.lineWidth = 4; g.strokeStyle = '#111827'; g.stroke(); path(ho.pts, false); g.lineWidth = 2; g.strokeStyle = '#facc15'; g.setLineDash([6, 5]); g.stroke(); g.setLineDash([]); }
@@ -56,8 +98,13 @@ function reportMap(kind, W, H) {
   g.fillStyle = 'rgba(255,255,255,0.92)'; g.fillRect(10, H - 38, px + 20, 28);
   g.fillStyle = '#111827'; g.fillRect(20, H - 18, px, 4); g.font = '12px Segoe UI, Arial, sans-serif'; g.textAlign = 'left'; g.fillText(`${step} m`, 20, H - 28);
   g.textAlign = 'center'; g.font = '600 14px Segoe UI, Arial, sans-serif'; g.fillText('N ↑', W - 28, 26);
-  if (state.buildings.some(b => b.osmId)) { g.font = '11px Segoe UI, Arial, sans-serif'; g.textAlign = 'right'; g.fillStyle = '#374151'; g.fillText('Buildings © OpenStreetMap contributors (ODbL)', W - 10, H - 10); }
-  return cv.toDataURL('image/png');
+  const credit = [bg ? BASEMAPS[bg.bm].attrib.replace(/<[^>]+>/g, '') : '', state.buildings.some(b => b.osmId) ? 'Buildings © OpenStreetMap contributors (ODbL)' : ''].filter(Boolean).join(' · ');
+  if (credit) {
+    g.font = '11px Segoe UI, Arial, sans-serif'; g.textAlign = 'right'; g.textBaseline = 'alphabetic';
+    const w = g.measureText(credit).width; g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(W - w - 16, H - 22, w + 12, 18);
+    g.fillStyle = '#374151'; g.fillText(credit, W - 10, H - 9);
+  }
+  return cv.toDataURL('image/png');   // throws if a tile without CORS tainted the canvas – see reportMaps()
 }
 
 function reportCss() {
@@ -75,8 +122,26 @@ footer{max-width:1000px;margin:0 auto 24px;padding:6px 28px;font-size:10px;color
 const td = (v, n) => `<td${n ? ' class="n"' : ''}>${esc(v == null || v === '' ? '–' : String(v))}</td>`;
 const catCell = l => `<td><span class="chip" style="background:${categoryColor(l)}"></span>${esc(l)}</td>`;
 
-/* Builds the report HTML for the current shift and its results. */
-function buildReport() {
+/* Both report maps, over the background map where it can be used. */
+async function reportMaps() {
+  const out = { bg: null };
+  for (const [kind, W, H] of [['works', 1100, 650], ['impact', 1100, 700]]) {
+    let bg = null;
+    try { bg = await reportTiles(reportFrame(kind, W, H)); } catch (e) { bg = null; }
+    try { out[kind] = reportMap(kind, W, H, bg); if (bg) { out.bg = bg.bm; log(`Report ${kind} map: ${BASEMAPS[bg.bm].label} background, zoom ${bg.z}, ${bg.tiles.length} tile(s)${bg.missing ? `, ${bg.missing} missing` : ''}.`); } }
+    catch (e) {   // the tile server sent no CORS header: the canvas can't be saved with it
+      if (!bg) throw e;
+      out[kind] = reportMap(kind, W, H, null);
+      log(`Report map: the ${BASEMAPS[bg.bm].label} could not be included (the tile server doesn't allow it) – map drawn without it.`, 'warn');
+    }
+  }
+  if (!out.bg && basemapOn() && BASEMAPS[basemapKey()].needsHttp && fromDisk()) log('Report maps are drawn without the OpenStreetMap background, which only works in the online copy. Choose an NSW background (View) to include one from disk.', 'warn');
+  return out;
+}
+/* Builds the report HTML for the current shift and its results. maps: from reportMaps()
+   (with background); without it the maps are drawn plain. */
+function buildReport(maps) {
+  maps = maps || { works: reportMap('works', 1100, 650), impact: reportMap('impact', 1100, 700), bg: null };
   const R = state.assess.results, S = state.settings, sh = curShift(), now = new Date(), iso = S.method === 'iso';
   const byB = new Map(state.buildings.map(b => [b.id, b])), rows = propertyRows(), above = rows.filter(r => r.exc != null && r.exc > 0).sort((a, b) => b.exc - a.exc || a.id.localeCompare(b.id));
   const cats = categoryList(R.period), active = activeSources(), period = PERIODS[R.period];
@@ -140,7 +205,7 @@ function buildReport() {
 ${state.ncas.concat([Object.assign({ name: state.assess.defNca.name + ' (default)' }, state.assess.defNca)]).map(n => `<tr>${td(n.name)}${td((RULES.noiseAreaCategories[n.cat] || {}).label || n.cat)}${td(['day', 'evening', 'night'].map(k => n.rbl[k] ?? '–').join(' / '))}${td(nmlFor('residential', n, R.period).nml, 1)}</tr>`).join('')}</table>
 
 <h2>3. Works description</h2>
-<img class="map" alt="Plant locations" src="${reportMap('works', 1100, 650)}">
+<img class="map" alt="Plant locations" src="${maps.works}">
 <table><tr><th>#</th><th>Activity / plant</th><th>% time operating in 15 min</th><th>Equipment</th><th>Sound power dB(A)</th><th>Annoyance penalty dB</th><th>Mitigation reduction dB</th><th>Effective Lw dB(A)</th><th>Height m</th><th>Notes</th></tr>
 ${state.sources.map((s, i) => `<tr>${td(i + 1, 1)}${td(s.name)}${td(s.on, 1)}${td(libItem(s.eq).name)}${td(fmt(s.lw, 1), 1)}${td(s.pen || 0, 1)}${td(fmt(s.mit || 0, 1), 1)}${td(fmt(effectiveLw(s), 1), 1)}${td(fmt(s.h, 1), 1)}${td([s.notes, active.includes(s) ? '' : 'not in the realistic worst case', overMax(s) != null ? `above the CNVG-PTI maximum of ${overMax(s)} dB(A)` : ''].filter(Boolean).join('; '))}</tr>`).join('')}
 </table>
@@ -154,7 +219,7 @@ ${[...sum].map(([lu, v]) => `<tr>${td(landUseLabel(lu))}${v.map(n => td(n || '',
 <p class="stmt">${esc(stmt)}</p>
 ${sleep.length ? `<p>Sleep disturbance screening (indicative, L<sub>Amax</sub> ≈ L<sub>Aeq</sub> + ${RULES.sleep.lmaxOffset} dB): ${sleep.filter(r => r.sleep.overScreen).length} building-floor(s) above the screening level, ${sleep.filter(r => r.sleep.awakening).length} at or above ${RULES.sleep.awakening} dBA.</p>` : ''}
 <h3>Impacted properties</h3>
-<img class="map" alt="Impacted properties" src="${reportMap('impact', 1100, 700)}">
+<img class="map" alt="Impacted properties" src="${maps.impact}">
 <h3>Receivers above the noise management level</h3>
 ${above.length ? `<table><tr><th>Receiver</th><th>Address and floor</th><th>NCA</th><th>NML</th><th>Predicted L<sub>Aeq</sub></th><th>Exceed.</th><th>Category</th><th>Measures</th><th>Land use</th><th>Notes</th></tr>
 ${above.map(r => { const b = byB.get(r.bId), notes = [r.highly ? 'highly noise affected' : '', r.sleep && r.sleep.awakening ? 'LAmax at awakening level' : r.sleep && r.sleep.overScreen ? 'above sleep screening' : '', luOf(b || {}).assumed ? 'land use assumed' : '', b && isEstimated(b) ? 'height estimated' : ''].filter(Boolean);
@@ -180,6 +245,7 @@ ${appB.map(b => ({ b, x: R.byBuilding.get(b.id) })).sort((p, q) => ((q.x && q.x.
 ${state.provenance.map(p => `<tr>${td(p.kind)}${td(p.name)}${td(p.detail)}${td(p.fileDate ? p.fileDate.slice(0, 10) : '–')}${td(p.loaded ? p.loaded.slice(0, 16).replace('T', ' ') : '–')}</tr>`).join('') || '<tr><td colspan="5">No external data loaded: buildings, NCAs and terrain were drawn or entered in the tool.</td></tr>'}
 <tr>${td('Plant sound power')}${td('Equipment library')}${td(state.libraryEdited ? 'Project library (edited or imported)' : 'CNVG-PTI v4.6 Appendix C Table 19 and the TfNSW Construction Noise Estimator plant list (Transport for NSW, non-commercial use with acknowledgement)')}${td('–')}${td('–')}</tr>
 <tr>${td('Assessment rules')}${td(RULES.name)}${td(RULES.id)}${td('–')}${td('–')}</tr>
+${maps.bg ? `<tr>${td('Background map (report maps)')}${td(BASEMAPS[maps.bg].label)}${td(BASEMAPS[maps.bg].attrib.replace(/<[^>]+>/g, '') + ' – for orientation only; not used in the calculation')}${td('–')}${td(now.toISOString().slice(0, 16).replace('T', ' '))}</tr>` : ''}
 </table>
 ${state.buildings.some(b => b.osmId) ? '<p class="muted">Building footprints © OpenStreetMap contributors, available under the Open Database Licence (ODbL).</p>' : ''}
 </main>
@@ -193,7 +259,9 @@ async function exportReport() {
   if (!R || assessStale()) { log(R ? 'Results are out of date – running the assessment for the report…' : 'Running the assessment for the report…'); R = await runAssessment(); if (!R) return null; }
   const addrs = state.buildings.filter(b => addressOf(b)).length;
   if (!window.confirm(`The report lists the affected properties${addrs ? ` and can include ${addrs} address(es)` : ''}. Keep it on this computer or approved project storage, and share it only through approved channels.\n\nCreate the report?`)) { log('Report cancelled.'); return null; }
-  const t0 = performance.now(), html = buildReport(), sh = curShift();
+  const t0 = performance.now(), sh = curShift();
+  $('busy').textContent = 'Preparing the report maps…';
+  const html = buildReport(await reportMaps());
   const slug = sh.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'shift';
   download(`noise_report_${slug}_${new Date().toISOString().slice(0, 10)}.html`, html, 'text/html');
   log(`Report created for “${sh.name}” (${(html.length / 1024).toFixed(0)} KB, ${(performance.now() - t0).toFixed(0)} ms). Open the file in Edge and use Print → Save as PDF. Contains addresses – keep it on approved storage.`, 'warn');

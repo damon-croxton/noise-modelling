@@ -30,7 +30,7 @@ A typical OOHW assessment:
 **Screen:**
 - *View* switches between three layouts, all remembered in your browser:
   - **Workspace:** shifts and plant on the left, results, site and method in tabs on the right, data sources and log at the bottom;
-  - **Guided:** numbered steps;
+  - **Guided:** numbered steps, with the selected item in a panel on the right;
   - **Single column**.
 - *View* also sets the colours (light, dark, high contrast) and the map layers, including the background map (OpenStreetMap, NSW base map or NSW aerial imagery).
 - *File → On start-up show* picks what opens first: the map only (default), an example, the small demo or an empty project.
@@ -53,7 +53,7 @@ The report and CSV list properties and may contain addresses. Keep them on appro
 
 ## Status
 
-Version 0.13.0 opens on the map only, with Clear sample as step 1, and does a performance pass for slow laptops. Version 0.12.0 published the app on GitHub Pages and adds NSW base-map and aerial-imagery backgrounds. Version 0.11.0 made the site set-up a numbered procedure, fetches footprints from the OSM API only (Overpass removed), opens on the rail-corridor example in the guided layout, and adds an OSM street-map underlay. Version 0.10.0 was a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
+Version 0.14.0 moves the selected item into a right-hand panel in the guided layout, draws the report maps over the background map, and adds the build-versus-buy comparison ([`docs/BUILD_VS_BUY.md`](docs/BUILD_VS_BUY.md)). Version 0.13.0 opens on the map only, with Clear sample as step 1, and does a performance pass for slow laptops. Version 0.12.0 published the app on GitHub Pages and adds NSW base-map and aerial-imagery backgrounds. Version 0.11.0 made the site set-up a numbered procedure, fetches footprints from the OSM API only (Overpass removed), opens on the rail-corridor example in the guided layout, and adds an OSM street-map underlay. Version 0.10.0 was a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
 - shifts within one project, with batch run and comparison;
 - respite tracking against the CNVG-PTI respite-period rule;
 - a printable report with maps, the disclaimer, data sources and height sources.
@@ -63,7 +63,7 @@ Earlier stages:
 - **Stage 2:** exact reconciliation with the TfNSW Construction Noise Estimator, a comparison of its measures with the CNVG-PTI guideline, and a calibration import.
 - **Stage 3:** side diffraction, façade reflections and an octave-band option.
 
-Results and limits are in [`docs/CALIBRATION.md`](docs/CALIBRATION.md). Next is the build-versus-buy recommendation, then the Stage 5 extras (vibration buffers, below-ground sources, 3D review). See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
+Results and limits are in [`docs/CALIBRATION.md`](docs/CALIBRATION.md). The build-versus-buy recommendation and the tool's caveats are in [`docs/BUILD_VS_BUY.md`](docs/BUILD_VS_BUY.md). Next are the Stage 5 extras (vibration buffers, below-ground sources, 3D review). See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
 
 ## Development
 

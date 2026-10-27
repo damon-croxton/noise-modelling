@@ -1,6 +1,6 @@
 # Gap register
 
-This register lists what the tool can't yet do, measured against TfNSW CNVG-PTI (EMF-NV-GD-0060 v4.6) and against commercial out-of-hours-work (OOHW) assessment platforms. For each gap it records what closing it would take. It is updated at every stage. The build-versus-buy recommendation is due now that Stages 1–4 are done; it is the next documentation item.
+This register lists what the tool can't yet do, measured against TfNSW CNVG-PTI (EMF-NV-GD-0060 v4.6) and against commercial out-of-hours-work (OOHW) assessment platforms. For each gap it records what closing it would take. It is updated at every stage. The build-versus-buy comparison, the tool's caveats and the recommendation are in `docs/BUILD_VS_BUY.md` (v0.14.0). In short: keep building for screening and OOHW planning, and rely on consultants' tools for compliance work.
 
 Status: **open**, **interim** (partly handled, with a stated limit) or **closed**. Calibration results: `docs/CALIBRATION.md`.
 
@@ -37,7 +37,7 @@ Status: **open**, **interim** (partly handled, with a stated limit) or **closed*
 | Gap | Status | Limit / what it takes |
 |---|---|---|
 | Impact map, summary and property table | closed | Since v0.6.0: buildings by worst category, land use × category counts, sortable and filterable property list with CSV. |
-| Printable report | closed | One HTML file per shift, printed to PDF from Edge, in the generic section order (introduction, method, works, results, appendices). It includes the disclaimer, data sources with dates, and height source per building. Above 300 buildings, Appendix A lists only buildings with a floor above NML (the CSV has every building-floor). The layout is generic, not a copy of any commercial template. It doesn't yet match a specific client template; that needs the template, and the content would then be mapped onto it. |
+| Printable report | closed | One HTML file per shift, with maps over the background map where the tile server allows it (v0.14.0), printed to PDF from Edge, in the generic section order (introduction, method, works, results, appendices). It includes the disclaimer, data sources with dates, and height source per building. Above 300 buildings, Appendix A lists only buildings with a floor above NML (the CSV has every building-floor). The layout is generic, not a copy of any commercial template. It doesn't yet match a specific client template; that needs the template, and the content would then be mapped onto it. |
 | Shift scenarios | closed | Save, duplicate, compare and batch-run shifts within one project file. Shifts share buildings, NCAs and model settings; a shift with different model settings (e.g. ISO vs TfNSW) needs its own file. |
 | Respite tracking | interim | Counts per receiver across shifts and planned dates, and the CNVG-PTI Table 8 RP check (consecutive evenings / nights and minimum breaks). Limits: the check runs per receiver, not per NCA; "in any one week" is covered by the run and break limits, not by calendar weeks; dates are entered by hand (no import from a works programme). Respite offers (RO) and alternative accommodation (AA) are listed as measures but not scheduled. |
 | Works programme import | open | Dates are typed per shift. Importing a programme (CSV of activity, date, period) would remove that step. |

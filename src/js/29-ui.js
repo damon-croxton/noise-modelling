@@ -21,7 +21,8 @@ const LAYOUTS = {
       '4 Results': ['card-results', 'card-mapdisplay', 'card-calibration'],
       '5 Report': ['card-report', 'card-about']
     },
-    pinned: 'card-selection'
+    // the selected item opens in a right-hand panel, shown only while something is selected
+    right: { Selected: ['card-selection'] }, rightOnSelect: true
   },
   single: {
     label: 'Single column',
@@ -72,9 +73,7 @@ function applyLayout() {
   if (Lo.steps) {
     const names = Object.keys(Lo.steps);
     UI.step = Math.min(Math.max(0, UI.step | 0), names.length - 1);
-    const pin = card(Lo.pinned);
     buildTabs($('steps'), $('slotLeft'), Lo.steps, names[UI.step], name => { UI.step = names.indexOf(name); savePrefs(); updateStepNav(); });
-    $('slotLeft').prepend(pin);
     updateStepNav();
   }
   if (Lo.right) buildTabs($('rtabs'), $('slotRight'), Lo.right, UI.rtab, name => { UI.rtab = name; savePrefs(); });
@@ -89,16 +88,19 @@ function updateStepNav() {
 function gotoStep(i) { const b = $('steps').querySelectorAll('button')[i]; if (b) b.click(); }
 $('stepBack').addEventListener('click', () => gotoStep(UI.step - 1));
 $('stepNext').addEventListener('click', () => gotoStep(UI.step + 1));
-/* In the guided layout the Selected card shows above the step only while something is selected. */
-function syncPinnedSelection() { card('card-selection').hidden = UI.layout === 'guided' && !state.sel; }
+/* Guided layout: the right-hand Selected panel is open only while something is selected. */
+function syncPinnedSelection() {
+  const Lo = LAYOUTS[UI.layout] || LAYOUTS.workspace;
+  appEl.classList.toggle('sel-closed', !!Lo.rightOnSelect && !state.sel);
+}
 
 /* panels, theme, density, help, focus */
 function applyPanels() {
   const Lo = LAYOUTS[UI.layout] || LAYOUTS.workspace;
-  appEl.classList.toggle('noleft', !UI.left); appEl.classList.toggle('noright', !UI.right || !Lo.right);
+  appEl.classList.toggle('noleft', !UI.left); appEl.classList.toggle('noright', !Lo.right || (!Lo.rightOnSelect && !UI.right));
   $('bottom').classList.toggle('closed', !UI.bottom); $('toggleBottom').textContent = UI.bottom ? '▾' : '▴';
   appEl.classList.toggle('app-focus', UI.focus); $('btnFocus').classList.toggle('on', UI.focus);
-  $('showLeft').hidden = UI.left || UI.focus; $('showRight').hidden = UI.right || UI.focus || !Lo.right;
+  $('showLeft').hidden = UI.left || UI.focus; $('showRight').hidden = UI.right || UI.focus || !Lo.right || !!Lo.rightOnSelect;
   appEl.classList.toggle('nohelp', !UI.help);
   const root = document.documentElement;
   root.classList.remove('theme-light', 'theme-dark', 'theme-contrast'); root.classList.add('theme-' + UI.theme);
@@ -125,7 +127,10 @@ $('uiLeft').addEventListener('change', e => { UI.left = e.target.checked; savePr
 $('uiRight').addEventListener('change', e => { UI.right = e.target.checked; savePrefs(); applyPanels(); });
 $('uiBottom').addEventListener('change', e => toggleBottom(e.target.checked));
 $('hideLeft').addEventListener('click', () => { UI.left = false; savePrefs(); applyPanels(); });
-$('hideRight').addEventListener('click', () => { UI.right = false; savePrefs(); applyPanels(); });
+$('hideRight').addEventListener('click', () => {
+  if ((LAYOUTS[UI.layout] || {}).rightOnSelect) { select(null); return; }   // guided: closing the Selected panel deselects
+  UI.right = false; savePrefs(); applyPanels();
+});
 $('showLeft').addEventListener('click', () => { UI.left = true; savePrefs(); applyPanels(); });
 $('showRight').addEventListener('click', () => { UI.right = true; savePrefs(); applyPanels(); });
 $('toggleBottom').addEventListener('click', () => toggleBottom());
@@ -309,7 +314,6 @@ function revealEl(target) {
   const pane = el.closest('.pane');
   if (pane && pane.hidden) { const slot = pane.parentElement, i = [...slot.children].filter(c => c.classList.contains('pane')).indexOf(pane), tabs = slot.previousElementSibling && slot.previousElementSibling.classList.contains('paneltabs') ? slot.previousElementSibling : slot.parentElement.querySelector('.paneltabs'); const b = tabs && tabs.querySelectorAll('button')[i]; if (b) b.click(); }
   const c = el.closest('.card'); if (c && c.classList.contains('collapsed') && el !== c.firstElementChild) c.classList.remove('collapsed');
-  if (c && c.hidden && c.id === 'card-selection') c.hidden = false;
   const panel = el.closest('#left, #right, #bottom');
   if (panel && (UI.focus || (panel.id === 'left' && !UI.left) || (panel.id === 'right' && !UI.right) || (panel.id === 'bottom' && !UI.bottom))) {
     UI.focus = false; if (panel.id === 'left') UI.left = true; if (panel.id === 'right') UI.right = true; if (panel.id === 'bottom') UI.bottom = true; applyPanels();
