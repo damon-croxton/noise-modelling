@@ -139,7 +139,6 @@ function importOsm(data, t0, from) {
   }
   geomChanged();
   if (state.dsm) applyDsmHeights(true);
-  $('attrib').hidden = !state.buildings.some(b => b.osmId);
   const ms = performance.now() - (t0 || performance.now());
   if (cnt.added || cnt.replaced) noteSource('Buildings (OpenStreetMap, ODbL)', from ? from.name : 'Fetched from ' + (data.generator || 'OSM'), `${cnt.added} building(s) added; heights: ${cnt['osm-height']} tagged, ${cnt['osm-levels']} from levels, ${cnt['type-default']} type estimates`, from && from.file);
   log(`OSM: ${els.length} elements → ${cnt.added} buildings added${cnt.replaced ? ` (${cnt.replaced} replaced)` : ''}${cnt.dup ? `, ${cnt.dup} already loaded` : ''}${cnt.skipped ? `, ${cnt.skipped} roofs/carports/etc skipped` : ''}. Heights: ${cnt['osm-height']} tagged, ${cnt['osm-levels']} from levels, ${cnt['type-default']} estimated by type. ${ms.toFixed(0)} ms.`, cnt.added ? 'pass' : 'warn');

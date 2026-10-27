@@ -185,7 +185,6 @@ function newProject(keepOrigin) {
   state.provenance = []; state.project = { name: '', by: '' }; state.assess.results = null; state.example = null;
   resetShifts('Shift 1'); geomChanged(); select(null); setMode('select');
   updateDemInfo(); renderCalPanel(); syncAssessUI(); syncSettingsUI(); renderShiftPanel(true); updateSiteInfo();
-  $('attrib').hidden = true;
 }
 /* What the app shows when it opens (File menu). */
 function startScene() {
@@ -194,6 +193,9 @@ function startScene() {
   else loadDemo();
 }
 $('uiStart').value = UI.start;
+$('uiBasemap').value = UI.basemap;
+$('uiBasemap').addEventListener('change', e => { UI.basemap = e.target.value; UI.layers.osm = true; savePrefs(); applyPanels(); log(`Background map: ${BASEMAPS[basemapKey()].label}${UI.basemap === 'auto' ? ' (automatic)' : ''}.`); });
+$('uiBasemap').addEventListener('click', e => e.stopPropagation());
 $('uiStart').addEventListener('change', e => { UI.start = e.target.value; savePrefs(); log(`On start-up: ${e.target.options[e.target.selectedIndex].text}.`); });
 $('uiStart').addEventListener('click', e => e.stopPropagation());
 

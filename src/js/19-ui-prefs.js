@@ -4,7 +4,7 @@
    same without them, and they are never saved in the project file. */
 const UI_KEY = 'noise-poc-ui-v2';   // v2: guided layout and the corridor example became the defaults
 const UI = {
-  layout: 'guided', theme: 'light', compact: false, help: true, auto: true, start: 'corridor',
+  layout: 'guided', theme: 'light', compact: false, help: true, auto: true, start: 'corridor', basemap: 'auto',
   left: true, right: true, bottom: true, focus: false, rtab: 'Results', btab: 'Data sources', step: 0, probeMin: false, collapsed: [],
   layers: { osm: true, heat: true, impact: true, blabels: true, slabels: true, ncas: true, hoard: true, paths: true, legend: true, probe: true, banner: true }
 };

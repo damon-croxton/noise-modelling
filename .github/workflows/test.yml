@@ -18,3 +18,35 @@ jobs:
         run: node build.js --check
       - name: Self-tests and browser tests
         run: node tests/run.js
+
+  # Publish the tested build to GitHub Pages (https://damon-croxton.github.io/noise-modelling/).
+  # Only from main, and only when the tests above pass. One-time set-up: repository
+  # Settings → Pages → Build and deployment → Source: GitHub Actions.
+  pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Site = the single-file app
+        run: |
+          mkdir -p site
+          cp dist/noise_poc.html site/index.html
+          cp dist/noise_poc.html site/noise_poc.html
+          touch site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

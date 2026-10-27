@@ -6,12 +6,14 @@ A construction noise screening and planning tool for Transport for NSW (TfNSW) p
 
 ## Using it
 
-Open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is inside that one file.
+**Online:** <https://damon-croxton.github.io/noise-modelling/>. This is always the latest version that passed the tests, published from `main` by CI. Files you open are read in your browser and nothing is uploaded.
+
+**Offline:** open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is inside that one file. From disk, the OpenStreetMap background can't load (OSM's servers refuse pages opened from disk), so the NSW base map is used instead.
 
 A typical OOHW assessment:
 1. **Site:** the app opens on a synthetic rail-corridor example in the guided layout, at step 1 *Site*.
    1. In Google Maps, right-click the project location and click the coordinates at the top of the menu to copy them, then paste them into the app.
-   2. Click **Go to site**. The example is cleared and an OSM street map appears under the model for your bearings.
+   2. Click **Go to site**. The example is cleared and a background map appears under the model for your bearings: OpenStreetMap online, the NSW base map from disk, or NSW aerial imagery (*View*).
    3. Click **Fetch OSM buildings**.
    4. Optional: a 1 m DEM from the [ELVIS portal](https://elevation.fsdf.org.au/) adds the ground profile.
    5. Optional: LiDAR (.laz) from ELVIS improves building heights.
@@ -29,7 +31,7 @@ A typical OOHW assessment:
   - **Workspace:** shifts and plant on the left, results, site and method in tabs on the right, data sources and log at the bottom;
   - **Guided:** numbered steps;
   - **Single column**.
-- *View* also sets the colours (light, dark, high contrast) and the map layers, including the OSM street-map underlay.
+- *View* also sets the colours (light, dark, high contrast) and the map layers, including the background map (OpenStreetMap, NSW base map or NSW aerial imagery).
 - *File → On start-up show* picks what opens first: an example, the small demo or an empty project.
 - *Clear* tidies the screen or removes things from the project.
 - **F** shows the map only.
@@ -49,7 +51,7 @@ The report and CSV list properties and may contain addresses. Keep them on appro
 
 ## Status
 
-Version 0.11.0 makes the site set-up a numbered procedure, fetches footprints from the OSM API only (Overpass removed), opens on the rail-corridor example in the guided layout, and adds an OSM street-map underlay. Version 0.10.0 was a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
+Version 0.12.0 publishes the app on GitHub Pages and adds NSW base-map and aerial-imagery backgrounds. Version 0.11.0 made the site set-up a numbered procedure, fetches footprints from the OSM API only (Overpass removed), opens on the rail-corridor example in the guided layout, and adds an OSM street-map underlay. Version 0.10.0 was a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
 - shifts within one project, with batch run and comparison;
 - respite tracking against the CNVG-PTI respite-period rule;
 - a printable report with maps, the disclaimer, data sources and height sources.
@@ -83,7 +85,7 @@ node build.js --check    # fail if dist/ is out of date with src/
 node tests/run.js        # run all tests (needs Playwright + Chromium)
 ```
 
-Edit the files in `src/`, never `dist/` directly, and commit the rebuilt `dist/noise_poc.html` with your change. CI fails if the two don't match. Bump `VERSION` in `src/js/00-constants.js` with every change and keep the self-tests passing.
+Edit the files in `src/`, never `dist/` directly, and commit the rebuilt `dist/noise_poc.html` with your change. CI fails if the two don't match. When the tests pass on `main`, CI publishes `dist/noise_poc.html` to GitHub Pages. One-time set-up: *Settings → Pages → Build and deployment → Source: GitHub Actions*. Bump `VERSION` in `src/js/00-constants.js` with every change and keep the self-tests passing.
 
 ## Licences
 

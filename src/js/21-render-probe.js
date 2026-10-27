@@ -9,10 +9,7 @@ function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const v = state.view, S = state.settings, T = state.terrain, L = UI.layers;
   ctx.fillStyle = MT.bg; ctx.fillRect(0, 0, cssW, cssH);
-  drawOsmUnderlay();
-  const osmB = state.buildings.some(b => b.osmId);
-  $('attrib').hidden = !(TILES.drawn || osmB);
-  $('attribWhat').textContent = TILES.drawn && osmB ? 'Map and buildings' : TILES.drawn ? 'Map' : 'Buildings';
+  drawOsmUnderlay(); updateAttribution();
 
   if (T && S.shade) {
     const [a, b] = w2s(T.x0, T.yTop);

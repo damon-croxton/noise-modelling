@@ -153,7 +153,6 @@ readJSONFile($('fileLoad'), (d, name) => {
   state.ncas = (Array.isArray(d.ncas) ? d.ncas : []).map(n => { const p = validPts(n && n.pts); return p ? Object.assign(makeNca(p.map(sh)), cleanNca(n, 'NCA')) : null; }).filter(Boolean);
   state.assess.results = null;
   geomChanged(); syncSettingsUI(); syncAssessUI(); renderShiftPanel(true); select(null); updateSiteInfo();
-  $('attrib').hidden = !state.buildings.some(b => b.osmId);
   log(`Loaded ${name}: ${state.shifts.length} shift(s), ${state.sources.length} sources in “${curShift().name}”, ${state.buildings.length} buildings, ${state.hoardings.length} hoardings, ${state.ncas.length} NCAs.`);
   if (d.dem && !state.terrain) log(`This scenario used DEM “${d.dem}” – load it to restore terrain.`, 'warn');
   zoomExtents();
@@ -227,7 +226,6 @@ function importGeoJSON(gj, name) {
       tags: isOsm ? keepTags(pr) : null, landUse: lu || null, luSrc: 'file', floors, address: address ? address.slice(0, 120) : null })); added++;
   }
   geomChanged(); if (state.dsm) applyDsmHeights(true);
-  $('attrib').hidden = !state.buildings.some(b => b.osmId);
   noteSource('Buildings (GeoJSON)', name, `${added} building(s)${withRoof ? `, ${withRoof} with roof RL` : ''}`, null);
   log(`Imported ${added} building(s) from ${name}${withRoof ? `; ${withRoof} with roof RL` : ''}${defH ? `; ${defH} without height → ${state.settings.newH} m` : ''}.`);
   if (luUnknown.size) log(`Land use values not in the rules, ignored: ${[...luUnknown].slice(0, 8).join(', ')}. Known: ${Object.keys(RULES.landUses).join(', ')}.`, 'warn');

@@ -71,24 +71,55 @@ module.exports = [
     }
   },
   {
-    name: 'OSM street map underlay: tiles for the site are requested and drawn, with attribution; off when switched off or no location',
+    name: 'background map from disk: Automatic uses the NSW base map (right tiles, attribution); OSM is not requested and points to the online copy',
     async run({ page, assert }) {
-      const tiles = [];
-      await page.route('https://tile.openstreetmap.org/**', r => { tiles.push(r.request().url()); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
+      const nsw = [], osm = [];
+      await page.route('https://maps.six.nsw.gov.au/**', r => { nsw.push(r.request().url()); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
+      await page.route('https://tile.openstreetmap.org/**', r => { osm.push(r.request().url()); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
       await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: true } })));
       await page.reload(); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
       await page.waitForTimeout(300);
-      assert.strictEqual(tiles.length, 0, 'no location yet: no tiles');
+      assert.strictEqual(nsw.length + osm.length, 0, 'no location yet: no tiles');
       await page.fill('#siteLL', SITE.join(', ')); await page.click('#btnSite');
-      await page.waitForFunction(() => !document.getElementById('attrib').hidden && /Map/.test(document.getElementById('attribWhat').textContent));
-      // the tile under the site at the zoom used
-      const [z, x, y] = tiles[0].match(/(\d+)\/(\d+)\/(\d+)\.png$/).slice(1).map(Number);
+      await page.waitForFunction(() => !document.getElementById('attrib').hidden && /Spatial Services/.test(document.getElementById('attrib').textContent));
+      // ArcGIS tile order is z/y/x: the tile under the site at the zoom used
+      const [z, y, x] = nsw[0].match(/tile\/(\d+)\/(\d+)\/(\d+)$/).slice(1).map(Number);
       const tx = (SITE[1] + 180) / 360 * 2 ** z, r = SITE[0] * Math.PI / 180, ty = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** z;
       assert.ok(z >= 15 && z <= 19, 'street-level zoom ' + z);
-      assert.ok(tiles.some(u => u.endsWith(`/${z}/${Math.floor(tx)}/${Math.floor(ty)}.png`)), 'site tile requested');
-      assert.ok(tiles.length <= 80, `${tiles.length} tiles`);
+      assert.ok(nsw.some(u => u.endsWith(`/NSW_Base_Map/MapServer/tile/${z}/${Math.floor(ty)}/${Math.floor(tx)}`)), 'site tile requested');
+      assert.ok(nsw.length <= 80, `${nsw.length} tiles`);
+      // aerial imagery
+      await page.selectOption('#uiBasemap', 'nswimg');
+      await page.waitForFunction(() => /Imagery ©/.test(document.getElementById('attrib').textContent));
+      assert.ok(nsw.some(u => u.includes('/NSW_Imagery/MapServer/tile/')));
+      // OSM chosen from disk: not requested (its servers refuse file:// pages), pointer to the online copy
+      await page.selectOption('#uiBasemap', 'osm');
+      await page.waitForFunction(() => /online copy/.test(document.getElementById('attrib').textContent));
+      assert.strictEqual(osm.length, 0, 'no OSM tile requests from disk');
+      assert.ok(/only works in the online copy/.test(await page.textContent('#log')));
+      // layer off: nothing drawn, no attribution needed
+      await page.selectOption('#uiBasemap', 'auto');
       await page.uncheck('#lyOsm');
       await page.waitForFunction(() => document.getElementById('attrib').hidden);
+    }
+  },
+  {
+    name: 'background map online (http): OSM street map tiles are requested with a Referer and attributed',
+    async run({ page, assert }) {
+      const http = require('http'), fs = require('fs'), path = require('path');
+      const html = fs.readFileSync(path.join(__dirname, '..', 'dist', 'noise_poc.html'));
+      const server = http.createServer((q, res) => { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(html); });
+      await new Promise(ok => server.listen(0, '127.0.0.1', ok));
+      try {
+        const url = `http://127.0.0.1:${server.address().port}/noise-modelling/`, osm = [];
+        await page.route('https://tile.openstreetmap.org/**', r => { osm.push(r.request().headers().referer || ''); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
+        await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: true } })));
+        await page.goto(url); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
+        await page.fill('#siteLL', SITE.join(', ')); await page.click('#btnSite');
+        await page.waitForFunction(() => /OpenStreetMap/.test(document.getElementById('attrib').textContent) && /^Map ©/.test(document.getElementById('attrib').textContent));
+        assert.ok(osm.length > 0 && osm.length <= 80, `${osm.length} OSM tiles`);
+        assert.ok(osm.every(r => r.startsWith(`http://127.0.0.1:${server.address().port}/`)), 'every tile request carries the page origin as Referer: ' + osm[0]);
+      } finally { server.close(); }
     }
   }
 ];

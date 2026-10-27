@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.12.0 – Online copy and background maps
+
+### Added
+- **GitHub Pages.** After the tests pass on `main`, CI publishes the build to <https://damon-croxton.github.io/noise-modelling/>, so the online copy is always the latest tested version. The single file in `dist/` still works offline. One-time set-up: *Settings → Pages → Source: GitHub Actions*.
+- **Background map choice** (*View → Map layers → Background*):
+  - **Automatic** (default): OpenStreetMap in the online copy, the NSW base map when opened from disk;
+  - OpenStreetMap street map;
+  - **NSW base map** (Spatial Services, CC BY 4.0);
+  - **NSW aerial imagery** (Spatial Services, CC BY 4.0), drawn in colour.
+
+  Each map's attribution is shown on the map.
+
+### Fixed
+- **OSM tiles showed "Access blocked" from disk.** OSM's tile servers require a `Referer`, and a page opened from disk sends none. From disk, the app no longer requests OSM tiles: it says once that the OSM map needs the online copy, and the attribution line links to it. Online, the page sends its origin as `Referer` (`<meta name="referrer">`).
+
+### Tests
+108 tests, all passing (see `docs/test-evidence/v0.12.0.txt`). New ones cover:
+- from disk, *Automatic* loads the NSW base map tiles (checked against the ArcGIS z/y/x order), the imagery loads, and OSM is never requested;
+- served over http, OSM tiles are requested with the page origin as `Referer`.
+
+All map servers are simulated in the tests. The development environment can't reach them, so the NSW maps and the online OSM map still need checking on a normal network.
+
 ## 0.11.1 – Test robustness
 
 - Switching shift redraws the plant list straight away; before, it waited for the next map redraw.
