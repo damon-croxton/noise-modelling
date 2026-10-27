@@ -1,6 +1,6 @@
 # Gap register
 
-This register lists what the tool can't yet do, measured against TfNSW CNVG-PTI (EMF-NV-GD-0060 v4.6) and against commercial out-of-hours-work (OOHW) assessment platforms. For each gap it records what closing it would take. It is updated at every stage. The build-versus-buy recommendation will be added once Stages 1–3 are done.
+This register lists what the tool can't yet do, measured against TfNSW CNVG-PTI (EMF-NV-GD-0060 v4.6) and against commercial out-of-hours-work (OOHW) assessment platforms. For each gap it records what closing it would take. It is updated at every stage. The build-versus-buy recommendation is due now that Stages 1–3 are done; it is the next documentation item.
 
 Status: **open**, **interim** (partly handled, with a stated limit) or **closed**. Calibration results: `docs/CALIBRATION.md`.
 
@@ -8,13 +8,13 @@ Status: **open**, **interim** (partly handled, with a stated limit) or **closed*
 
 | Gap | Status | Effect | What it takes |
 |---|---|---|---|
-| Lateral diffraction around building ends | interim | Sound only goes over buildings, so shadows come out too quiet (unsafe). The TfNSW method caps screening at 15 dB as a safeguard; ISO mode has no cap beyond 20/25 dB. | ISO 9613-2 lateral paths around vertical edges, combined with the path over the top. Planned for Stage 3. |
-| Façade reflections | open | Expect +1 to 3 dB in streets. CNVG-PTI Table 4 lists reflections for detailed assessments. | First-order image sources with a configurable reflection loss. Stage 3. |
-| Single frequency band | open | Diffraction is calculated at 500 Hz only, and ground and air use broadband values. | Optional octave-band mode with plant spectra (BS 5228 / DEFRA). Stage 3. |
-| Mixed ground in ISO mode | interim | Agr is blended linearly between hard and soft, which approximates the ISO general method. | The general method per octave band, once octave mode exists. |
+| Lateral diffraction around building ends | interim (v0.8.0) | Two side paths around the convex hull of the blocking obstacles, summed by energy with the path over the top, then capped. Further buildings that a side path runs through are ignored, which is conservative. No side paths when terrain is the screening edge. | Obstacles in the side paths (iterated hull) if over-prediction behind dense blocks matters; needs a faster index to stay interactive. |
+| Façade reflections | interim (v0.8.0) | First order only, off building walls (not hoarding or terrain), within 60 m of source or receiver, with one reflection loss for all walls (default 1 dB). The receiver's own façade is excluded, so façade levels are free-field. *Auto* = on for ISO, off on the TfNSW basis. Street canyons under-predict a little without higher orders. | Second-order reflections; a loss per building (e.g. glazed vs absorptive); hoarding as a reflector. |
+| Single frequency band | interim (v0.8.0) | Optional octave bands for ISO 9613-2 (63 Hz – 8 kHz). The built-in spectra are generic indicative shapes, not measurements; the default stays single band at 500 Hz. The TfNSW basis stays single band, as in the estimator. | Measured plant spectra for the library (from manufacturers or project measurements; BS 5228-1 Annex C data would need a licence). |
+| Mixed ground in ISO mode | interim | Single band: Agr is blended linearly between hard (G = 0) and the alternative method (eq. 10, with DΩ). Octave bands: the general method (Table 3). The two give different upper-floor gains over soft ground (+2.8 vs +1.0 dB in the set-back scene). One G is used for the whole path. | Ground regions (G per area, e.g. from land cover), so source, middle and receiver regions can differ. |
 | Distance definition | interim | Slant distance is used throughout; the estimator uses horizontal distance. Negligible except close to tall receivers. | Documented. Could be made switchable if reconciliation needs it. |
 | Realistic worst-case plant combination | closed | Optional *Loudest 1–3 rows (TfNSW estimator)*, matching the spreadsheet exactly. The default sums all plant (conservative). | – |
-| Upper floors vs ground floors | open | The TfNSW basis gives the same level on every floor of an unscreened façade; the reference shows +2–4 dB. ISO 9613-2 with partly soft ground reproduces it. Screened ground floors come out 5–15 dB below top floors, too quiet without side diffraction. | Side diffraction and reflections (Stage 3); ISO ground per region as the detailed default. |
+| Upper floors vs ground floors | open | The TfNSW basis gives the same level on every floor of an unscreened façade; the reference shows +2–4 dB, which only ISO single-band with soft ground reproduces. Side diffraction and reflections (v0.8.0) lift screened ground floors only a little (reflections about +4 dB in ISO mode), so screened top floors stay 10–20 dB above ground floors in the example scenes. | The reference geometry or measurements, to tell whether the model or the synthetic scene is off; then ground regions. |
 | LAmax / sleep disturbance | interim | LAmax is estimated as LAeq,15min + 5 dB, the TfNSW estimator's convention, and checked against RBL + 15 (RBL not below 30) and 65 dBA. This is indicative only: real LAmax depends on the loudest events, not the average. | LAmax per source (an Lw,max field per plant item) and an event-based check. |
 | Ground-borne noise, vibration, construction traffic, blasting | open | Out of scope for the screening model. | Vibration buffers from CNVG-PTI Appendix D (Stage 5). Ground-borne noise and blasting need specialist assessment. Traffic noise needs the RNP method. |
 
@@ -22,7 +22,7 @@ Status: **open**, **interim** (partly handled, with a stated limit) or **closed*
 
 | Gap | Status | Limit / what it takes |
 |---|---|---|
-| Façade receivers per floor | closed | Points 1 m in front of each exposed wall, about 10 m apart (both configurable), at 1.5 m above each floor; worst point per building and floor. Party walls are skipped. The levels are free-field: no façade reflection correction (see Acoustics). |
+| Façade receivers per floor | closed | Points 1 m in front of each exposed wall, about 10 m apart (both configurable), at 1.5 m above each floor; worst point per building and floor. Party walls are skipped. The levels are free-field: the receiver's own façade is never a reflector, but other façades are when reflections are on (see Acoustics). |
 | Floors per building | interim | Taken from OSM `building:levels`; otherwise height ÷ floor height (3 m), rounded down; can be overridden per building. Floors aren't split into individual dwellings or units (CNVG-PTI A.6). |
 | Land use per building | interim | From OSM building, amenity, shop and office tags, with per-building and bulk override. Buildings tagged only `building=yes` are **assumed residential** (conservative) and flagged. Importing public zoning layers (e.g. the NSW Planning Portal land zoning) isn't built yet; it would map zone codes to land uses. |
 | Noise catchment areas | closed | Drawn on the map or imported from GeoJSON, each with an R0–R5 category and optional measured RBLs. Buildings outside every NCA use a default. |

@@ -2431,7 +2431,7 @@ const DATA = {
  }
 };
 /* ============================== CONSTANTS ============================== */
-const VERSION = '0.7.0';
+const VERSION = '0.8.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
 /* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
    the three bands – the same values and conditions as the TfNSW Construction
@@ -6288,7 +6288,7 @@ const ESTIMATOR_GOLDEN = [
   ['warm', 'std', 500, 0.5, 15, 31.5272665799463]
 ];
 function selfTest() {
-  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true, reflect: 'off' };
+  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true, lateral: false, reflect: 'off' };
   const ST = Object.assign({}, S0, { method: 'tfnsw', air: true });
   let pass = 0, fail = 0;
   const results = [];

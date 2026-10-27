@@ -1,10 +1,10 @@
-# Calibration report – Stage 2 (v0.7.0)
+# Calibration report – Stages 2 and 3 (v0.8.0)
 
 This report covers two comparisons:
 - **Part A:** against the **TfNSW Construction Noise Estimator** (EMF-NV-TT-0068). The spreadsheet is available, so the comparison is exact, case by case.
 - **Part B:** against the **de-identified commercial reference case** from the challenge brief (§4). Its geometry is not available, so the comparison is partial.
 
-Part C describes the calibration import for future real-data comparisons. All test data is synthetic, and no real location was used.
+Part C describes the calibration import for future real-data comparisons. Part D repeats the reference comparison with the Stage 3 acoustics (v0.8.0): side diffraction, façade reflections and octave bands. All test data is synthetic, and no real location was used.
 
 ## Summary
 
@@ -15,7 +15,8 @@ Part C describes the calibration import for future real-data comparisons. All te
 | Reference: plant total and implied distances | Total 96.4 dBA. Its 46–57 dBA range implies unscreened receivers 37–131 m away (TfNSW basis) |
 | Reference: level and exceedance range | Reproduced only when the scene is set back 37 m, which is derived from the reference itself and therefore not independent evidence |
 | Reference: category pattern (mostly Low, few Medium, no High) | Same pattern in the corridor and set-back scenes, but with more Medium (15–21 building-floors against the reference's 2). Not comparable in absolute numbers, because the scene sizes differ |
-| Reference: upper floors 2–4 dB above ground floors | **Not reproduced** on the TfNSW basis: about 0 dB with line of sight, and +5 to +15 dB behind screening. The 2–4 dB pattern appears with ISO 9613-2 and partly soft ground (+1.2 dB at 50 % soft, +2.7 dB at 100 %) |
+| Reference: upper floors 2–4 dB above ground floors | **Not reproduced** on the TfNSW basis: about 0 dB with line of sight, and +5 to +13 dB behind screening. The 2–4 dB pattern appears only with ISO 9613-2 single band over soft ground (+1.3 dB at 50 % soft, +2.8 dB at 100 %). The octave-band general method gives about +1 dB (Part D) |
+| Stage 3 acoustics (v0.8.0) | Side diffraction, reflections and octave bands change the median building-floor by 0 dB, but screened floors by up to 10–16 dB. They don't close the gap to the reference, which stays a geometry question (Part D) |
 | ±3 dB at most receivers | **Cannot be tested** without the reference geometry or its receiver list. The calibration import (Part C) is ready for when it is available |
 
 ## A. TfNSW Construction Noise Estimator
@@ -86,7 +87,7 @@ There are three variants:
 - **corridor:** plant inside a 30 m rail corridor behind 2.4 m hoarding, first-row façades 20 m away.
 - **set-back:** façades 37 m away with no hoarding. This distance comes from the reference's own maximum level, so it **isn't independent**.
 
-Results with the CNVG-PTI rule set. "Above NML" counts building-floors (each building's worst façade point per floor); "top − ground" is the mean for the first-row and second-row apartment blocks:
+Results from v0.7.0, before the Stage 3 acoustics (Part D has the v0.8.0 re-run), with the CNVG-PTI rule set. "Above NML" counts building-floors (each building's worst façade point per floor); "top − ground" is the mean for the first-row and second-row apartment blocks:
 
 | Scene / method | Above NML | LAeq above NML | Exceedance | Categories (above NML) | Top − ground, 1st row / 2nd row |
 |---|---|---|---|---|---|
@@ -127,3 +128,65 @@ For each row the tool calculates its own level at that point, using the current 
 - category agreement at each point's NML.
 
 The points are drawn on the map, coloured by difference, and the comparison exports to CSV. Tested with synthetic "other tool" data: a known bias and spread are recovered exactly.
+
+## D. Stage 3 re-run (v0.8.0)
+
+The same three synthetic scenes and the same plant, with the new acoustics:
+- **side diffraction**, on in every configuration;
+- **façade reflections**, which *Auto* turns on for ISO and off on the TfNSW basis;
+- **octave bands** ("ISO oct."), with the generic spectra chosen automatically: *impact* for the rattle gun, *diesel plant* for the rest.
+
+Ground is hard unless stated. Full output: `docs/test-evidence/v0.8.0.txt`.
+
+### D.1 Results (CNVG-PTI rule set)
+
+| Scene / method | Above NML (v0.7.0) | LAeq above NML | Exceedance | Categories (above NML) | Top − ground, 1st row / 2nd row (v0.7.0) |
+|---|---|---|---|---|---|
+| Reference | 59 | 46–57 | 5–17 | mostly Low, 2 Medium | +2 to +4 |
+| street, TfNSW | 193 (186) | 41–69 | 1–29 | 74 Negl., 84 Low, 29 Med., 6 High | −0.5 / +9.8 (+10.9) |
+| street, ISO | 193 (175) | 41–70 | 1–29 | 61 Negl., 97 Low, 28 Med., 7 High | −0.7 / +15.0 (+18.8) |
+| street, ISO oct. | 194 | 41–70 | 1–29 | 66 Negl., 93 Low, 29 Med., 6 High | −0.4 / +15.2 |
+| corridor, TfNSW | 181 (170) | 41–63 | 1–22 | 68 Negl., 92 Low, 21 Med. | +5.3 / +13.1 (+12.9) |
+| corridor, ISO | 166 (155) | 41–63 | 1–23 | 52 Negl., 91 Low, 23 Med. | +8.8 / +21.2 (+20.2) |
+| corridor, ISO oct. | 165 | 41–63 | 1–23 | 53 Negl., 89 Low, 23 Med. | +9.3 / +20.7 |
+| set-back, TfNSW | 215 (202) | 41–57 | 1–17 | 78 Negl., 122 Low, 15 Med. | 0.0 / +9.6 (+11.2) |
+| set-back, ISO | 218 (202) | 43–58 | 1–17 | 62 Negl., 140 Low, 16 Med. | −0.2 / +11.8 (+16.0) |
+| set-back, ISO oct. | 221 | 41–57 | 1–17 | 69 Negl., 136 Low, 16 Med. | −0.2 / +11.6 |
+
+The second-row means cover slightly different buildings in each run (only buildings with a floor above NML are counted), so compare them roughly.
+
+### D.2 What each feature changes
+Each building-floor is compared with the same run without the feature (hard ground):
+
+| Feature | Basis | Mean change | Median | Largest |
+|---|---|---|---|---|
+| Side diffraction | TfNSW | +0.4 to +0.7 dB | 0 | +9.6 dB |
+| Side diffraction | ISO | +1.6 to +2.9 dB | 0 | +15.5 dB |
+| Reflections | ISO | +0.8 to +1.0 dB | 0 | +15.7 dB |
+| Octave bands vs single band | ISO | −0.05 to +0.05 dB | −0.2 to −0.1 dB | +12.7 dB |
+
+- **Side diffraction does more in ISO mode,** because ISO screening goes to 20/25 dB while the TfNSW basis already stops at 15 dB.
+- **The largest changes are all at screened floors:**
+  - ends of terrace rows and cross streets, where a side path or a reflection off the next block reaches a point that the path over the top doesn't;
+  - low-frequency diffraction in octave mode.
+- **Most floors don't change.** They either have line of sight, or sit behind 30–54 m terrace and apartment blocks and 360 m of hoarding, where the side paths are long.
+
+### D.3 Upper floors over soft ground (set-back scene, first-row 6-storey blocks, line of sight)
+
+| % soft | ISO single band | ISO octave bands |
+|---|---|---|
+| 0 | −0.2 dB | −0.2 dB |
+| 50 | +1.3 (0.2 to 2.3) | +0.7 (−0.1 to 2.1) |
+| 100 | +2.8 (1.5 to 4.1) | +1.0 (0.3 to 1.7) |
+
+- **Single band** uses ISO 9613-2's alternative method (eq. 10 with DΩ). It gives the larger height effect, which falls in the reference's +2–4 dB range at 100 % soft.
+- **Octave bands** use the general method (Table 3). Its ground effect is concentrated at 250–500 Hz near the ground, and is smaller after A-weighting with these spectra.
+- So the upper-floor gain depends on the ground method as much as on the geometry. Which method the commercial tool used isn't known.
+
+### D.4 Findings
+1. **Stage 3 doesn't close the gap to the reference.** Absolute levels and counts are set by the geometry, which is unknown (B.4). The new features change the median floor by 0 dB.
+2. **Screened ground floors are less under-predicted than in v0.7.0.** Side diffraction and reflections lift individual screened floors by up to 15 dB. But screened second-row top floors are still 10–13 dB (TfNSW) to 12–21 dB (ISO) above their ground floors. The reference's 2–4 dB suggests its receivers were mostly unscreened, or that its scene was more open than these.
+3. **The TfNSW basis stays the reconciling default.** Side diffraction (on by default) moves it away from the estimator only at screened points, and only upwards (conservative). Turn it off under *Model* to keep screening to the path over the top, as the estimator's screening input assumes.
+4. **ISO with octave bands is the most complete method** but needs real plant spectra. The built-in shapes are indicative, and with them the A-weighted results average the same as single band.
+5. **Next steps are unchanged:** the reference geometry or the commercial tool's receiver export (load it with *Calibration → Import levels*), or attended measurements.
+

@@ -5,10 +5,17 @@
 'use strict';
 const REF = { aboveNml: 59, levels: [46, 57], exceed: [5, 17], categories: 'mostly Low, two Medium', upperMinusGround: [2, 4] };
 
-async function metrics(page, variant, method, ruleSet) {
-  return page.evaluate(async ([v, m, rs]) => {
+/* model configurations compared: TfNSW basis; ISO 9613-2 single band (with
+   reflections, Auto); ISO 9613-2 in octave bands (generic spectra). */
+const CONFIGS = {
+  tfnsw: { method: 'tfnsw', bands: false, reflect: 'auto' },
+  iso: { method: 'iso', bands: false, reflect: 'auto' },
+  'iso-oct': { method: 'iso', bands: true, reflect: 'auto' }
+};
+async function metrics(page, variant, method, ruleSet, extra) {
+  return page.evaluate(async ([v, m, rs, cfg]) => {
     const N = window.__noise;
-    N.buildReferenceExample(v); N.state.settings.method = m; N._t.setRuleSet(rs);
+    N.buildReferenceExample(v); Object.assign(N.state.settings, cfg); N._t.setRuleSet(rs);
     const R = await N.runAssessment(), byB = new Map(N.state.buildings.map(b => [b.id, b]));
     const above = R.receivers.filter(r => r.exc > 0), r1 = x => Math.round(x * 10) / 10;
     const impact = {}; above.forEach(r => { impact[r.impact] = (impact[r.impact] || 0) + 1; });
@@ -33,7 +40,7 @@ async function metrics(page, variant, method, ruleSet) {
       aptFirst: deltas('Apartments (6', true), aptSecond: deltas('Apartments (8', false), terrFirst: deltas('Terrace', true), terrSecond: deltas('Terrace', false),
       floors: R.stats.receivers, ms: Math.round(R.stats.ms)
     };
-  }, [variant, method, ruleSet]);
+  }, [variant, method, ruleSet, Object.assign({}, CONFIGS[method], extra || {})]);
 }
 const fmtD = d => (d ? `${d.mean} (${d.min} to ${d.max}, n ${d.n})` : '–');
 
@@ -43,11 +50,16 @@ module.exports = [
     async run({ page, assert }) {
       console.log(`      reference: ${REF.aboveNml} above NML, ${REF.levels.join('–')} dBA, exceedance ${REF.exceed.join('–')} dB, ${REF.categories}, upper floors +${REF.upperMinusGround.join('–')} dB`);
       const all = [];
-      for (const v of ['street', 'corridor', 'setback']) for (const m of ['tfnsw', 'iso']) for (const rs of ['cnvg', 'estimator']) {
+      for (const v of ['street', 'corridor', 'setback']) for (const m of Object.keys(CONFIGS)) for (const rs of ['cnvg', 'estimator']) {
         const r = await metrics(page, v, m, rs); all.push(r);
-        console.log(`      ${v.padEnd(8)} ${m.padEnd(5)} ${rs.padEnd(9)} above ${String(r.above).padStart(3)} (${r.buildings} bldg) · ${r.levels ? r.levels.join('–') : '–'} dBA · exc ${r.exceed ? r.exceed.join('–') : '–'} · ` +
+        console.log(`      ${v.padEnd(8)} ${m.padEnd(7)} ${rs.padEnd(9)} above ${String(r.above).padStart(3)} (${r.buildings} bldg) · ${r.levels ? r.levels.join('–') : '–'} dBA · exc ${r.exceed ? r.exceed.join('–') : '–'} · ` +
           `${Object.entries(r.impact).map(([k, n]) => `${k} ${n}`).join(', ')} · measures ${Object.entries(r.measures).sort().map(([k, n]) => `${k} ${n}`).join(' ')}`);
         if (rs === 'cnvg') console.log(`               top − ground: 6-storey 1st row ${fmtD(r.aptFirst)}; 8-storey 2nd row ${fmtD(r.aptSecond)}; terraces 1st ${fmtD(r.terrFirst)}, 2nd ${fmtD(r.terrSecond)} · NMLs ${r.nmls.join('/')} · ${r.floors} floors in ${r.ms} ms`);
+      }
+      // upper-floor pattern on line-of-sight façades (set-back scene) against % soft ground
+      for (const m of ['iso', 'iso-oct']) for (const soft of [0.5, 1]) {
+        const r = await metrics(page, 'setback', m, 'cnvg', { soft });
+        console.log(`      setback  ${m.padEnd(7)} ${Math.round(soft * 100)} % soft: above ${r.above} · ${r.levels ? r.levels.join('–') : '–'} dBA · top − ground: 6-storey 1st row ${fmtD(r.aptFirst)}; terraces 1st ${fmtD(r.terrFirst)}`);
       }
       for (const r of all) assert.deepStrictEqual(r.nmls, [40, 44], 'catchment NMLs');
       const cor = all.find(r => r.variant === 'corridor' && r.method === 'tfnsw' && r.rules === 'cnvg');

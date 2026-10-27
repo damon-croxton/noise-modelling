@@ -13,18 +13,24 @@ Open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is insid
 - **Sources:** picked from the equipment library (CNVG-PTI Appendix C Table 19 plus the TfNSW estimator plant list), each with % time on, annoyance penalty, mitigation and height.
 - **Two prediction methods:**
   - *TfNSW estimator basis* (default) reconciles with the TfNSW Construction Noise Estimator.
-  - *ISO 9613-2* is for detailed checks.
+  - *ISO 9613-2* is for detailed checks. It adds first-order façade reflections and an optional octave-band calculation (63 Hz – 8 kHz) with source spectra.
+
+  Both methods include side diffraction around buildings and hoarding ends.
 
   The probe breaks down every term at any point on the map.
 
 ## Status
 
-Version 0.7.0 completes Stage 2, calibration:
-- The app reproduces the TfNSW Construction Noise Estimator exactly, with the estimator's Step 4 rule set and its plant-combination rule.
-- It reports where the estimator and the CNVG-PTI guideline disagree.
-- It imports measured levels or another tool's results for comparison.
+Version 0.8.0 completes Stage 3, acoustics:
+- side diffraction around buildings and hoarding ends;
+- first-order façade reflections;
+- an octave-band option for ISO 9613-2.
 
-Results and limits are in [`docs/CALIBRATION.md`](docs/CALIBRATION.md). Next is Stage 3, acoustics: side diffraction, façade reflections and an octave-band option. See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
+Earlier stages:
+- **Stage 1:** façade receivers per floor, NCAs, NML rules and the property list.
+- **Stage 2:** exact reconciliation with the TfNSW Construction Noise Estimator, a comparison of its measures with the CNVG-PTI guideline, and a calibration import.
+
+Results and limits are in [`docs/CALIBRATION.md`](docs/CALIBRATION.md). Next is Stage 4, outputs: the printable report, shift scenarios and respite tracking. See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
 
 ## Development
 

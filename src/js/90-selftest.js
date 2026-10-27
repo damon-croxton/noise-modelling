@@ -13,7 +13,7 @@ const ESTIMATOR_GOLDEN = [
   ['warm', 'std', 500, 0.5, 15, 31.5272665799463]
 ];
 function selfTest() {
-  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true, reflect: 'off' };
+  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true, lateral: false, reflect: 'off' };
   const ST = Object.assign({}, S0, { method: 'tfnsw', air: true });
   let pass = 0, fail = 0;
   const results = [];

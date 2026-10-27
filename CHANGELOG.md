@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.8.0 – Stage 3: acoustics
+
+Results against the reference case are in `docs/CALIBRATION.md` (Part D).
+
+### Added
+- **Side diffraction around buildings and hoarding ends** (*Model → Side diffraction*, on by default, both methods).
+  - The two side paths run round the convex hull of the source, the receiver and the corners of the blocking obstacles, as in CNOSSOS-EU.
+  - Their Dz (ISO 9613-2 eq. 14, Kmet = 1) is summed by energy with the path over the top and then capped once (TfNSW cap or the ISO 20/25 dB). Capping each path first would make a long wall screen less than a short one.
+  - There are no side paths when terrain forms the screening edge.
+  - The probe draws the side paths (orange) and lists each one's edges, path difference and Dz.
+- **First-order façade reflections** (*Model → Façade reflections*: Auto / On / Off; reflection loss, default 1 dB).
+  - Each reflection is an image source off building walls within 60 m of the source or receiver.
+  - A wall reflects only if:
+    - source and receiver are both in front of it;
+    - the reflection point lies on the wall, below its top;
+    - the wall passes the ISO 9613-2 eq. 19 size check;
+    - both legs have a clear line of sight.
+  - The receiver's own façade (within 2 m) is left out, so façade levels stay free-field.
+  - *Auto* turns reflections on for ISO 9613-2 and off on the TfNSW basis, since the estimator has none.
+  - Reflections are skipped during drag redraws. The probe draws them (blue) and lists each one with the direct and total levels.
+- **Octave-band option for ISO 9613-2** (*Model → Octave bands 63 Hz – 8 kHz*).
+  - Air absorption per band follows ISO 9613-1. It matches the estimator's 250/500/1000 Hz values and ISO 9613-2 Table 2.
+  - Ground uses the general method per band (Table 3).
+  - Dz is calculated at each band's wavelength from the same path geometry.
+  - The reflector size check is applied per band.
+  - Source spectra: generic, indicative shapes (*diesel plant*, *impact / percussive*, *pink*). The default is chosen by the item's special audible characteristics. Each source or library item can take its own preset or eight measured A-weighted band levels. Spectra are saved in scenarios and the library.
+  - The probe shows the band breakdown.
+
+### Changed
+- **Assessment pre-screen:** with reflections on, the free-field bound allows 10 dB extra, room for nine reflections each as strong as the direct path. A brute-force test confirms it hides no exceedance with reflections and octave bands on.
+- **Performance** (110 buildings in view, 4 sources, 37,800 grid points):
+  - TfNSW basis with side diffraction: about 0.7 s;
+  - ISO with reflections: about 1.9 s;
+  - ISO with reflections and octave bands: about 2.2 s.
+
+  The 2,000-building assessment takes about 4.5 s on the TfNSW basis and about 7 s with ISO and reflections.
+- Hidden settings rows (e.g. the screening cap in ISO mode) are now actually hidden.
+
+### Findings (summary – see docs/CALIBRATION.md, Part D)
+In the example scenes (building-floors, each against its own result without the feature):
+- **Effects are concentrated on screened floors.** The median change is 0 dB for every feature, because most floors either have line of sight or sit behind long terrace rows and 360 m of hoarding.
+- **Side diffraction:**
+  - TfNSW basis: mean +0.4 to +0.7 dB, up to +9.6 dB (the 15 dB cap already limits screening);
+  - ISO: mean +1.6 to +2.9 dB, up to +15.5 dB.
+- **Reflections (ISO):** mean +0.8 to +1.0 dB, up to +15.7 dB where a screened point sees a reflecting façade.
+- **Octave bands vs single band (ISO, generic spectra):** mean within ±0.05 dB, but up to +13 dB at single screened floors, because low frequencies diffract more.
+- **Screened second-row top floors are still well above ground floors:** about 10–13 dB on the TfNSW basis and 12–21 dB in ISO.
+- **The reference's +2–4 dB upper-floor pattern** is still reproduced only by ISO single band with soft ground (+2.8 dB at 100 % soft). The octave-band general method gives about +1 dB, so the result depends on the ground method.
+- **±3 dB at receivers is still untestable** without the reference geometry.
+
+### Tests
+88 tests, all passing (see `docs/test-evidence/v0.8.0.txt`). New ones cover:
+- side diffraction against hand calculations;
+- reflections: image path, own façade, low wall, eq. 19 size check, street canyon, probe;
+- octave bands: ISO 9613-1 air against the estimator and ISO 9613-2 Table 2, Table 3 ground, Dz per band, eq. 19 per band, UI and scenario round trip;
+- the pre-screen with reflections and bands;
+- ISO performance with reflections.
+
 ## 0.7.0 – Stage 2: calibration
 
 Full results are in `docs/CALIBRATION.md`.
