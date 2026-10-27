@@ -270,21 +270,53 @@ module.exports = [
     }
   },
   {
-    name: 'performance: 2,000 buildings, 3 sources',
+    name: 'performance: 2,000 buildings, 3 sources (TfNSW basis; ISO with reflections)',
     async run({ page, assert }) {
-      const t = await page.evaluate(async () => {
-        const N = window.__noise, st = N.state, T = N._t, B = [];
-        for (let i = 0; i < 50; i++) for (let j = 0; j < 40; j++) {
-          const x = -600 + i * 24, y = -480 + j * 24; B.push(T.makeBuilding([[x, y], [x + 16, y], [x + 16, y + 14], [x, y + 14]], 6 + ((i * 7 + j * 3) % 5) * 3, 'b'));
-        }
-        st.buildings = B; st.hoardings = []; st.ncas = []; T.geomChanged();
-        st.sources = [0, 1, 2].map(k => ({ id: 9100 + k, name: 's' + k, eq: 'custom', lw: 108, on: 100, pen: 0, mit: 0, h: 2, x: -4 + k * 24 * 5, y: 10 - k * 24 * 3 }));
-        Object.assign(st.settings, { period: 'p2night', method: 'tfnsw' });
-        const t0 = performance.now(); const R = await N.runAssessment();
-        return { ms: performance.now() - t0, rec: R.stats.receivers, pts: R.stats.points, exact: R.stats.exact };
+      for (const [method, reflect] of [['tfnsw', 'auto'], ['iso', 'on']]) {
+        const t = await page.evaluate(async ([method, reflect]) => {
+          const N = window.__noise, st = N.state, T = N._t, B = [];
+          for (let i = 0; i < 50; i++) for (let j = 0; j < 40; j++) {
+            const x = -600 + i * 24, y = -480 + j * 24; B.push(T.makeBuilding([[x, y], [x + 16, y], [x + 16, y + 14], [x, y + 14]], 6 + ((i * 7 + j * 3) % 5) * 3, 'b'));
+          }
+          st.buildings = B; st.hoardings = []; st.ncas = []; T.geomChanged();
+          st.sources = [0, 1, 2].map(k => ({ id: 9100 + k, name: 's' + k, eq: 'custom', lw: 108, on: 100, pen: 0, mit: 0, h: 2, x: -4 + k * 24 * 5, y: 10 - k * 24 * 3 }));
+          Object.assign(st.settings, { period: 'p2night', method, reflect });
+          const t0 = performance.now(); const R = await N.runAssessment();
+          return { ms: performance.now() - t0, rec: R.stats.receivers, pts: R.stats.points, exact: R.stats.exact };
+        }, [method, reflect]);
+        console.log(`      performance (${method}${method === 'iso' ? ', reflections' : ''}): ${t.rec} building-floors, ${t.pts} façade points (${t.exact} calculated) in ${(t.ms / 1000).toFixed(1)} s`);
+        assert.ok(t.ms < 60000, `${t.ms} ms`);
+      }
+    }
+  }
+  ,
+  {
+    name: 'reflections: street canyon façades gain from the opposite façade, not their own; probe lists them',
+    async run({ page, assert }) {
+      const r = await page.evaluate(async () => {
+        const N = window.__noise, st = N.state, T = N._t;
+        st.buildings = [T.makeBuilding([[-50, 10], [50, 10], [50, 30], [-50, 30]], 15, 'north'), T.makeBuilding([[-50, -30], [50, -30], [50, -10], [-50, -10]], 15, 'south')];
+        st.hoardings = []; st.ncas = []; T.geomChanged();
+        st.sources = [{ id: 9200, name: 'plant', eq: 'custom', lw: 105, on: 100, pen: 0, mit: 0, h: 2, x: 0, y: 0 }];
+        Object.assign(st.settings, { period: 'std', method: 'iso', soft: 0 });
+        const run = async reflect => { st.settings.reflect = reflect; const R = await N.runAssessment(); return R.receivers.filter(x => x.bId === st.buildings[0].id).map(x => x.Leq); };
+        const off = await run('off'), on = await run('on');
+        N.prep(st.sources);
+        const det = N.contrib(st.sources[0], 0, 5, st.settings, st.buildings, true);
+        st.view.cx = 0; st.view.cy = 5;
+        return { off, on, n: det.refl.length, gain: det.Lp - det.Ldir };
       });
-      console.log(`      performance: ${t.rec} building-floors, ${t.pts} façade points (${t.exact} calculated) in ${(t.ms / 1000).toFixed(1)} s`);
-      assert.ok(t.ms < 60000, `${t.ms} ms`);
+      const gain = r.on.map((x, i) => x - r.off[i]);
+      assert.ok(gain.every(g => g > 0.2 && g < 3), `façade gain ${gain}`);
+      assert.strictEqual(r.n, 2, 'mid-street point sees both façades');
+      // ISO hard ground (same Agr on every path): gain = 10·lg(1 + Σ (d_direct / d_image)² · 10^(−loss/10))
+      const dd = Math.hypot(5, 0.5), k = d => Math.pow(dd / Math.hypot(d, 0.5), 2) * Math.pow(10, -0.1);
+      assert.ok(Math.abs(r.gain - 10 * Math.log10(1 + k(15) + k(25))) < 0.01, `mid-street gain ${r.gain}`);
+      const box = await page.locator('#map').boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.waitForFunction(() => /reflections: .*(north.*south|south.*north)/.test(document.getElementById("probe").innerText));
+      const t = await page.textContent('#probe');
+      assert.ok(/direct [\d.]+ → total/.test(t), t);
     }
   }
 ];

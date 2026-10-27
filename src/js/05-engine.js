@@ -219,12 +219,10 @@ function groundUnderScreening(agr, abar) {
    Lw is the effective level from prep(): time-on, penalty and mitigation applied.
    gr: ground RL at the receiver if already known; zrAbs: absolute receiver RL
    (default ground + S.hr). */
-function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
+/* Spreading, air and ground terms for an unobstructed path of horizontal
+   length d2 and 3D length d (source and receiver heights hs, hr above ground). */
+function pathTerms(S, d2, d, hs, hr) {
   const iso = S.method === 'iso', soft = Math.max(0, Math.min(1, S.soft || 0));
-  const zg = gr == null ? ground(rx, ry) : gr, zr = zrAbs != null ? zrAbs : zg + S.hr;   // zrAbs: absolute receiver RL (façade receivers)
-  const hs = src.h, hr = Math.max(0, zr - zg), zs = src._z;
-  const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
-  const d = Math.max(Math.hypot(d2, zs - zr), 1);
   const Adiv = 20 * Math.log10(d) + (iso ? 11 : 8);
   const Aatm = S.air ? airAlpha(S) * d / 1000 : 0;
   let Agr = 0, Domega = 0;
@@ -239,6 +237,16 @@ function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
     }
     Agr = (1 - soft) * hard + soft * sft; Domega = soft * dOm;
   } else if (soft > 0) Agr = soft * concaweGround(d2);
+  return { Adiv, Aatm, Agr, Domega };
+}
+
+function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
+  const iso = S.method === 'iso';
+  const zg = gr == null ? ground(rx, ry) : gr, zr = zrAbs != null ? zrAbs : zg + S.hr;   // zrAbs: absolute receiver RL (façade receivers)
+  const hs = src.h, hr = Math.max(0, zr - zg), zs = src._z;
+  const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
+  const d = Math.max(Math.hypot(d2, zs - zr), 1);
+  let { Adiv, Aatm, Agr, Domega } = pathTerms(S, d2, d, hs, hr);
   let Abar = 0, bar = null;
   if ((S.barriers && (buildings.length || state.hoardings.length)) || (S.terrain && state.terrain)) {
     bar = screening(src, rx, ry, d2, zs, zr, S, buildings, detail);
@@ -248,12 +256,105 @@ function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
     }
   }
   const Lw = src._lw != null ? src._lw : src.lw;
-  const Lp = Lw + Domega - Adiv - Aatm - Agr - Abar;
-  return detail ? { Lp, Lw, d, Adiv, Aatm, Agr, Abar, Domega, bar, zr } : Lp;
+  const Ldir = Lw + Domega - Adiv - Aatm - Agr - Abar;
+  let Lp = Ldir, refl = null;
+  if (reflectionsOn(S)) {
+    refl = reflections(src, rx, ry, zs, zr, hs, hr, Lw, S);
+    if (refl.length) { let e = Math.pow(10, Ldir / 10); for (const f of refl) e += Math.pow(10, f.Lp / 10); Lp = 10 * Math.log10(e); }
+  }
+  return detail ? { Lp, Ldir, Lw, d, Adiv, Aatm, Agr, Abar, Domega, bar, zr, refl } : Lp;
+}
+
+/* ---------------- first-order reflections (image sources) ---------------- */
+/* 'auto' = on for ISO 9613-2, off on the TfNSW basis (the estimator has no
+   reflections). Skipped during fast redraws while dragging. */
+function reflectionsOn(S) { return !S._fast && (S.reflect === 'on' || (S.reflect !== 'off' && S.method === 'iso')); }
+const REFL_RADIUS = 60, OWN_FACADE = 2, _cand3 = [];
+/* Clear line of sight between two 3D points (buildings except `skip`, hoarding). */
+function clearLeg(x0, y0, z0, x1, y1, z1, skip, src) {
+  for (const b of buildingsOnSegment(x0, y0, x1, y1, _cand3)) {
+    if (b === skip || (src._inside && src._inside.has(b.id))) continue;
+    const iv = segPolyIntervals(x0, y0, x1, y1, b.pts); if (!iv) continue;
+    for (const [t0, t1] of iv) if (topOf(b) > z0 + (z1 - z0) * t0 || topOf(b) > z0 + (z1 - z0) * t1) return false;
+  }
+  const dx = x1 - x0, dy = y1 - y0;
+  for (const ho of state.hoardings) for (let i = 0; i < ho.pts.length - 1; i++) {
+    const a = ho.pts[i], ex = ho.pts[i + 1][0] - a[0], ey = ho.pts[i + 1][1] - a[1], den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-12) continue;
+    const wx = a[0] - x0, wy = a[1] - y0, t = (wx * ey - wy * ex) / den, u = (wx * dy - wy * dx) / den;
+    if (t > 0 && t < 1 && u >= 0 && u <= 1 && ground(x0 + dx * t, y0 + dy * t) + ho.h > z0 + (z1 - z0) * t) return false;
+  }
+  return true;
+}
+/* Reflections of one source off building façades within REFL_RADIUS of the
+   source or receiver (ISO 9613-2 §7.5). A wall reflects when source and
+   receiver are both in front of it, the reflection point lies on the wall and
+   below its top, the wall is large enough for the wavelength (eq. 19), and
+   both legs have a clear line of sight. The façade the receiver stands in
+   front of (within OWN_FACADE m) is left out, so levels stay free-field. Each
+   reflection is an image source with the path's own spreading, air and ground
+   terms, less the reflection loss S.reflLoss (dB).
+   Per source, the walls facing it and their image sources are cached
+   (src._walls, rebuilt when the building index changes), and the buildings
+   near the receiver are found once for all sources. */
+let reflMark = 0;
+const _own = [], rcvNear = { x: NaN, y: NaN, stamp: -1, list: [] };
+function sourceWalls(src, b) {
+  let W = src._walls[b._ix];
+  if (W) return W;
+  W = [];
+  const P = b.pts, n = P.length;
+  let a2 = 0; for (let i = 0, j = n - 1; i < n; j = i++) a2 += P[j][0] * P[i][1] - P[i][0] * P[j][1];
+  const sgn = a2 > 0 ? 1 : -1;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const a = P[j], wx = P[i][0] - a[0], wy = P[i][1] - a[1], L = Math.hypot(wx, wy);
+    if (L < 1) continue;
+    const nx = sgn * wy / L, ny = -sgn * wx / L;                         // outward normal
+    const ds = (src.x - a[0]) * nx + (src.y - a[1]) * ny;
+    if (ds <= 0.01) continue;                                             // source behind this wall
+    W.push({ ax: a[0], ay: a[1], wx, wy, L, nx, ny, ds, ix: src.x - 2 * ds * nx, iy: src.y - 2 * ds * ny });
+  }
+  src._walls[b._ix] = W;
+  return W;
+}
+function reflections(src, rx, ry, zs, zr, hs, hr, Lw, S) {
+  const out = [], loss = S.reflLoss == null ? 1 : S.reflLoss, mark = ++reflMark;
+  // the receiver's own building(s): any wall within OWN_FACADE m
+  for (const b of buildingsNear(rx, ry, OWN_FACADE, _own)) {
+    const P = b.pts;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) if (distSeg(rx, ry, P[j], P[i]) < OWN_FACADE) { b._rm = mark; break; }
+  }
+  if (src._wallsAt !== IDX.built) { src._walls = []; src._nearB = null; src._wallsAt = IDX.built; }   // first call, or geometry changed
+  if (!src._nearB) src._nearB = buildingsNear(src.x, src.y, REFL_RADIUS, []).slice();
+  const visit = b => {
+    if (b._rm === mark || (src._inside && src._inside.has(b.id))) return;
+    b._rm = mark;
+    const top = topOf(b);
+    for (const w of sourceWalls(src, b)) {
+      const dr = (rx - w.ax) * w.nx + (ry - w.ay) * w.ny;
+      if (dr <= 0.01) continue;                                           // receiver behind this wall
+      const t = w.ds / (w.ds + dr), px = w.ix + (rx - w.ix) * t, py = w.iy + (ry - w.iy) * t;
+      const u = ((px - w.ax) * w.wx + (py - w.ay) * w.wy) / (w.L * w.L);
+      if (u < 0 || u > 1) continue;
+      const pz = zs + (zr - zs) * t;
+      if (pz >= top) continue;                                            // passes over the wall
+      const h2s = Math.hypot(px - src.x, py - src.y), dso = Math.hypot(h2s, pz - zs), dor = Math.hypot(rx - px, ry - py, zr - pz);
+      const cosb = w.ds / h2s, lmin = Math.min(w.L, top - b.base);
+      if (1 / LAMBDA <= (2 / Math.pow(lmin * cosb, 2)) * (dso * dor / (dso + dor))) continue;   // ISO 9613-2 eq. 19
+      if (!clearLeg(src.x, src.y, zs, px, py, pz, b, src) || !clearLeg(px, py, pz, rx, ry, zr, b, src)) continue;
+      const d2 = Math.hypot(rx - w.ix, ry - w.iy), d = Math.max(Math.hypot(d2, zs - zr), 1), T = pathTerms(S, d2, d, hs, hr);
+      out.push({ p: [px, py], z: pz, d, b: b.id, Lp: Lw + T.Domega - T.Adiv - T.Aatm - T.Agr - loss });
+    }
+  };
+  // the same receiver point is usually asked for every source in turn
+  if (rcvNear.x !== rx || rcvNear.y !== ry || rcvNear.stamp !== IDX.built) { buildingsNear(rx, ry, REFL_RADIUS, rcvNear.list); rcvNear.x = rx; rcvNear.y = ry; rcvNear.stamp = IDX.built; }
+  for (const b of rcvNear.list) visit(b);
+  for (const b of src._nearB) visit(b);
+  return out;
 }
 function prep(sources) {
   for (const s of sources) {
-    s._inside = new Set();
+    s._inside = new Set(); s._wallsAt = -1;
     const b = buildingAt(s.x, s.y);
     if (b) for (const c of state.buildings) if (inBox(s.x, s.y, c.bbox) && pip(s.x, s.y, c.pts)) s._inside.add(c.id);
     s._z = ground(s.x, s.y) + s.h;

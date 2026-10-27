@@ -166,6 +166,9 @@
       <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
       <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
       <label class="chk"><input type="checkbox" id="setLat" checked> Side diffraction around buildings and hoarding ends</label>
+      <div class="row"><label for="setRefl">Façade reflections (first order)</label>
+        <select id="setRefl"><option value="auto">Auto (ISO only)</option><option value="on">On</option><option value="off">Off</option></select></div>
+      <div class="row"><label for="setReflLoss">Reflection loss (dB)</label><input type="number" id="setReflLoss" min="0" max="10" step="0.5" value="1"></div>
       <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
       <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
       <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
@@ -2473,7 +2476,7 @@ const state = {
     defNca: { name: 'Outside NCAs', cat: DEFAULT_NCA_CAT, rbl: { day: null, evening: null, night: null } },
     floorH: 3, spacing: 10, offset: 1, display: 'both', results: null, sig: null, running: false
   },
-  settings: { method: 'tfnsw', lateral: true, combine: 'all', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
+  settings: { method: 'tfnsw', lateral: true, reflect: 'auto', reflLoss: 1, combine: 'all', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
 };
 let nextId = 1, grid = null;
 
@@ -2540,13 +2543,14 @@ function terrainInside(x, y) {
 }
 
 /* ============================ SPATIAL INDEX ============================ */
-const IDX = { cs: 25, map: new Map(), dirty: true, stamp: 1 };
+const IDX = { cs: 25, map: new Map(), dirty: true, stamp: 1, built: 0 };
 function ikey(i, j) { return (i + 60000) * 120001 + (j + 60000); }
 function rebuildIndex() {
   IDX.map.clear();
   let span = 0;
   for (const b of state.buildings) span = Math.max(span, b.bbox[2] - b.bbox[0], b.bbox[3] - b.bbox[1]);
   IDX.cs = Math.max(10, Math.min(100, span * 0.75 || 25));
+  state.buildings.forEach((b, k) => { b._ix = k; });
   for (const b of state.buildings) {
     const cs = IDX.cs;
     for (let i = Math.floor(b.bbox[0] / cs); i <= Math.floor(b.bbox[2] / cs); i++)
@@ -2554,7 +2558,7 @@ function rebuildIndex() {
         const k = ikey(i, j); let a = IDX.map.get(k); if (!a) IDX.map.set(k, a = []); a.push(b);
       }
   }
-  IDX.dirty = false;
+  IDX.dirty = false; IDX.built++;
 }
 function idx() { if (IDX.dirty) rebuildIndex(); return IDX; }
 function buildingsOnSegment(x0, y0, x1, y1, out) {
@@ -2581,6 +2585,17 @@ function buildingAt(x, y) {
   return null;
 }
 
+/* Buildings whose bounding box comes within r of (x, y). */
+function buildingsNear(x, y, r, out) {
+  const I = idx(), cs = I.cs, st = ++I.stamp;
+  out.length = 0;
+  for (let i = Math.floor((x - r) / cs); i <= Math.floor((x + r) / cs); i++)
+    for (let j = Math.floor((y - r) / cs); j <= Math.floor((y + r) / cs); j++) {
+      const a = I.map.get(ikey(i, j)); if (!a) continue;
+      for (const b of a) if (b._st !== st) { b._st = st; if (b.bbox[0] - r <= x && x <= b.bbox[2] + r && b.bbox[1] - r <= y && y <= b.bbox[3] + r) out.push(b); }
+    }
+  return out;
+}
 /* ============================== OBJECTS ================================ */
 function makeBuilding(pts, h, name, opt) {
   const id = nextId++;
@@ -2873,12 +2888,10 @@ function groundUnderScreening(agr, abar) {
    Lw is the effective level from prep(): time-on, penalty and mitigation applied.
    gr: ground RL at the receiver if already known; zrAbs: absolute receiver RL
    (default ground + S.hr). */
-function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
+/* Spreading, air and ground terms for an unobstructed path of horizontal
+   length d2 and 3D length d (source and receiver heights hs, hr above ground). */
+function pathTerms(S, d2, d, hs, hr) {
   const iso = S.method === 'iso', soft = Math.max(0, Math.min(1, S.soft || 0));
-  const zg = gr == null ? ground(rx, ry) : gr, zr = zrAbs != null ? zrAbs : zg + S.hr;   // zrAbs: absolute receiver RL (façade receivers)
-  const hs = src.h, hr = Math.max(0, zr - zg), zs = src._z;
-  const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
-  const d = Math.max(Math.hypot(d2, zs - zr), 1);
   const Adiv = 20 * Math.log10(d) + (iso ? 11 : 8);
   const Aatm = S.air ? airAlpha(S) * d / 1000 : 0;
   let Agr = 0, Domega = 0;
@@ -2893,6 +2906,16 @@ function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
     }
     Agr = (1 - soft) * hard + soft * sft; Domega = soft * dOm;
   } else if (soft > 0) Agr = soft * concaweGround(d2);
+  return { Adiv, Aatm, Agr, Domega };
+}
+
+function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
+  const iso = S.method === 'iso';
+  const zg = gr == null ? ground(rx, ry) : gr, zr = zrAbs != null ? zrAbs : zg + S.hr;   // zrAbs: absolute receiver RL (façade receivers)
+  const hs = src.h, hr = Math.max(0, zr - zg), zs = src._z;
+  const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
+  const d = Math.max(Math.hypot(d2, zs - zr), 1);
+  let { Adiv, Aatm, Agr, Domega } = pathTerms(S, d2, d, hs, hr);
   let Abar = 0, bar = null;
   if ((S.barriers && (buildings.length || state.hoardings.length)) || (S.terrain && state.terrain)) {
     bar = screening(src, rx, ry, d2, zs, zr, S, buildings, detail);
@@ -2902,12 +2925,105 @@ function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
     }
   }
   const Lw = src._lw != null ? src._lw : src.lw;
-  const Lp = Lw + Domega - Adiv - Aatm - Agr - Abar;
-  return detail ? { Lp, Lw, d, Adiv, Aatm, Agr, Abar, Domega, bar, zr } : Lp;
+  const Ldir = Lw + Domega - Adiv - Aatm - Agr - Abar;
+  let Lp = Ldir, refl = null;
+  if (reflectionsOn(S)) {
+    refl = reflections(src, rx, ry, zs, zr, hs, hr, Lw, S);
+    if (refl.length) { let e = Math.pow(10, Ldir / 10); for (const f of refl) e += Math.pow(10, f.Lp / 10); Lp = 10 * Math.log10(e); }
+  }
+  return detail ? { Lp, Ldir, Lw, d, Adiv, Aatm, Agr, Abar, Domega, bar, zr, refl } : Lp;
+}
+
+/* ---------------- first-order reflections (image sources) ---------------- */
+/* 'auto' = on for ISO 9613-2, off on the TfNSW basis (the estimator has no
+   reflections). Skipped during fast redraws while dragging. */
+function reflectionsOn(S) { return !S._fast && (S.reflect === 'on' || (S.reflect !== 'off' && S.method === 'iso')); }
+const REFL_RADIUS = 60, OWN_FACADE = 2, _cand3 = [];
+/* Clear line of sight between two 3D points (buildings except `skip`, hoarding). */
+function clearLeg(x0, y0, z0, x1, y1, z1, skip, src) {
+  for (const b of buildingsOnSegment(x0, y0, x1, y1, _cand3)) {
+    if (b === skip || (src._inside && src._inside.has(b.id))) continue;
+    const iv = segPolyIntervals(x0, y0, x1, y1, b.pts); if (!iv) continue;
+    for (const [t0, t1] of iv) if (topOf(b) > z0 + (z1 - z0) * t0 || topOf(b) > z0 + (z1 - z0) * t1) return false;
+  }
+  const dx = x1 - x0, dy = y1 - y0;
+  for (const ho of state.hoardings) for (let i = 0; i < ho.pts.length - 1; i++) {
+    const a = ho.pts[i], ex = ho.pts[i + 1][0] - a[0], ey = ho.pts[i + 1][1] - a[1], den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-12) continue;
+    const wx = a[0] - x0, wy = a[1] - y0, t = (wx * ey - wy * ex) / den, u = (wx * dy - wy * dx) / den;
+    if (t > 0 && t < 1 && u >= 0 && u <= 1 && ground(x0 + dx * t, y0 + dy * t) + ho.h > z0 + (z1 - z0) * t) return false;
+  }
+  return true;
+}
+/* Reflections of one source off building façades within REFL_RADIUS of the
+   source or receiver (ISO 9613-2 §7.5). A wall reflects when source and
+   receiver are both in front of it, the reflection point lies on the wall and
+   below its top, the wall is large enough for the wavelength (eq. 19), and
+   both legs have a clear line of sight. The façade the receiver stands in
+   front of (within OWN_FACADE m) is left out, so levels stay free-field. Each
+   reflection is an image source with the path's own spreading, air and ground
+   terms, less the reflection loss S.reflLoss (dB).
+   Per source, the walls facing it and their image sources are cached
+   (src._walls, rebuilt when the building index changes), and the buildings
+   near the receiver are found once for all sources. */
+let reflMark = 0;
+const _own = [], rcvNear = { x: NaN, y: NaN, stamp: -1, list: [] };
+function sourceWalls(src, b) {
+  let W = src._walls[b._ix];
+  if (W) return W;
+  W = [];
+  const P = b.pts, n = P.length;
+  let a2 = 0; for (let i = 0, j = n - 1; i < n; j = i++) a2 += P[j][0] * P[i][1] - P[i][0] * P[j][1];
+  const sgn = a2 > 0 ? 1 : -1;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const a = P[j], wx = P[i][0] - a[0], wy = P[i][1] - a[1], L = Math.hypot(wx, wy);
+    if (L < 1) continue;
+    const nx = sgn * wy / L, ny = -sgn * wx / L;                         // outward normal
+    const ds = (src.x - a[0]) * nx + (src.y - a[1]) * ny;
+    if (ds <= 0.01) continue;                                             // source behind this wall
+    W.push({ ax: a[0], ay: a[1], wx, wy, L, nx, ny, ds, ix: src.x - 2 * ds * nx, iy: src.y - 2 * ds * ny });
+  }
+  src._walls[b._ix] = W;
+  return W;
+}
+function reflections(src, rx, ry, zs, zr, hs, hr, Lw, S) {
+  const out = [], loss = S.reflLoss == null ? 1 : S.reflLoss, mark = ++reflMark;
+  // the receiver's own building(s): any wall within OWN_FACADE m
+  for (const b of buildingsNear(rx, ry, OWN_FACADE, _own)) {
+    const P = b.pts;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) if (distSeg(rx, ry, P[j], P[i]) < OWN_FACADE) { b._rm = mark; break; }
+  }
+  if (src._wallsAt !== IDX.built) { src._walls = []; src._nearB = null; src._wallsAt = IDX.built; }   // first call, or geometry changed
+  if (!src._nearB) src._nearB = buildingsNear(src.x, src.y, REFL_RADIUS, []).slice();
+  const visit = b => {
+    if (b._rm === mark || (src._inside && src._inside.has(b.id))) return;
+    b._rm = mark;
+    const top = topOf(b);
+    for (const w of sourceWalls(src, b)) {
+      const dr = (rx - w.ax) * w.nx + (ry - w.ay) * w.ny;
+      if (dr <= 0.01) continue;                                           // receiver behind this wall
+      const t = w.ds / (w.ds + dr), px = w.ix + (rx - w.ix) * t, py = w.iy + (ry - w.iy) * t;
+      const u = ((px - w.ax) * w.wx + (py - w.ay) * w.wy) / (w.L * w.L);
+      if (u < 0 || u > 1) continue;
+      const pz = zs + (zr - zs) * t;
+      if (pz >= top) continue;                                            // passes over the wall
+      const h2s = Math.hypot(px - src.x, py - src.y), dso = Math.hypot(h2s, pz - zs), dor = Math.hypot(rx - px, ry - py, zr - pz);
+      const cosb = w.ds / h2s, lmin = Math.min(w.L, top - b.base);
+      if (1 / LAMBDA <= (2 / Math.pow(lmin * cosb, 2)) * (dso * dor / (dso + dor))) continue;   // ISO 9613-2 eq. 19
+      if (!clearLeg(src.x, src.y, zs, px, py, pz, b, src) || !clearLeg(px, py, pz, rx, ry, zr, b, src)) continue;
+      const d2 = Math.hypot(rx - w.ix, ry - w.iy), d = Math.max(Math.hypot(d2, zs - zr), 1), T = pathTerms(S, d2, d, hs, hr);
+      out.push({ p: [px, py], z: pz, d, b: b.id, Lp: Lw + T.Domega - T.Adiv - T.Aatm - T.Agr - loss });
+    }
+  };
+  // the same receiver point is usually asked for every source in turn
+  if (rcvNear.x !== rx || rcvNear.y !== ry || rcvNear.stamp !== IDX.built) { buildingsNear(rx, ry, REFL_RADIUS, rcvNear.list); rcvNear.x = rx; rcvNear.y = ry; rcvNear.stamp = IDX.built; }
+  for (const b of rcvNear.list) visit(b);
+  for (const b of src._nearB) visit(b);
+  return out;
 }
 function prep(sources) {
   for (const s of sources) {
-    s._inside = new Set();
+    s._inside = new Set(); s._wallsAt = -1;
     const b = buildingAt(s.x, s.y);
     if (b) for (const c of state.buildings) if (inBox(s.x, s.y, c.bbox) && pip(s.x, s.y, c.pts)) s._inside.add(c.id);
     s._z = ground(s.x, s.y) + s.h;
@@ -3766,7 +3882,8 @@ function resize() {
 /* ============================ GRID COMPUTE ============================= */
 function computeGrid(cellPx, quiet) {
   const t0 = performance.now();
-  const S = state.settings, B = state.buildings, srcs = activeSources();
+  // fast redraws while dragging skip reflections (the full pass follows)
+  const S = quiet ? Object.assign({}, state.settings, { _fast: true }) : state.settings, B = state.buildings, srcs = activeSources();
   prep(srcs);
   const gw = Math.ceil(cssW / cellPx), gh = Math.ceil(cssH / cellPx);
   off.width = gw; off.height = gh;
@@ -3962,6 +4079,9 @@ function updateProbe() {
       else if (S.lateral !== false) note += r.bar.terrainEdge ? ' · no side paths (terrain in the path)' : ' · no side paths (receiver or source enclosed)';
       note += ` · combined Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ` (capped at ${fmt(r.bar.cap, 0)})` : ''}`;
     } else note += ' · line of sight';
+    if (r.refl) note += r.refl.length
+      ? ` · reflections: ${r.refl.map(f => `${esc((state.buildings.find(b => b.id === f.b) || {}).name || 'building')} ${fmt(f.Lp)}`).join(', ')} (loss ${fmt(S.reflLoss == null ? 1 : S.reflLoss)} dB each); direct ${fmt(r.Ldir)} → total ${fmt(r.Lp)} (+${fmt(r.Lp - r.Ldir)})`
+      : ' · no reflecting façade';
     rows += `<tr class="note"><td colspan="8">${note}</td></tr>`;
   }
   const L = 10 * Math.log10(e);
@@ -4228,9 +4348,11 @@ $('setTerr').addEventListener('change', e => { state.settings.terrain = e.target
 $('setShade').addEventListener('change', e => { state.settings.shade = e.target.checked; requestRender(); });
 $('setAir').addEventListener('change', e => { state.settings.air = e.target.checked; requestCompute(false); });
 $('setLat').addEventListener('change', e => { state.settings.lateral = e.target.checked; log(`Side diffraction ${e.target.checked ? 'ON' : 'OFF'}.`); requestCompute(false); });
+$('setRefl').addEventListener('change', e => { state.settings.reflect = e.target.value; log(`Façade reflections: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
+bindNum($('setReflLoss'), 0, 10, v => { state.settings.reflLoss = v; });
 const METHOD_NOTES = {
   tfnsw: 'Same basis as the TfNSW Construction Noise Estimator: hemispherical spreading (20·lg d + 8), seasonal air absorption, CONCAWE ground × % soft, and screening from the modelled buildings, hoarding and terrain capped at the value below (the estimator allows at most 15 dB).',
-  iso: 'ISO 9613-2: spherical spreading with ground per §7.3 (hard: G = 0, soft: eq. 10 with DΩ) and full barrier diffraction (20/25 dB caps). Use for detailed checks; results can differ from the TfNSW estimator.'
+  iso: 'ISO 9613-2: spherical spreading with ground per §7.3 (hard: G = 0, soft: eq. 10 with DΩ) full barrier diffraction (20/25 dB caps) and, with reflections on Auto, first-order façade reflections. Use for detailed checks; results can differ from the TfNSW estimator.'
 };
 function onMethodChange() {
   const iso = state.settings.method === 'iso';
@@ -4252,6 +4374,7 @@ $('setOp').addEventListener('input', e => { state.settings.opacity = parseFloat(
 function syncSettingsUI() {
   const S = state.settings;
   $('setBar').checked = S.barriers; $('setTerr').checked = S.terrain; $('setShade').checked = S.shade; $('setAir').checked = S.air; $('setLat').checked = S.lateral !== false;
+  $('setRefl').value = S.reflect || 'auto'; $('setReflLoss').value = S.reflLoss == null ? 1 : S.reflLoss;
   $('setMethod').value = S.method; $('setPeriod').value = S.period; $('setSeason').value = S.season;
   $('setSoft').value = Math.round(S.soft * 100); $('setCombine').value = S.combine; $('setBarCap').value = S.barCap; onMethodChange();
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
@@ -5766,6 +5889,7 @@ function sanitizeSettings(raw, cur) {
   const oneOf = (...vals) => v => vals.includes(v);
   const bool = v => typeof v === 'boolean';
   pick('method', oneOf('tfnsw', 'iso')); pick('combine', oneOf('all', 'estimator')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
+  pick('reflect', oneOf('auto', 'on', 'off')); pick('reflLoss', inR(0, 10));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
   pick('air', bool); pick('lateral', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
   pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
@@ -6015,7 +6139,7 @@ const ESTIMATOR_GOLDEN = [
   ['warm', 'std', 500, 0.5, 15, 31.5272665799463]
 ];
 function selfTest() {
-  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true };
+  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true, reflect: 'off' };
   const ST = Object.assign({}, S0, { method: 'tfnsw', air: true });
   let pass = 0, fail = 0;
   const results = [];
@@ -6068,6 +6192,22 @@ function selfTest() {
     const topB = dzOf(dT, C3b, Math.exp(-(1 / 2000) * Math.sqrt(aT * aT * 50 / (2 * dT))));
     const latB = dzOf(2 * Math.hypot(20, 10) + 10 - 50, C3b, 1);
     check('Side diffraction: 10 × 20 m block, 10 m high (two edges each way)', Dz(contrib(src, 50, 0, SL, state.buildings, true)), sumDz(topB, latB, latB), 0.05);
+    state.buildings = []; geomChanged();
+
+    // First-order reflections (ISO 9613-2 §7.5): image source behind the wall,
+    // same spreading and ground terms over the image path, less the 1 dB loss.
+    const SR = Object.assign({}, S0, { reflect: 'on', reflLoss: 1 }), esum = (...l) => 10 * Math.log10(l.reduce((a, x) => a + Math.pow(10, x / 10), 0));
+    const isoHard = d => 105 - (20 * Math.log10(d) + 11) + 3;
+    state.buildings = [makeBuilding(rect(-100, 10, 100, 10.2), 10, 'reflecting wall')]; geomChanged(); prep([src]);
+    check('Reflection: 10 m wall 10 m beside a 30 m path (ISO, hard)', contrib(src, 30, 0, SR, state.buildings, false), esum(isoHard(30), isoHard(Math.hypot(30, 20)) - 1), 0.01);
+    check('Reflection: TfNSW basis with reflections on', contrib(src, 30, 0, Object.assign({}, SR, { method: 'tfnsw' }), state.buildings, false),
+      esum(105 - (20 * Math.log10(30) + 8), 105 - (20 * Math.log10(Math.hypot(30, 20)) + 8) - 1), 0.01);
+    check('Reflection off: same wall, direct only', contrib(src, 30, 0, Object.assign({}, SR, { reflect: 'off' }), state.buildings, false), isoHard(30), 0.01);
+    check('Reflection: receiver\'s own façade (1 m away) left out', contrib(src, 30, 9, SR, state.buildings, false), isoHard(Math.hypot(30, 9)), 0.01);
+    state.buildings = [makeBuilding(rect(-100, 10, 100, 10.2), 1, 'low wall')]; geomChanged(); prep([src]);
+    check('Reflection: wall lower than the path, none', contrib(src, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
+    state.buildings = [makeBuilding(rect(14.4, 10, 15.6, 10.2), 10, 'column')]; geomChanged(); prep([src]);
+    check('Reflection: 1.2 m wide column too small (eq. 19), none', contrib(src, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
     state.buildings = []; geomChanged();
 
     const mkT = (fn) => { const w = 121, h = 41, z = new Float32Array(w * h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) z[j * w + i] = fn(i - 10, 20 - j); return { w, h, cx: 1, cy: 1, x0: -10.5, yTop: 20.5, z, zmin: 0, zmax: 0 }; };

@@ -17,13 +17,14 @@ function terrainInside(x, y) {
 }
 
 /* ============================ SPATIAL INDEX ============================ */
-const IDX = { cs: 25, map: new Map(), dirty: true, stamp: 1 };
+const IDX = { cs: 25, map: new Map(), dirty: true, stamp: 1, built: 0 };
 function ikey(i, j) { return (i + 60000) * 120001 + (j + 60000); }
 function rebuildIndex() {
   IDX.map.clear();
   let span = 0;
   for (const b of state.buildings) span = Math.max(span, b.bbox[2] - b.bbox[0], b.bbox[3] - b.bbox[1]);
   IDX.cs = Math.max(10, Math.min(100, span * 0.75 || 25));
+  state.buildings.forEach((b, k) => { b._ix = k; });
   for (const b of state.buildings) {
     const cs = IDX.cs;
     for (let i = Math.floor(b.bbox[0] / cs); i <= Math.floor(b.bbox[2] / cs); i++)
@@ -31,7 +32,7 @@ function rebuildIndex() {
         const k = ikey(i, j); let a = IDX.map.get(k); if (!a) IDX.map.set(k, a = []); a.push(b);
       }
   }
-  IDX.dirty = false;
+  IDX.dirty = false; IDX.built++;
 }
 function idx() { if (IDX.dirty) rebuildIndex(); return IDX; }
 function buildingsOnSegment(x0, y0, x1, y1, out) {
@@ -58,3 +59,14 @@ function buildingAt(x, y) {
   return null;
 }
 
+/* Buildings whose bounding box comes within r of (x, y). */
+function buildingsNear(x, y, r, out) {
+  const I = idx(), cs = I.cs, st = ++I.stamp;
+  out.length = 0;
+  for (let i = Math.floor((x - r) / cs); i <= Math.floor((x + r) / cs); i++)
+    for (let j = Math.floor((y - r) / cs); j <= Math.floor((y + r) / cs); j++) {
+      const a = I.map.get(ikey(i, j)); if (!a) continue;
+      for (const b of a) if (b._st !== st) { b._st = st; if (b.bbox[0] - r <= x && x <= b.bbox[2] + r && b.bbox[1] - r <= y && y <= b.bbox[3] + r) out.push(b); }
+    }
+  return out;
+}

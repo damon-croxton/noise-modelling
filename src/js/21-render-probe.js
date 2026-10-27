@@ -145,6 +145,9 @@ function updateProbe() {
       else if (S.lateral !== false) note += r.bar.terrainEdge ? ' · no side paths (terrain in the path)' : ' · no side paths (receiver or source enclosed)';
       note += ` · combined Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ` (capped at ${fmt(r.bar.cap, 0)})` : ''}`;
     } else note += ' · line of sight';
+    if (r.refl) note += r.refl.length
+      ? ` · reflections: ${r.refl.map(f => `${esc((state.buildings.find(b => b.id === f.b) || {}).name || 'building')} ${fmt(f.Lp)}`).join(', ')} (loss ${fmt(S.reflLoss == null ? 1 : S.reflLoss)} dB each); direct ${fmt(r.Ldir)} → total ${fmt(r.Lp)} (+${fmt(r.Lp - r.Ldir)})`
+      : ' · no reflecting façade';
     rows += `<tr class="note"><td colspan="8">${note}</td></tr>`;
   }
   const L = 10 * Math.log10(e);

@@ -13,7 +13,7 @@ const ESTIMATOR_GOLDEN = [
   ['warm', 'std', 500, 0.5, 15, 31.5272665799463]
 ];
 function selfTest() {
-  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true };
+  const S0 = { method: 'iso', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: false, barriers: true, terrain: true, reflect: 'off' };
   const ST = Object.assign({}, S0, { method: 'tfnsw', air: true });
   let pass = 0, fail = 0;
   const results = [];
@@ -66,6 +66,22 @@ function selfTest() {
     const topB = dzOf(dT, C3b, Math.exp(-(1 / 2000) * Math.sqrt(aT * aT * 50 / (2 * dT))));
     const latB = dzOf(2 * Math.hypot(20, 10) + 10 - 50, C3b, 1);
     check('Side diffraction: 10 × 20 m block, 10 m high (two edges each way)', Dz(contrib(src, 50, 0, SL, state.buildings, true)), sumDz(topB, latB, latB), 0.05);
+    state.buildings = []; geomChanged();
+
+    // First-order reflections (ISO 9613-2 §7.5): image source behind the wall,
+    // same spreading and ground terms over the image path, less the 1 dB loss.
+    const SR = Object.assign({}, S0, { reflect: 'on', reflLoss: 1 }), esum = (...l) => 10 * Math.log10(l.reduce((a, x) => a + Math.pow(10, x / 10), 0));
+    const isoHard = d => 105 - (20 * Math.log10(d) + 11) + 3;
+    state.buildings = [makeBuilding(rect(-100, 10, 100, 10.2), 10, 'reflecting wall')]; geomChanged(); prep([src]);
+    check('Reflection: 10 m wall 10 m beside a 30 m path (ISO, hard)', contrib(src, 30, 0, SR, state.buildings, false), esum(isoHard(30), isoHard(Math.hypot(30, 20)) - 1), 0.01);
+    check('Reflection: TfNSW basis with reflections on', contrib(src, 30, 0, Object.assign({}, SR, { method: 'tfnsw' }), state.buildings, false),
+      esum(105 - (20 * Math.log10(30) + 8), 105 - (20 * Math.log10(Math.hypot(30, 20)) + 8) - 1), 0.01);
+    check('Reflection off: same wall, direct only', contrib(src, 30, 0, Object.assign({}, SR, { reflect: 'off' }), state.buildings, false), isoHard(30), 0.01);
+    check('Reflection: receiver\'s own façade (1 m away) left out', contrib(src, 30, 9, SR, state.buildings, false), isoHard(Math.hypot(30, 9)), 0.01);
+    state.buildings = [makeBuilding(rect(-100, 10, 100, 10.2), 1, 'low wall')]; geomChanged(); prep([src]);
+    check('Reflection: wall lower than the path, none', contrib(src, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
+    state.buildings = [makeBuilding(rect(14.4, 10, 15.6, 10.2), 10, 'column')]; geomChanged(); prep([src]);
+    check('Reflection: 1.2 m wide column too small (eq. 19), none', contrib(src, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
     state.buildings = []; geomChanged();
 
     const mkT = (fn) => { const w = 121, h = 41, z = new Float32Array(w * h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) z[j * w + i] = fn(i - 10, 20 - j); return { w, h, cx: 1, cy: 1, x0: -10.5, yTop: 20.5, z, zmin: 0, zmax: 0 }; };

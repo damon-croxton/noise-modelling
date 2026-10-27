@@ -65,6 +65,7 @@ function sanitizeSettings(raw, cur) {
   const oneOf = (...vals) => v => vals.includes(v);
   const bool = v => typeof v === 'boolean';
   pick('method', oneOf('tfnsw', 'iso')); pick('combine', oneOf('all', 'estimator')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
+  pick('reflect', oneOf('auto', 'on', 'off')); pick('reflLoss', inR(0, 10));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
   pick('air', bool); pick('lateral', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
   pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));

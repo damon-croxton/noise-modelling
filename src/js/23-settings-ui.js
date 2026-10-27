@@ -7,9 +7,11 @@ $('setTerr').addEventListener('change', e => { state.settings.terrain = e.target
 $('setShade').addEventListener('change', e => { state.settings.shade = e.target.checked; requestRender(); });
 $('setAir').addEventListener('change', e => { state.settings.air = e.target.checked; requestCompute(false); });
 $('setLat').addEventListener('change', e => { state.settings.lateral = e.target.checked; log(`Side diffraction ${e.target.checked ? 'ON' : 'OFF'}.`); requestCompute(false); });
+$('setRefl').addEventListener('change', e => { state.settings.reflect = e.target.value; log(`Façade reflections: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
+bindNum($('setReflLoss'), 0, 10, v => { state.settings.reflLoss = v; });
 const METHOD_NOTES = {
   tfnsw: 'Same basis as the TfNSW Construction Noise Estimator: hemispherical spreading (20·lg d + 8), seasonal air absorption, CONCAWE ground × % soft, and screening from the modelled buildings, hoarding and terrain capped at the value below (the estimator allows at most 15 dB).',
-  iso: 'ISO 9613-2: spherical spreading with ground per §7.3 (hard: G = 0, soft: eq. 10 with DΩ) and full barrier diffraction (20/25 dB caps). Use for detailed checks; results can differ from the TfNSW estimator.'
+  iso: 'ISO 9613-2: spherical spreading with ground per §7.3 (hard: G = 0, soft: eq. 10 with DΩ) full barrier diffraction (20/25 dB caps) and, with reflections on Auto, first-order façade reflections. Use for detailed checks; results can differ from the TfNSW estimator.'
 };
 function onMethodChange() {
   const iso = state.settings.method === 'iso';
@@ -31,6 +33,7 @@ $('setOp').addEventListener('input', e => { state.settings.opacity = parseFloat(
 function syncSettingsUI() {
   const S = state.settings;
   $('setBar').checked = S.barriers; $('setTerr').checked = S.terrain; $('setShade').checked = S.shade; $('setAir').checked = S.air; $('setLat').checked = S.lateral !== false;
+  $('setRefl').value = S.reflect || 'auto'; $('setReflLoss').value = S.reflLoss == null ? 1 : S.reflLoss;
   $('setMethod').value = S.method; $('setPeriod').value = S.period; $('setSeason').value = S.season;
   $('setSoft').value = Math.round(S.soft * 100); $('setCombine').value = S.combine; $('setBarCap').value = S.barCap; onMethodChange();
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;

@@ -12,7 +12,8 @@ function resize() {
 /* ============================ GRID COMPUTE ============================= */
 function computeGrid(cellPx, quiet) {
   const t0 = performance.now();
-  const S = state.settings, B = state.buildings, srcs = activeSources();
+  // fast redraws while dragging skip reflections (the full pass follows)
+  const S = quiet ? Object.assign({}, state.settings, { _fast: true }) : state.settings, B = state.buildings, srcs = activeSources();
   prep(srcs);
   const gw = Math.ceil(cssW / cellPx), gh = Math.ceil(cssH / cellPx);
   off.width = gw; off.height = gh;
