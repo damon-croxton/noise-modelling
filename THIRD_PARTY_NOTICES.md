@@ -1,5 +1,12 @@
 # Third-party notices
 
+**Current arrangement:** the tool is used internally on Transport for NSW projects and is not commercialised or distributed outside the organisation. Under that arrangement:
+- the TfNSW non-commercial condition is met, and acknowledgement is given in the app and below;
+- the LASzip licence question below doesn't restrict use, because both Apache-2.0 and LGPL-2.1 permit internal use;
+- OSM attribution is shown in the app.
+
+If the tool is ever commercialised or distributed externally, revisit the TfNSW and LASzip sections.
+
 ## LASzip (LAZ decoder)
 
 `src/js/30-laz.js` is a JavaScript port of the LASzip decompressor (arithmetic coder after A. Said; LASzip by Martin Isenburg / rapidlasso GmbH). Only point formats 0–10 are decoded, and only the fields the tool needs.
@@ -7,7 +14,7 @@
 - Upstream: <https://github.com/LASzip/LASzip>
 - Licence: **Apache License 2.0** (<https://www.apache.org/licenses/LICENSE-2.0>). This is the licence in the current upstream `COPYING.txt`, checked 2026-10-26.
 
-**Open point:** releases of LASzip before its relicensing were LGPL-2.1. The commit history doesn't record which upstream release the port follows. If it was an LGPL release, the LGPL terms apply to this file. To be confirmed by whoever wrote the v0.4 port (see the gap register).
+**Open point (only matters if the tool is distributed externally):** releases of LASzip before its relicensing were LGPL-2.1. The commit history doesn't record which upstream release the port follows. If it was an LGPL release, the LGPL terms apply to this file. To be confirmed by whoever wrote the v0.4 port (see the gap register).
 
 ## OpenStreetMap
 

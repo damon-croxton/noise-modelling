@@ -46,5 +46,5 @@ Still to come: the printable report in the standard section structure, saved shi
 
 | Item | Status | Action |
 |---|---|---|
-| LASzip port licence | open | Current upstream LASzip is Apache-2.0. If the v0.4 port came from an older LGPL-2.1 release, LGPL terms apply. Confirm the source release. |
-| TfNSW tables | interim | Bundled for an in-house tool on TfNSW projects, with attribution. Commercial use needs permission from TfNSW, or the tables must ship empty and be imported by the user. |
+| LASzip port licence | closed for internal use | Internal use is permitted under either Apache-2.0 (current upstream) or LGPL-2.1 (older releases). Confirm the source release only if the tool is distributed externally. |
+| TfNSW tables | closed for internal use | The tool is used internally on TfNSW projects and not commercialised, which meets the non-commercial condition; attribution is in the app and THIRD_PARTY_NOTICES.md. Commercial use would need TfNSW's permission. |
