@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.1 – Test robustness
+
+- Switching shift redraws the plant list straight away; before, it waited for the next map redraw.
+- Tests:
+  - wait for the plant list instead of reading it at once (failed on CI);
+  - set display preferences before the page loads, because a write followed by an immediate reload can be lost.
+- Test runner:
+  - `THROTTLE=n` slows the CPU n× to shake out timing assumptions;
+  - failing assertions now print the expected and actual values.
+
 ## 0.11.0 – Site workflow
 
 ### Changed

@@ -10,7 +10,8 @@ const OSM_XML = `<?xml version="1.0"?><osm version="0.6">
   <way id="10"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/><tag k="building" v="apartments"/><tag k="building:levels" v="5"/></way></osm>`;
 /* Fresh start with the app's own defaults (layout, start-up scene, underlay), auto-update off. */
 async function defaults(page) {
-  await page.evaluate(() => localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false })));
+  // set before the app reads it (a write followed by an immediate reload can be lost)
+  await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false })));
   await page.reload(); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
 }
 
@@ -74,7 +75,7 @@ module.exports = [
     async run({ page, assert }) {
       const tiles = [];
       await page.route('https://tile.openstreetmap.org/**', r => { tiles.push(r.request().url()); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
-      await page.evaluate(() => { const ui = JSON.parse(localStorage.getItem('noise-poc-ui-v2')); ui.layers = { osm: true }; localStorage.setItem('noise-poc-ui-v2', JSON.stringify(ui)); });
+      await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: true } })));
       await page.reload(); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
       await page.waitForTimeout(300);
       assert.strictEqual(tiles.length, 0, 'no location yet: no tiles');

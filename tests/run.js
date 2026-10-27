@@ -7,7 +7,7 @@
  *    results (window.__noise.selftest). Any failure fails the run.
  * 2. Runs every tests/*.test.js. Each exports { name, run } or an array of
  *    them; run({ page, open, assert, fixtures }) gets a freshly loaded page.
- * Uncaught page errors fail the test they occur in.
+ * Uncaught page errors fail the test they occur in. THROTTLE=n slows the CPU n×.
  */
 'use strict';
 const path = require('path'), fs = require('fs');
@@ -36,6 +36,8 @@ async function open(browser) {
       return orig(sel, ...a);
     };
   }
+  // THROTTLE=4 node tests/run.js … slows the CPU 4×, to shake out timing assumptions (CI machines are slower)
+  if (process.env.THROTTLE) { const cdp = await page.context().newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: +process.env.THROTTLE }); }
   await page.goto(PAGE);
   await page.waitForFunction(() => window.__noise && window.__noise.selftest, null, { timeout: 30000 });
   return page;
@@ -80,7 +82,8 @@ async function waitLog(page, re, timeout = 60000) {
         if (page._errors.length) throw new Error('page error: ' + page._errors.join(' | '));
         report(true, name);
       } catch (err) {
-        report(false, name, process.env.FULL_ERR ? err.message : err.message.split("\n")[0]);
+        // assertion diffs (expected vs actual) span several lines: keep them, so CI logs show what differed
+        report(false, name, process.env.FULL_ERR ? err.message : err.message.split('\n').filter(Boolean).slice(0, 8).join(' | '));
       }
       await page.close();
     }

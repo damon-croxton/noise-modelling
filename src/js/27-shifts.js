@@ -229,7 +229,7 @@ function renderShiftPanel(force) {
   $('shInfo').innerHTML = `${state.shifts.length} shift(s). Results: <span class="dot d-ok"></span>up to date <span class="dot d-stale"></span>out of date <span class="dot d-none"></span>not run.${hint}`;
   if (!keep($('prjName'))) $('prjName').value = state.project.name;
   if (!keep($('prjBy'))) $('prjBy').value = state.project.by;
-  renderSources(); updateRunState();
+  renderSources(); updateRunState(); syncPlantList();
 }
 $('shNew').addEventListener('click', () => {
   const sh = makeShift(`Shift ${state.shifts.length + 1}`, []); curShift(); state.shifts.push(sh);

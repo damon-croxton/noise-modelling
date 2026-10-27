@@ -30,8 +30,11 @@ module.exports = [
       await page.click('[data-menu=mView]'); await pick(page, 'input[name=uiLayout][value=single]');
       w = await where(page);
       assert.ok(w.slice(0, 17).every(p => p === 'left'), 'single column: all in one panel');
+      assert.strictEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('noise-poc-ui-v2')).layout), 'single', 'choice saved');
+      // stored preferences are applied on opening (written before the app starts: an immediate reload can lose a fresh write)
+      await page.addInitScript(() => { const p = JSON.parse(localStorage.getItem('noise-poc-ui-v2') || '{}'); p.layout = 'single'; localStorage.setItem('noise-poc-ui-v2', JSON.stringify(p)); });
       await page.reload(); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
-      assert.ok((await page.getAttribute('#app', 'class')).includes('layout-single'), 'layout remembered after reload');
+      assert.ok((await page.getAttribute('#app', 'class')).includes('layout-single'), 'layout applied after reload');
     }
   },
   {
@@ -64,18 +67,17 @@ module.exports = [
       await page.click('#plAdd');
       const box = await page.locator('#map').boundingBox();
       await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.35);
-      await page.waitForFunction(() => /2 plant/.test(document.querySelector('#shChips button.on').textContent));
-      assert.strictEqual(await page.$$eval('#plantList tbody tr', r => r.length), 2);
+      await page.waitForFunction(() => /2 plant/.test(document.querySelector('#shChips button.on').textContent) && document.querySelectorAll('#plantList tbody tr').length === 2, null, { timeout: 5000 });
       // the first shift still has one, and switching shows its own plant and period
       await page.click('#shChips button:not(.on)');
       assert.ok((await page.textContent('#banner')).includes('Demo shift') && (await page.textContent('#banner')).includes('Standard hours'));
-      assert.strictEqual(await page.$$eval('#plantList tbody tr', r => r.length), 1);
+      await page.waitForFunction(() => document.querySelectorAll('#plantList tbody tr').length === 1, null, { timeout: 5000 });
       assert.strictEqual(await page.inputValue('#setPeriod'), 'std');
       // clicking a plant row selects it; × deletes it
       await page.click('#plantList tbody tr');
       assert.ok((await page.inputValue('#sName')).length > 0, 'selected plant shown in Selected');
       await page.click('#plantList [data-del]');
-      assert.strictEqual(await page.evaluate(() => window.__noise.state.sources.length), 0);
+      await page.waitForFunction(() => window.__noise.state.sources.length === 0, null, { timeout: 5000 });
     }
   },
   {
