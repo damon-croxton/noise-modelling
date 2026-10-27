@@ -14,8 +14,8 @@ module.exports = [
   {
     name: 'version, disclaimer and licence notes are shown',
     async run({ page, assert }) {
-      assert.strictEqual(await page.textContent('#ver'), 'v0.9.0');
-      const t = await page.textContent('#side');
+      assert.strictEqual(await page.textContent('#ver'), 'v0.10.0');
+      const t = await page.textContent('#app');
       for (const k of ['does not replace an assessment by a qualified acoustic consultant', 'OpenStreetMap contributors (ODbL)', 'Apache License 2.0', 'EMF-NV-GD-0060'])
         assert.ok(t.includes(k), 'missing: ' + k);
     }

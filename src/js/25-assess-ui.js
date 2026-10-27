@@ -9,8 +9,9 @@ const optNum = v => (v === '' || v == null ? null : num(v, 20, 80));
 
 function updateAssessButtons() {
   const A = state.assess, has = !!A.results;
-  $('btnAssess').disabled = A.running; $('btnAssess').textContent = A.running ? 'Running…' : 'Run assessment';
-  $('btnTable').disabled = !has || A.running; $('btnCsv').disabled = !has || A.running;
+  $('btnAssess').disabled = A.running; $('btnAssess').textContent = A.running ? 'Running…' : 'Run this shift';
+  $('btnTable').disabled = !has || A.running; $('btnCsv').disabled = !has || A.running; $('btnCsvCard').disabled = !has || A.running;
+  $('asAuto').checked = UI.auto;
 }
 function syncAssessUI() {
   const A = state.assess, r = A.defNca.rbl;
@@ -36,7 +37,8 @@ function refreshBulkSelects() {
 /* Status line and summary: building-floors per land use and category. */
 function renderAssessPanel() {
   const A = state.assess, R = A.results;
-  if (!R) { $('asStatus').innerHTML = '<span class="muted">Not run yet.</span>'; $('asSummary').innerHTML = ''; return; }
+  updateRunState(); buildLegend();
+  if (!R) { $('asStatus').innerHTML = `<span class="muted">Not run yet for “${esc(curShift().name)}”. Click <b>Run this shift</b>${UI.auto ? ' – after that, results update automatically' : ''}.</span>`; $('asSummary').innerHTML = ''; return; }
   const stale = assessStale();
   const st = R.stats, t = new Date(R.at);
   $('asStatus').innerHTML = (stale ? '<div class="stale">Inputs have changed since this run – run the assessment again.</div>' : '') +
@@ -57,16 +59,26 @@ function renderAssessPanel() {
   $('asSummary').innerHTML = html + '<p class="kv muted">Building-floors = one result per floor of each building (worst façade point). Screening estimate only.</p>';
 }
 let staleTimer = 0;
+let autoTimer = 0;
 function assessStatusTick() {   // called after full recomputes; debounced check that keeps the stale warning current
   clearTimeout(staleTimer);
   staleTimer = setTimeout(() => {
+    updateRunState();
+    if (autoWanted()) { clearTimeout(autoTimer); autoTimer = setTimeout(() => { if (autoWanted()) runAssessment({ auto: true }); }, 900); }
     if (!state.assess.results || state.assess.running) return;
     if (assessStale() !== !!$('asStatus').querySelector('.stale')) renderAssessPanel();
   }, 300);
 }
+/* Update automatically: once something has been assessed this session, re-run the
+   current shift when its results are missing or out of date, if a run is quick. */
+function autoWanted() {
+  const A = state.assess;
+  return UI.auto && A.everRun && !A.running && !state.batch && (A.lastMs || 0) < 3000 && state.sources.length > 0 && state.buildings.length > 0 && (!A.results || assessStale());
+}
 
 /* -------- panel bindings -------- */
 $('btnAssess').addEventListener('click', () => runAssessment());
+$('asAuto').addEventListener('change', e => { UI.auto = e.target.checked; savePrefs(); log(`Update automatically ${UI.auto ? 'ON' : 'OFF'}.`); if (UI.auto) assessStatusTick(); });
 $('asDefCat').addEventListener('change', e => { state.assess.defNca.cat = e.target.value; log(`Noise area outside NCAs: ${e.target.value}.`); renderAssessPanel(); requestRender(); });
 [['asRblD', 'day'], ['asRblE', 'evening'], ['asRblN', 'night']].forEach(([id, k]) => $(id).addEventListener('input', e => {
   const v = optNum(e.target.value); e.target.classList.toggle('bad', e.target.value !== '' && v === null);
@@ -77,6 +89,7 @@ bindNum($('asSpacing'), 2, 50, v => { state.assess.spacing = v; });
 bindNum($('asOffset'), 0.1, 5, v => { state.assess.offset = v; });
 $('asDisplay').addEventListener('change', e => {
   state.assess.display = e.target.value;
+  buildLegend();
   if (e.target.value === 'respite') { const rs = computeRespite(); log(`Respite map: ${rs.shifts.length} shift(s) with results; colour = dates above NML at the worst floor (shifts without dates count once), red outline = respite issue.`); }
   requestRender();
 });

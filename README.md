@@ -9,11 +9,22 @@ A construction noise screening and planning tool for Transport for NSW (TfNSW) p
 Open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is inside that one file.
 
 A typical OOHW assessment:
-1. Load the site: buildings (OSM), optionally terrain and LiDAR heights, and the NCAs.
-2. Set up the shift: *Shift* panel → name, time period, dates. Add the plant on the map.
-3. *Run assessment*, or *Run all shifts* when there are several.
-4. Check the results on the map and in the property table. *Compare & respite* covers several shifts.
-5. *Report (print / PDF)* for the approval pack, and *Export CSV* for the community team.
+1. **Site:** load buildings (OSM), optionally terrain and LiDAR heights, and the NCAs (*Site* tab).
+2. **Shift:** in *Shifts*, set the name, time period and dates, then click **+ Plant** and click the map for each item.
+3. **Run:** click **Run this shift** once. After that, results update automatically when something changes.
+4. **Check:** look at the map and the property table. **Compare & respite** covers several shifts; it runs any shift that is out of date.
+5. **Outputs:** **Report** gives the printable report for the approval pack; **Export CSV** gives the list for the community team.
+
+*? Guide* in the app explains every button.
+
+**Screen:**
+- *View* switches between three layouts, all remembered in your browser:
+  - **Workspace:** shifts and plant on the left, results, site and method in tabs on the right, data sources and log at the bottom;
+  - **Guided:** numbered steps;
+  - **Single column**.
+- *View* also sets the colours (light, dark, high contrast) and the map layers.
+- *Clear* tidies the screen or removes things from the project.
+- **F** shows the map only.
 
 The report and CSV list properties and may contain addresses. Keep them on approved storage.
 
@@ -30,7 +41,7 @@ The report and CSV list properties and may contain addresses. Keep them on appro
 
 ## Status
 
-Version 0.9.0 completes Stage 4, outputs:
+Version 0.10.0 is a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
 - shifts within one project, with batch run and comparison;
 - respite tracking against the CNVG-PTI respite-period rule;
 - a printable report with maps, the disclaimer, data sources and height sources.

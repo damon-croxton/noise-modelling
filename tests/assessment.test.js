@@ -199,6 +199,7 @@ module.exports = [
         <node id="5" lat="-33.9005" lon="151.2000"/><node id="6" lat="-33.9005" lon="151.2003"/><node id="7" lat="-33.9007" lon="151.2003"/><node id="8" lat="-33.9007" lon="151.2000"/>
         <way id="10"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/><tag k="building" v="apartments"/><tag k="building:levels" v="6"/><tag k="addr:housenumber" v="21"/><tag k="addr:street" v="Sample Rd"/></way>
         <way id="11"><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="8"/><nd ref="5"/><tag k="building" v="yes"/><tag k="amenity" v="school"/></way></osm>`;
+      page.once('dialog', d => d.accept());
       await page.click('#btnClearB');
       await page.setInputFiles('#fileGeo', { name: 'map.osm', mimeType: 'application/xml', buffer: Buffer.from(osm) });
       await waitLog('OSM: 2 elements');

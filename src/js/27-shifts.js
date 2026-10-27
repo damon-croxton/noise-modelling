@@ -120,21 +120,26 @@ function computeRespite() {
 }
 
 /* ---- batch run ---- */
-async function runAllShifts() {
+/* onlyStale: skip shifts whose results already match their inputs (used by Compare). */
+async function runAllShifts(onlyStale) {
   const orig = curShift(), t0 = performance.now();
   if (state.assess.running) return null;
-  log(`Running all ${state.shifts.length} shift(s)…`);
+  orig.results = state.assess.results;
+  const todo = state.shifts.filter(sh => !onlyStale || shiftStatus(sh) !== 'current');
+  if (onlyStale && !todo.length) return computeRespite();
+  log(onlyStale ? `Running ${todo.length} shift(s) that are not up to date…` : `Running all ${state.shifts.length} shift(s)…`);
   let n = 0;
+  state.batch = true;
   try {
-    for (const sh of state.shifts.slice()) {
+    for (const sh of todo) {
       switchShift(sh.id, true);
-      $('busy').textContent = `Shift ${n + 1} of ${state.shifts.length}: ${sh.name}…`;
+      $('busy').textContent = `Shift ${n + 1} of ${todo.length}: ${sh.name}…`;
       const R = await runAssessment();
       sh.results = R; if (R) n++;
     }
-  } finally { switchShift(orig.id, true); syncSettingsUI(); renderShiftPanel(true); renderAssessPanel(); requestCompute(false); }
+  } finally { state.batch = false; switchShift(orig.id, true); syncSettingsUI(); renderShiftPanel(true); renderAssessPanel(); requestCompute(false); }
   const rs = computeRespite();
-  log(`All shifts: ${n} of ${state.shifts.length} run in ${((performance.now() - t0) / 1000).toFixed(1)} s. ${rs.list.filter(x => x.above).length} building-floor(s) above NML in at least one shift; ${rs.list.filter(x => x.issues.length).length} with a respite-period issue.`, 'pass');
+  log(`${onlyStale ? 'Shifts brought up to date' : 'All shifts'}: ${n} of ${todo.length} run in ${((performance.now() - t0) / 1000).toFixed(1)} s. ${rs.list.filter(x => x.above).length} building-floor(s) above NML in at least one shift; ${rs.list.filter(x => x.issues.length).length} with a respite-period issue.`, 'pass');
   return rs;
 }
 
@@ -200,21 +205,32 @@ function exportShiftCsv() {
 /* ---- panel ---- */
 /* Button handlers that log a failure instead of failing silently. */
 const guarded = (what, fn) => async () => { try { await fn(); } catch (e) { log(`${what} FAILED: ${e.message}`, 'fail'); console.error(e); } };
+/* Shift chips: one per shift, coloured by period, with a results-status dot. */
+let chipSig = '';
+function renderShiftChips() {
+  const cur = curShift(), DOT = { current: 'd-ok', 'out of date': 'd-stale', 'not run': 'd-none' };
+  const info = state.shifts.map(s => [s, shiftStatus(s)]);
+  const sig = info.map(([s, st]) => [s.id, s.name, s.period, s.sources.length, s.dates.length, st, s === cur].join(':')).join('|');
+  if (sig === chipSig) return;
+  chipSig = sig;
+  $('shChips').innerHTML = info.map(([s, st]) =>
+    `<button type="button" role="tab" aria-selected="${s === cur}" class="${s === cur ? 'on' : ''}" data-id="${s.id}" style="--pc:${PERIOD_COLOR[s.period]}" title="${esc(PERIODS[s.period])} · ${s.sources.length} plant item(s) · results ${st}${s === cur ? ' – shown on the map' : ' – click to show this shift'}">` +
+    `<span><span class="dot ${DOT[st]}"></span>${esc(s.name)}</span><small>${esc(PERIOD_SHORT[s.period])} · ${s.sources.length} plant${s.dates.length ? ` · ${s.dates.length} date${s.dates.length > 1 ? 's' : ''}` : ''}</small></button>`).join('');
+  $('shChips').querySelectorAll('button').forEach(b => b.addEventListener('click', () => switchShift(+b.dataset.id)));
+}
 function renderShiftPanel(force) {
   const cur = curShift(), keep = el => !force && document.activeElement === el;
-  $('shSel').innerHTML = state.shifts.map(s => `<option value="${s.id}">${esc(s.name)} – ${esc(PERIODS[s.period])}</option>`).join('');
-  $('shSel').value = String(cur.id);
+  renderShiftChips();
   if (!keep($('shName'))) $('shName').value = cur.name;
   if (!keep($('shDates'))) { $('shDates').value = datesText(cur.dates); $('shDates').classList.remove('bad'); }
   if (!keep($('shNotes'))) $('shNotes').value = cur.notes;
-  $('shPeriod').value = cur.period;
   $('shDel').disabled = state.shifts.length < 2;
-  const hint = cur.dates.length && cur.dates.some(d => seasonOfDate(d) !== cur.season) ? ` <b>Season under Model (${cur.season === 'warm' ? 'Oct–Apr' : 'May–Sep'}) doesn't match all the dates.</b>` : '';
-  $('shInfo').innerHTML = `${cur.sources.length} source(s) · ${cur.dates.length ? cur.dates.length + ' date(s)' : 'no dates'} · ${shiftStatus(cur)}${hint}`;
+  const hint = cur.dates.length && cur.dates.some(d => seasonOfDate(d) !== cur.season) ? ` <b>Season under Prediction method (${cur.season === 'warm' ? 'Oct–Apr' : 'May–Sep'}) doesn't match all the dates.</b>` : '';
+  $('shInfo').innerHTML = `${state.shifts.length} shift(s). Results: <span class="dot d-ok"></span>up to date <span class="dot d-stale"></span>out of date <span class="dot d-none"></span>not run.${hint}`;
   if (!keep($('prjName'))) $('prjName').value = state.project.name;
   if (!keep($('prjBy'))) $('prjBy').value = state.project.by;
+  renderSources(); updateRunState();
 }
-$('shSel').addEventListener('change', e => switchShift(+e.target.value));
 $('shNew').addEventListener('click', () => {
   const sh = makeShift(`Shift ${state.shifts.length + 1}`, []); curShift(); state.shifts.push(sh);
   switchShift(sh.id); log(`New shift “${sh.name}” – add its plant on the map.`);
@@ -231,7 +247,7 @@ $('shDel').addEventListener('click', () => {
   switchShift(next.id, true); state.shifts.splice(i, 1);
   log(`Deleted shift “${cur.name}”.`); syncSettingsUI(); renderShiftPanel(true); renderAssessPanel(); requestCompute(false);
 });
-$('shName').addEventListener('input', e => { curShift().name = e.target.value.slice(0, 60) || 'Shift'; renderShiftPanel(); });
+$('shName').addEventListener('input', e => { curShift().name = e.target.value.slice(0, 60) || 'Shift'; renderShiftPanel(); renderAssessPanel(); });
 $('shNotes').addEventListener('input', e => { curShift().notes = e.target.value.slice(0, 500); });
 $('shDates').addEventListener('change', e => {
   const { dates, bad } = parseDates(e.target.value), cur = curShift();
@@ -240,8 +256,7 @@ $('shDates').addEventListener('change', e => {
   cur.dates = dates; renderShiftPanel();
   log(`Shift “${cur.name}”: ${dates.length} date(s)${dates.length ? ` (${datesText(dates)})` : ''}.`);
 });
-$('shPeriod').addEventListener('change', e => { $('setPeriod').value = e.target.value; $('setPeriod').dispatchEvent(new Event('change')); });
 $('shRunAll').addEventListener('click', guarded('Run all shifts', async () => { await runAllShifts(); openShiftCompare(); }));
-$('shCompare').addEventListener('click', guarded('Shift comparison', openShiftCompare));
+$('shCompare').addEventListener('click', guarded('Shift comparison', async () => { await runAllShifts(true); openShiftCompare(); }));
 $('prjName').addEventListener('input', e => { state.project.name = e.target.value.slice(0, 120); });
 $('prjBy').addEventListener('input', e => { state.project.by = e.target.value.slice(0, 120); });

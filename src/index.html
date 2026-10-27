@@ -9,222 +9,337 @@
 </style>
 </head>
 <body>
-<div id="app">
-  <aside id="side">
-    <h1>Construction Noise POC <span id="ver"></span></h1>
-    <p class="sub">Screening aid · L<sub>Aeq,15min</sub> dB(A) · TfNSW estimator basis or ISO 9613-2 · terrain, buildings, hoarding</p>
-
-    <section>
-      <h2>Mode</h2>
-      <div class="seg">
-        <button type="button" data-mode="select">Select / move (V)</button>
-        <button type="button" data-mode="source">Add source (S)</button>
-        <button type="button" data-mode="building">Draw building (B)</button>
-        <button type="button" data-mode="hoarding">Draw hoarding (H)</button>
-        <button type="button" data-mode="nca">Draw NCA (N)</button>
-      </div>
-      <p id="hint" class="hint"></p>
-      <div class="btns" style="margin-top:6px">
-        <button type="button" id="finishPoly" hidden>Finish (Enter)</button>
-        <button type="button" id="cancelPoly" hidden>Cancel (Esc)</button>
-      </div>
-    </section>
-
-    <section>
-      <h2>Shift</h2>
-      <p class="kv muted">Each shift has its own plant, time period and dates; buildings, NCAs and model settings are shared.</p>
-      <div class="row"><label for="shSel">Current shift</label><select id="shSel"></select></div>
-      <div class="btns"><button type="button" id="shNew">New</button><button type="button" id="shDup">Duplicate</button><button type="button" id="shDel" class="danger">Delete</button></div>
-      <div class="row"><label for="shName">Activity / shift name</label><input type="text" id="shName" maxlength="60"></div>
-      <div class="row"><label for="shPeriod">Time period</label><select id="shPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
-      <div class="row"><label for="shDates">Dates (YYYY-MM-DD, ranges a..b; night = start date)</label><input type="text" id="shDates" placeholder="2026-11-03..2026-11-05, 2026-11-10"></div>
-      <div class="row"><label for="shNotes">Notes</label><input type="text" id="shNotes" maxlength="500"></div>
-      <p class="kv muted" id="shInfo"></p>
-      <div class="btns"><button type="button" id="shRunAll" class="primary">Run all shifts</button><button type="button" id="shCompare">Compare &amp; respite</button><button type="button" id="btnReport">Report (print / PDF)</button></div>
-      <details class="sub2"><summary>Project details (for the report)</summary>
-        <div class="row"><label for="prjName">Project</label><input type="text" id="prjName" maxlength="120"></div>
-        <div class="row"><label for="prjBy">Prepared by</label><input type="text" id="prjBy" maxlength="120"></div>
-      </details>
-    </section>
-
-    <section>
-      <h2>Selection</h2>
-      <div id="selBody"></div>
-    </section>
-
-    <section>
-      <h2>Equipment library</h2>
-      <div class="btns">
-        <button type="button" id="btnLibExport">Export library</button>
-        <button type="button" id="btnLibImport">Import library</button>
-        <button type="button" id="btnLibReset" class="danger">Reset to built-in</button>
-      </div>
-      <input type="file" id="fileLib" accept=".json,application/json" hidden>
-      <p id="libInfo" class="kv muted"></p>
-    </section>
-
-    <section>
-      <h2>Building heights from LiDAR</h2>
-      <div class="btns">
-        <button type="button" id="btnLaz" class="primary">Load LiDAR (.laz / .las)</button>
-        <button type="button" id="btnLazCancel" class="danger" hidden>Cancel</button>
-      </div>
-      <input type="file" id="fileLaz" accept=".laz,.las" hidden>
-      <div id="lazInfo" class="kv"><span class="muted">No LiDAR loaded. Uses class 6 (building) points for roof levels; class 2 (ground) builds the terrain if no DEM is loaded. The file is read locally – nothing is uploaded.</span></div>
-      <label class="chk"><input type="checkbox" id="setLazShow" checked> Show LiDAR building points</label>
-    </section>
-
-    <section>
-      <h2>Buildings from free data</h2>
-      <div class="row"><label for="siteLL">Site (lat, lon)</label><input type="text" id="siteLL" placeholder="-33.8890, 151.2370"></div>
-      <div class="btns">
-        <button type="button" id="btnSite">Go to site</button>
-        <button type="button" id="btnOsm" class="primary">Fetch OSM buildings in view</button>
-        <button type="button" id="btnOsmLink">Copy OSM download link</button>
-        <button type="button" id="btnDsm">Load DSM for roof heights</button>
-      </div>
-      <input type="file" id="fileDsm" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
-      <label class="chk"><input type="checkbox" id="osmReplace"> Re-fetch replaces existing OSM buildings</label>
-      <div id="siteInfo" class="kv"></div>
-      <p class="kv muted">Footprints: OpenStreetMap. Heights: OSM <i>height</i> → <i>levels</i> × 3 m → typical height for the building type (dashed outline = estimated). A DSM (roof surface) overrides estimates.</p>
-    </section>
-
-    <section>
-      <h2>Terrain (DEM)</h2>
-      <div class="btns">
-        <button type="button" id="btnDem" class="primary">Load DEM (.tif / .asc / .xyz)</button>
-        <button type="button" id="btnDemClear" class="danger">Remove DEM</button>
-      </div>
-      <input type="file" id="fileDem" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
-      <div id="demInfo" class="kv"><span class="muted">No DEM loaded – ground is flat at RL 0.</span></div>
-      <label class="chk"><input type="checkbox" id="setTerr" checked> Terrain blocks sound</label>
-      <label class="chk"><input type="checkbox" id="setShade" checked> Show hillshade</label>
-    </section>
-
-    <section>
-      <h2>Model</h2>
-      <div class="row"><label for="setMethod">Method</label>
-        <select id="setMethod"><option value="tfnsw">TfNSW estimator</option><option value="iso">ISO 9613-2</option></select></div>
-      <p class="kv muted" id="methodNote"></p>
-      <div class="row"><label for="setPeriod">Time period</label>
-        <select id="setPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
-      <div class="row"><label for="setSeason">Season (air absorption)</label>
-        <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
-      <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
-      <div class="row"><label for="setCombine">Plant combination</label>
-        <select id="setCombine"><option value="all">All plant (conservative)</option><option value="estimator">Loudest 1–3 rows (TfNSW estimator)</option></select></div>
-      <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
-      <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
-      <label class="chk"><input type="checkbox" id="setLat" checked> Side diffraction around buildings and hoarding ends</label>
-      <label class="chk" id="rowBands"><input type="checkbox" id="setBands"> Octave bands 63 Hz – 8 kHz (source spectra)</label>
-      <div class="row"><label for="setRefl">Façade reflections (first order)</label>
-        <select id="setRefl"><option value="auto">Auto (ISO only)</option><option value="on">On</option><option value="off">Off</option></select></div>
-      <div class="row"><label for="setReflLoss">Reflection loss (dB)</label><input type="number" id="setReflLoss" min="0" max="10" step="0.5" value="1"></div>
-      <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
-      <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
-      <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
-      <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
-    </section>
-
-    <section>
-      <h2>Assessment</h2>
-      <p class="kv muted">Uses the time period set under Model. Each building is assessed on its exposed façades at 1.5 m above each floor; the worst point per floor is reported.</p>
-      <div class="row"><label for="asDefCat">Noise area outside NCAs</label><select id="asDefCat"></select></div>
-      <div class="row rbl3"><label>Measured RBL outside NCAs (day / eve / night)</label><span><input type="number" id="asRblD" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblE" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblN" min="20" max="80" step="1" placeholder="–"></span></div>
-      <div class="row"><label for="asFloorH">Floor height (m)</label><input type="number" id="asFloorH" min="2" max="6" step="0.1" value="3"></div>
-      <div class="row"><label for="asSpacing">Façade point spacing (m)</label><input type="number" id="asSpacing" min="2" max="50" step="1" value="10"></div>
-      <div class="row"><label for="asOffset">Distance in front of façade (m)</label><input type="number" id="asOffset" min="0.1" max="5" step="0.1" value="1"></div>
-      <div class="btns">
-        <button type="button" id="btnAssess" class="primary">Run assessment</button>
-        <button type="button" id="btnTable">Property table</button>
-        <button type="button" id="btnCsv">Export CSV</button>
-        <button type="button" id="btnNcaImport">Import NCAs (GeoJSON)</button>
-      </div>
-      <input type="file" id="fileNca" accept=".json,.geojson,application/json" hidden>
-      <div class="row"><label for="asDisplay">Map shows</label>
-        <select id="asDisplay"><option value="both">Impact categories + heat map</option><option value="cat">Impact categories only</option><option value="heat">Heat map only</option><option value="respite">Respite: dates above NML (all shifts)</option></select></div>
-      <div id="asStatus" class="kv"></div>
-      <div id="asSummary"></div>
-      <details class="sub2"><summary>Change land use in bulk</summary>
-        <div class="row"><label for="bulkFrom">Buildings with land use</label><select id="bulkFrom"></select></div>
-        <div class="row"><label for="bulkIn">Within</label><select id="bulkIn"></select></div>
-        <div class="row"><label for="bulkTo">Set land use to</label><select id="bulkTo"></select></div>
-        <div class="btns"><button type="button" id="btnBulk">Apply</button></div>
-      </details>
-      <details class="sub2"><summary>Assessment rules</summary>
-        <div class="row"><label for="rulesSet">Rule set</label><select id="rulesSet"></select></div>
-        <p id="rulesInfo" class="kv"></p>
-        <div class="btns">
-          <button type="button" id="btnRulesExport">Export rules</button>
-          <button type="button" id="btnRulesImport">Import rules</button>
-          <button type="button" id="btnRulesReset" class="danger">Reset to defaults</button>
+<div id="app" class="layout-workspace">
+  <header id="topbar">
+    <div class="brand"><b>Construction Noise POC</b> <span id="ver"></span><span class="tag" title="A screening aid – not a substitute for an assessment by a qualified acoustic consultant">screening aid</span></div>
+    <nav id="tools" class="seg" aria-label="Map tools">
+      <button type="button" data-mode="select" title="Select and move things on the map; drag empty space to pan (V)">Select <kbd>V</kbd></button>
+      <button type="button" data-mode="source" title="Click the map to place a plant item in the current shift (S)">+ Plant <kbd>S</kbd></button>
+      <button type="button" data-mode="building" title="Draw a building footprint corner by corner (B)">Building <kbd>B</kbd></button>
+      <button type="button" data-mode="hoarding" title="Draw a line of hoarding / noise barrier (H)">Hoarding <kbd>H</kbd></button>
+      <button type="button" data-mode="nca" title="Draw a noise catchment area boundary (N)">NCA <kbd>N</kbd></button>
+      <button type="button" id="finishPoly" class="primary" hidden title="Finish the shape you are drawing (Enter)">Finish</button>
+      <button type="button" id="cancelPoly" hidden title="Throw away the shape you are drawing (Esc)">Cancel</button>
+    </nav>
+    <div class="actions">
+      <button type="button" id="runState" class="pill" title="State of the results for the current shift – click to run the assessment now">Not run</button>
+      <button type="button" id="btnReport" class="primary" title="Create the printable report for the current shift (runs the assessment first if needed)">Report</button>
+      <div class="menu">
+        <button type="button" class="menubtn" data-menu="mFile" title="Save, open, import and examples">File ▾</button>
+        <div class="pop" id="mFile" hidden>
+          <button type="button" id="btnSave" title="Save the whole project (all shifts, buildings, NCAs, settings) as a JSON file – may contain addresses">Save project…</button>
+          <button type="button" id="btnLoad" title="Open a saved project JSON file">Open project…</button>
+          <button type="button" id="mGeo" title="Add building footprints from a GeoJSON or OpenStreetMap .osm file">Import buildings (GeoJSON / .osm)…</button>
+          <hr>
+          <label class="poprow">Example <select id="exampleSel" title="Synthetic example scenes for trying the tool"><option value="corridor">Inner-city night works – rail corridor</option><option value="street">Inner-city night works – street</option><option value="setback">Inner-city night works – 37 m set-back</option></select></label>
+          <button type="button" id="btnExample" title="Replace the project with the chosen synthetic example">Load example</button>
+          <button type="button" id="btnDemo" title="Replace the project with the small starting demo">Reset to demo</button>
         </div>
-        <input type="file" id="fileRules" accept=".json,application/json" hidden>
-      </details>
-    </section>
-
-    <section>
-      <h2>Calibration</h2>
-      <p class="kv muted">Import measured levels or another tool's receiver results (CSV: a receiver ID from the property list, or easting/northing or lat/lon with height, floor or RL, and an LAeq column) to see how this tool compares. Uses the current period, method and plant.</p>
-      <div class="btns">
-        <button type="button" id="btnCalImport">Import levels (CSV)</button>
-        <button type="button" id="btnCalExport">Export comparison</button>
-        <button type="button" id="btnCalClear" class="danger">Clear</button>
       </div>
-      <input type="file" id="fileCal" accept=".csv,.txt,text/csv" hidden>
-      <div id="calInfo" class="kv"></div>
-    </section>
+      <div class="menu">
+        <button type="button" class="menubtn" data-menu="mClear" title="Remove things from the project or tidy the screen">Clear ▾</button>
+        <div class="pop" id="mClear" hidden>
+          <p class="pophead">Tidy the screen (nothing is deleted)</p>
+          <button type="button" id="clrSel" title="Deselect and stop drawing (Esc)">Deselect / stop drawing</button>
+          <button type="button" id="clrOverlays" title="Hide the heat map, impact colours, labels and calculation paths; turn them back on under View → Map layers">Hide map overlays</button>
+          <button type="button" id="clrShowAll" title="Show every map layer again">Show all map layers</button>
+          <button type="button" id="btnFocus2" title="Hide the panels and show only the map (F); press F or Esc to bring them back">Map only (focus) <kbd>F</kbd></button>
+          <p class="pophead">Remove from the project (asks first)</p>
+          <button type="button" id="clrPlant" class="danger" title="Delete every plant item in the current shift">Plant in this shift</button>
+          <button type="button" id="clrResults" class="danger" title="Forget the results of every shift (they can be re-run)">Results (all shifts)</button>
+          <button type="button" id="clrHoard" class="danger" title="Delete all hoarding lines">Hoarding</button>
+          <button type="button" id="btnClearB" class="danger" title="Delete all buildings">Buildings</button>
+          <button type="button" id="clrNcas" class="danger" title="Delete all noise catchment areas">NCAs</button>
+          <button type="button" id="btnDemClear" class="danger" title="Remove the terrain model – ground becomes flat">Terrain (DEM)</button>
+          <button type="button" id="clrDsm" class="danger" title="Remove the loaded LiDAR / DSM roof grid (building heights already applied are kept)">LiDAR / DSM grid</button>
+          <button type="button" id="btnCalClear" class="danger" title="Remove imported calibration points">Calibration points</button>
+          <button type="button" id="clrLog" title="Empty the log panel">Log</button>
+          <button type="button" id="clrAll" class="danger" title="Start an empty project: removes all shifts, plant, buildings, hoarding, NCAs, terrain and data sources; keeps model settings and the equipment library">Everything (new project)</button>
+        </div>
+      </div>
+      <div class="menu">
+        <button type="button" class="menubtn" data-menu="mView" title="Layout, colours and map layers">View ▾</button>
+        <div class="pop wide" id="mView" hidden>
+          <p class="pophead">Layout</p>
+          <label class="chk" title="Shifts and plant on the left, method and site data on the right, data sources and log at the bottom"><input type="radio" name="uiLayout" value="workspace"> Workspace – panels around the map</label>
+          <label class="chk" title="One panel with numbered steps: site, shifts & plant, method, results, report"><input type="radio" name="uiLayout" value="guided"> Guided – step by step</label>
+          <label class="chk" title="Everything in one scrolling panel"><input type="radio" name="uiLayout" value="single"> Single column</label>
+          <p class="pophead">Colours</p>
+          <label class="chk"><input type="radio" name="uiTheme" value="light"> Light</label>
+          <label class="chk"><input type="radio" name="uiTheme" value="dark"> Dark</label>
+          <label class="chk"><input type="radio" name="uiTheme" value="contrast"> High contrast</label>
+          <label class="chk" title="Smaller text and spacing, so more fits on screen"><input type="checkbox" id="uiCompact"> Compact</label>
+          <label class="chk" title="Short explanations under each panel heading"><input type="checkbox" id="uiHelp"> Show help text</label>
+          <p class="pophead">Panels</p>
+          <label class="chk"><input type="checkbox" id="uiLeft"> Left panel</label>
+          <label class="chk"><input type="checkbox" id="uiRight"> Right panel</label>
+          <label class="chk"><input type="checkbox" id="uiBottom"> Data sources and log</label>
+          <p class="pophead">Map layers</p>
+          <div class="cols2">
+            <label class="chk"><input type="checkbox" id="lyHeat"> Heat map</label>
+            <label class="chk"><input type="checkbox" id="lyImpact"> Impact colours</label>
+            <label class="chk"><input type="checkbox" id="lyBLabels"> Building labels</label>
+            <label class="chk"><input type="checkbox" id="lySLabels"> Plant labels</label>
+            <label class="chk"><input type="checkbox" id="lyNcas"> NCAs</label>
+            <label class="chk" title="Hidden hoarding still screens sound"><input type="checkbox" id="lyHoard"> Hoarding</label>
+            <label class="chk"><input type="checkbox" id="setShade" checked> Hillshade</label>
+            <label class="chk"><input type="checkbox" id="setLazShow" checked> LiDAR points</label>
+            <label class="chk"><input type="checkbox" id="lyPaths"> Probe paths</label>
+            <label class="chk"><input type="checkbox" id="lyLegend"> Legend</label>
+            <label class="chk"><input type="checkbox" id="lyProbe"> Probe box</label>
+            <label class="chk"><input type="checkbox" id="lyBanner"> Shift banner</label>
+          </div>
+        </div>
+      </div>
+      <button type="button" id="btnHelp" title="Quick guide: what the buttons do and the usual steps">? Guide</button>
+    </div>
+  </header>
 
-    <section>
-      <h2>Display</h2>
-      <div class="row"><label for="setCell">Map detail</label>
-        <select id="setCell"><option value="3">Fine (3 px)</option><option value="5" selected>Normal (5 px)</option><option value="8">Coarse (8 px)</option></select></div>
-      <div class="row"><label for="setMin">Hide below</label>
-        <select id="setMin"><option>30</option><option selected>35</option><option>40</option><option>45</option><option>50</option></select></div>
-      <div class="row"><label for="setOp">Opacity</label><input type="range" id="setOp" min="0.2" max="1" step="0.05" value="0.7"></div>
+  <div id="body">
+    <aside id="left" aria-label="Works">
+      <div class="paneltabs" id="steps" hidden></div>
+      <div class="slot" id="slotLeft"></div>
+      <div class="stepnav" id="stepNav" hidden><button type="button" id="stepBack" title="Previous step">← Back</button><button type="button" id="stepNext" class="primary" title="Next step">Next →</button></div>
+      <button type="button" class="collapse" id="hideLeft" title="Hide this panel">«</button>
+    </aside>
+    <main id="wrap">
+      <canvas id="map" aria-label="Noise map"></canvas>
+      <div id="banner" title="The shift shown on the map – switch shifts in the Shifts panel"></div>
+      <p id="hint" class="hint"></p>
+      <div id="hud">–</div>
       <div id="legend" aria-label="Legend, dB(A)"></div>
-    </section>
-
-    <section>
-      <h2>Probe (hover the map)</h2>
-      <div id="probe" aria-live="polite"><p class="muted">Hover the map to see the calculation breakdown.</p></div>
-    </section>
-
-    <section>
-      <h2>Scenario</h2>
-      <div class="btns">
-        <button type="button" id="btnFit">Zoom to extents</button>
-        <button type="button" id="btnSave">Save JSON</button>
-        <button type="button" id="btnLoad">Load JSON</button>
-        <button type="button" id="btnGeo">Import buildings (GeoJSON / .osm)</button>
-        <button type="button" id="btnClearB" class="danger">Clear buildings</button>
-        <button type="button" id="btnDemo">Reset demo</button>
+      <div id="probeBox"><div class="ph"><b>Probe</b> <span class="muted">– hover the map</span><button type="button" id="probeMin" title="Collapse the probe">–</button></div><div id="probe" aria-live="polite"><p class="muted">Hover the map to see how the level is calculated.</p></div></div>
+      <div id="mapbtns">
+        <button type="button" id="btnFit" title="Zoom to show everything">Zoom to all</button>
+        <button type="button" id="btnFocus" title="Show only the map (F)">Focus <kbd>F</kbd></button>
+        <button type="button" id="showLeft" hidden title="Show the left panel">» Panel</button>
+        <button type="button" id="showRight" hidden title="Show the right panel">Panel «</button>
       </div>
-      <div class="row"><label for="exampleSel">Example</label><select id="exampleSel"><option value="corridor">Inner-city night works – rail corridor</option><option value="street">Inner-city night works – street</option><option value="setback">Inner-city night works – 37 m set-back</option></select></div>
-      <div class="btns"><button type="button" id="btnExample">Load example</button></div>
-      <input type="file" id="fileLoad" accept=".json,application/json" hidden>
-      <input type="file" id="fileGeo" hidden>
-      <p class="disclaimer">Screening and planning aid only. It does not replace an assessment by a qualified acoustic consultant and is not a validated compliance model. Plant levels and assessment defaults come from Transport for NSW documents – verify them against the current client strategy and replace them with project data where available. The DEM and LiDAR are not saved in the JSON – reload them after loading a scenario.</p>
-    </section>
+      <div id="ptable" hidden></div>
+      <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
+    </main>
+    <aside id="right" aria-label="Project data and method">
+      <div class="paneltabs" id="rtabs"></div>
+      <div class="slot" id="slotRight"></div>
+      <button type="button" class="collapse" id="hideRight" title="Hide this panel">»</button>
+    </aside>
+  </div>
 
-    <section>
-      <h2>About and licences</h2>
-      <p class="kv">Buildings: © OpenStreetMap contributors (ODbL). LAZ decoding: JavaScript port of LASzip by rapidlasso GmbH (Apache License 2.0). Plant levels, air and ground values: Transport for NSW, CNVG-PTI EMF-NV-GD-0060 v4.6 and the Construction Noise Estimator EMF-NV-TT-0068, used with acknowledgement. Methods: ISO 9613-1, ISO 9613-2, CONCAWE. Details: THIRD_PARTY_NOTICES.md in the source repository.</p>
-    </section>
-
-    <section>
-      <h2>Log</h2>
-      <pre id="log"></pre>
-    </section>
-  </aside>
-  <main id="wrap">
-    <canvas id="map" aria-label="Noise map"></canvas>
-    <div id="busy"></div>
-    <div id="hud">–</div>
-    <div id="ptable" hidden></div>
-    <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
-  </main>
+  <footer id="bottom">
+    <div class="paneltabs" id="btabs"></div>
+    <div id="busy" title="Last calculation"></div>
+    <button type="button" class="collapse" id="toggleBottom" title="Show or hide the data sources and log">▴</button>
+    <div class="slot" id="slotBottom"></div>
+  </footer>
 </div>
+
+<!-- Panel cards. The layout (View menu) places them in the panels above. -->
+<div id="cards" hidden>
+  <section class="card" id="card-shifts" data-title="Shifts">
+    <p class="help">A shift is one activity in one time period, with its own plant and dates. Buildings, NCAs and the method are shared. Click a shift to show it on the map.</p>
+    <div class="chips" id="shChips" role="tablist" aria-label="Shifts"></div>
+    <div class="btns"><button type="button" id="shNew" title="Add an empty shift">+ New shift</button><button type="button" id="shDup" title="Copy this shift, with its plant, to a new shift">Duplicate</button><button type="button" id="shDel" class="danger" title="Delete this shift and its plant">Delete</button></div>
+    <div class="row"><label for="shName">Activity / shift name</label><input type="text" id="shName" maxlength="60"></div>
+    <div class="row"><label for="setPeriod">Time period</label>
+      <select id="setPeriod" title="Sets the NML (RBL + 10 in standard hours, + 5 out of hours) and the impact bands"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
+    <div class="row"><label for="shDates">Dates <span class="muted">(YYYY-MM-DD, ranges a..b; a night counts on its start date)</span></label><input type="text" id="shDates" placeholder="e.g. 2026-11-03..2026-11-05" title="Used for the respite check across shifts"></div>
+    <div class="row"><label for="shNotes">Notes</label><input type="text" id="shNotes" maxlength="500"></div>
+    <p class="kv muted" id="shInfo"></p>
+  </section>
+
+  <section class="card" id="card-plant" data-title="Plant in this shift">
+    <p class="help">Click a row to select and edit it, or drag it on the map. Levels are the effective sound power after % time on, penalty and mitigation.</p>
+    <div id="plantList"></div>
+    <div class="btns"><button type="button" id="plAdd" class="primary" title="Then click the map where the plant will work (S)">+ Add plant on the map</button></div>
+  </section>
+
+  <section class="card" id="card-selection" data-title="Selected">
+    <div id="selBody"></div>
+  </section>
+
+  <section class="card" id="card-results" data-title="Results">
+    <p class="help">Results update by themselves after you change the plant, buildings or method (if <i>Update automatically</i> is ticked). <b>Run all shifts</b> is only needed to compare shifts or check respite – <i>Compare &amp; respite</i> does it for you.</p>
+    <div id="asStatus" class="kv"></div>
+    <div class="btns">
+      <button type="button" id="btnAssess" class="primary" title="Assess every building and floor for the current shift now">Run this shift</button>
+      <button type="button" id="shRunAll" title="Assess every shift in turn (needed for comparisons and respite)">Run all shifts</button>
+      <button type="button" id="shCompare" title="Compare all shifts and check respite – runs any shift that is out of date">Compare &amp; respite</button>
+      <button type="button" id="btnTable" title="Sortable, filterable list of every building and floor">Property table</button>
+      <button type="button" id="btnCsv" title="Property list as CSV for the community team – contains addresses">Export CSV</button>
+    </div>
+    <label class="chk" title="Re-run the current shift about a second after a change, when a run takes under 3 s"><input type="checkbox" id="asAuto" checked> Update automatically</label>
+    <div class="row"><label for="asDisplay">Map shows</label>
+      <select id="asDisplay"><option value="both">Impact categories + heat map</option><option value="cat">Impact categories only</option><option value="heat">Heat map only</option><option value="respite">Respite: dates above NML (all shifts)</option></select></div>
+    <div id="asSummary"></div>
+  </section>
+
+  <section class="card" id="card-report" data-title="Report and export">
+    <p class="help">The report is an HTML file: open it in Edge and print to PDF. The report and the CSV list properties and may contain addresses – keep them on approved storage.</p>
+    <div class="row"><label for="prjName">Project</label><input type="text" id="prjName" maxlength="120"></div>
+    <div class="row"><label for="prjBy">Prepared by</label><input type="text" id="prjBy" maxlength="120"></div>
+    <div class="btns"><button type="button" id="btnReportCard" class="primary" title="Create the printable report for the current shift">Create report</button><button type="button" id="btnCsvCard" title="Property list as CSV">Export CSV</button><button type="button" id="btnSaveCard" title="Save the whole project as JSON">Save project</button></div>
+  </section>
+
+  <section class="card" id="card-mapdisplay" data-title="Heat map">
+    <div class="row"><label for="setCell">Map detail</label>
+      <select id="setCell"><option value="3">Fine (3 px)</option><option value="5" selected>Normal (5 px)</option><option value="8">Coarse (8 px)</option></select></div>
+    <div class="row"><label for="setMin">Hide below (dB(A))</label>
+      <select id="setMin"><option>30</option><option selected>35</option><option>40</option><option>45</option><option>50</option></select></div>
+    <div class="row"><label for="setOp">Opacity</label><input type="range" id="setOp" min="0.2" max="1" step="0.05" value="0.7"></div>
+  </section>
+
+  <section class="card" id="card-site" data-title="Site and buildings">
+    <p class="help">Go to the site, then fetch building footprints from OpenStreetMap. If your network blocks the fetch, copy the download link and import the file. Dashed outlines are estimated heights.</p>
+    <div class="row"><label for="siteLL">Site (lat, lon)</label><input type="text" id="siteLL" placeholder="-33.8890, 151.2370"></div>
+    <div class="btns">
+      <button type="button" id="btnSite" title="Centre the map on these coordinates">Go to site</button>
+      <button type="button" id="btnOsm" class="primary" title="Download building footprints for the area in view (about 1 km × 1 km at most)">Fetch OSM buildings in view</button>
+      <button type="button" id="btnOsmLink" title="Copy a download link for this view, for when the fetch is blocked">Copy OSM download link</button>
+      <button type="button" id="btnGeo" title="Add footprints from a GeoJSON or .osm file">Import buildings…</button>
+      <button type="button" id="btnDsm" title="Roof heights from a DSM raster (roof surface)">Load DSM…</button>
+    </div>
+    <input type="file" id="fileDsm" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
+    <label class="chk"><input type="checkbox" id="osmReplace"> Re-fetch replaces existing OSM buildings</label>
+    <div id="siteInfo" class="kv"></div>
+    <p class="kv muted">Heights: OSM <i>height</i> → <i>levels</i> × 3 m → typical height for the building type. LiDAR or a DSM overrides estimates.</p>
+  </section>
+
+  <section class="card" id="card-lidar" data-title="Building heights from LiDAR">
+    <div class="btns">
+      <button type="button" id="btnLaz" class="primary" title="Read a .laz / .las point cloud locally – nothing is uploaded">Load LiDAR (.laz / .las)…</button>
+      <button type="button" id="btnLazCancel" class="danger" hidden title="Stop reading the LiDAR file">Cancel</button>
+    </div>
+    <input type="file" id="fileLaz" accept=".laz,.las" hidden>
+    <div id="lazInfo" class="kv"><span class="muted">No LiDAR loaded. Class 6 (building) points give roof levels; class 2 (ground) builds the terrain if no DEM is loaded. The file is read locally – nothing is uploaded.</span></div>
+  </section>
+
+  <section class="card" id="card-dem" data-title="Terrain (DEM)">
+    <div class="btns">
+      <button type="button" id="btnDem" class="primary" title="GeoTIFF, ESRI ASCII or XYZ in GDA94 / GDA2020 MGA">Load DEM (.tif / .asc / .xyz)…</button>
+    </div>
+    <input type="file" id="fileDem" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
+    <div id="demInfo" class="kv"><span class="muted">No DEM loaded – ground is flat at RL 0.</span></div>
+    <label class="chk"><input type="checkbox" id="setTerr" checked> Terrain blocks sound</label>
+  </section>
+
+  <section class="card" id="card-ncas" data-title="Noise catchment areas">
+    <p class="help">An NCA sets the background level (RBL) and so the NML for the buildings inside it. Draw them, import them, or use the default below for buildings outside every NCA.</p>
+    <div class="btns"><button type="button" id="ncaDraw" title="Draw an NCA boundary on the map (N)">Draw NCA</button><button type="button" id="btnNcaImport" title="NCA polygons from GeoJSON, with category and measured RBLs">Import NCAs (GeoJSON)…</button></div>
+    <input type="file" id="fileNca" accept=".json,.geojson,application/json" hidden>
+    <div class="row"><label for="asDefCat">Noise area outside NCAs</label><select id="asDefCat"></select></div>
+    <div class="row rbl3"><label>Measured RBL outside NCAs (day / eve / night)</label><span><input type="number" id="asRblD" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblE" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblN" min="20" max="80" step="1" placeholder="–"></span></div>
+  </section>
+
+  <section class="card" id="card-landuse" data-title="Land use in bulk">
+    <p class="help">Buildings with no land use in OSM are assumed residential. Change many at once here, or one at a time by selecting a building.</p>
+    <div class="row"><label for="bulkFrom">Buildings with land use</label><select id="bulkFrom"></select></div>
+    <div class="row"><label for="bulkIn">Within</label><select id="bulkIn"></select></div>
+    <div class="row"><label for="bulkTo">Set land use to</label><select id="bulkTo"></select></div>
+    <div class="btns"><button type="button" id="btnBulk" title="Change the land use of every building that matches">Apply</button></div>
+  </section>
+
+  <section class="card" id="card-library" data-title="Equipment library">
+    <div class="btns">
+      <button type="button" id="btnLibExport" title="Save the library as JSON">Export library</button>
+      <button type="button" id="btnLibImport" title="Load a project library JSON">Import library…</button>
+      <button type="button" id="btnLibReset" class="danger" title="Go back to the built-in TfNSW items">Reset to built-in</button>
+    </div>
+    <input type="file" id="fileLib" accept=".json,application/json" hidden>
+    <p id="libInfo" class="kv muted"></p>
+  </section>
+
+  <section class="card" id="card-model" data-title="Prediction method">
+    <div class="row"><label for="setMethod">Method</label>
+      <select id="setMethod"><option value="tfnsw">TfNSW estimator</option><option value="iso">ISO 9613-2</option></select></div>
+    <p class="kv muted" id="methodNote"></p>
+    <div class="row"><label for="setSeason">Season (air absorption)</label>
+      <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
+    <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
+    <div class="row"><label for="setCombine">Plant combination</label>
+      <select id="setCombine"><option value="all">All plant (conservative)</option><option value="estimator">Loudest 1–3 rows (TfNSW estimator)</option></select></div>
+    <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
+    <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
+    <label class="chk"><input type="checkbox" id="setLat" checked> Side diffraction around buildings and hoarding ends</label>
+    <label class="chk" id="rowBands"><input type="checkbox" id="setBands"> Octave bands 63 Hz – 8 kHz (source spectra)</label>
+    <div class="row"><label for="setRefl">Façade reflections (first order)</label>
+      <select id="setRefl"><option value="auto">Auto (ISO only)</option><option value="on">On</option><option value="off">Off</option></select></div>
+    <div class="row"><label for="setReflLoss">Reflection loss (dB)</label><input type="number" id="setReflLoss" min="0" max="10" step="0.5" value="1"></div>
+    <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
+  </section>
+
+  <section class="card" id="card-assess" data-title="Receivers and drawing">
+    <p class="help">Each building is assessed on its exposed façades at 1.5 m above each floor; the worst point per floor is reported.</p>
+    <div class="row"><label for="asFloorH">Floor height (m)</label><input type="number" id="asFloorH" min="2" max="6" step="0.1" value="3"></div>
+    <div class="row"><label for="asSpacing">Façade point spacing (m)</label><input type="number" id="asSpacing" min="2" max="50" step="1" value="10"></div>
+    <div class="row"><label for="asOffset">Distance in front of façade (m)</label><input type="number" id="asOffset" min="0.1" max="5" step="0.1" value="1"></div>
+    <div class="row"><label for="setHr">Heat map / probe height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
+    <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
+    <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
+  </section>
+
+  <section class="card" id="card-rules" data-title="Assessment rules">
+    <div class="row"><label for="rulesSet">Rule set</label><select id="rulesSet"></select></div>
+    <p id="rulesInfo" class="kv"></p>
+    <div class="btns">
+      <button type="button" id="btnRulesExport" title="Save the rules as editable JSON">Export rules</button>
+      <button type="button" id="btnRulesImport" title="Load project-specific rules">Import rules…</button>
+      <button type="button" id="btnRulesReset" class="danger" title="Back to the CNVG-PTI defaults">Reset to defaults</button>
+    </div>
+    <input type="file" id="fileRules" accept=".json,application/json" hidden>
+  </section>
+
+  <section class="card" id="card-calibration" data-title="Calibration">
+    <p class="help">Import measured levels or another tool's receiver results (CSV with a receiver ID, or easting/northing or lat/lon with height, floor or RL, and an LAeq column) to see how this tool compares.</p>
+    <div class="btns">
+      <button type="button" id="btnCalImport" title="Load measured levels or another tool's results to compare against">Import levels (CSV)…</button>
+      <button type="button" id="btnCalExport" title="Save the comparison as CSV">Export comparison</button>
+    </div>
+    <input type="file" id="fileCal" accept=".csv,.txt,text/csv" hidden>
+    <div id="calInfo" class="kv"></div>
+  </section>
+
+  <section class="card" id="card-about" data-title="About and licences">
+    <p class="disclaimer">Screening and planning aid only. It does not replace an assessment by a qualified acoustic consultant and is not a validated compliance model. Plant levels and assessment defaults come from Transport for NSW documents – verify them against the current client strategy and replace them with project data where available. The DEM and LiDAR are not saved in the project file – reload them after opening it.</p>
+    <p class="kv">Buildings: © OpenStreetMap contributors (ODbL). LAZ decoding: JavaScript port of LASzip by rapidlasso GmbH (Apache License 2.0). Plant levels, air and ground values: Transport for NSW, CNVG-PTI EMF-NV-GD-0060 v4.6 and the Construction Noise Estimator EMF-NV-TT-0068, used with acknowledgement. Methods: ISO 9613-1, ISO 9613-2, CONCAWE. Details: THIRD_PARTY_NOTICES.md in the source repository.</p>
+  </section>
+
+  <section class="card" id="card-sources" data-title="Data sources">
+    <div id="provList"></div>
+  </section>
+
+  <section class="card" id="card-log" data-title="Log">
+    <pre id="log"></pre>
+  </section>
+</div>
+
+<div id="guide" hidden role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+  <div class="gbox">
+    <button type="button" id="guideClose" class="gclose" title="Close (Esc)">×</button>
+    <h2 id="guideTitle">Quick guide</h2>
+    <ol class="steps">
+      <li><b>Site.</b> <i>Site and buildings</i>: go to the site and fetch OSM buildings (or import a file). Optionally load terrain (DEM) and LiDAR for heights. Draw or import the <i>noise catchment areas</i>.</li>
+      <li><b>Shift.</b> In <i>Shifts</i>, name the activity, pick the time period and enter the dates. Click <b>+ Plant</b> (or press S) and click the map where each item will work. Pick the equipment in <i>Selected</i>.</li>
+      <li><b>Results.</b> The first time, click <b>Run this shift</b> (or the status button at the top). After that the results update automatically when you change something. The map colours each building by its worst impact category; hover for the calculation.</li>
+      <li><b>More shifts.</b> <b>+ New shift</b> or <b>Duplicate</b>, then change the plant, period or dates. Click a shift chip to switch. <b>Compare &amp; respite</b> runs any shift that is out of date and checks the respite rules – you don't need to click <i>Run all shifts</i> first.</li>
+      <li><b>Outputs.</b> <b>Report</b> makes the printable report for the shift shown; <b>Export CSV</b> gives the property list for the community team. Both may contain addresses.</li>
+    </ol>
+    <h3>What the buttons do</h3>
+    <table class="gtable">
+      <tr><td>Status button (top)</td><td>Shows whether the current shift's results match the inputs: <span class="pill ok">Up to date</span> <span class="pill stale">Out of date</span> <span class="pill none">Not run</span>. Click it to run now.</td></tr>
+      <tr><td>Run this shift</td><td>Assesses every building and floor for the shift on the map.</td></tr>
+      <tr><td>Run all shifts</td><td>Assesses every shift in turn. Only needed for comparisons, respite or a report that covers all shifts.</td></tr>
+      <tr><td>Compare &amp; respite</td><td>Table of every shift and every affected property, with the CNVG-PTI respite-period check. Runs out-of-date shifts first.</td></tr>
+      <tr><td>File / Clear / View</td><td>Save and open projects; remove things or tidy the screen; change layout, colours and map layers.</td></tr>
+      <tr><td>Focus (F)</td><td>Hides the panels to show only the map. Press F or Esc to bring them back.</td></tr>
+    </table>
+    <h3>Keys</h3>
+    <p class="kv"><kbd>V</kbd> select · <kbd>S</kbd> add plant · <kbd>B</kbd> building · <kbd>H</kbd> hoarding · <kbd>N</kbd> NCA · <kbd>Enter</kbd> finish · <kbd>Esc</kbd> cancel / deselect · <kbd>Delete</kbd> remove selected · <kbd>F</kbd> focus map · wheel zoom · drag empty space to pan</p>
+    <p class="disclaimer">Screening aid only – not a substitute for an assessment by a qualified acoustic consultant.</p>
+  </div>
+</div>
+
+<input type="file" id="fileLoad" accept=".json,application/json" hidden>
+<input type="file" id="fileGeo" hidden>
 
 <script>
 /*@@JS@@*/

@@ -252,11 +252,12 @@ $('fileDem').addEventListener('change', async () => {
   }
 });
 $('btnDemClear').addEventListener('click', () => {
-  if (!state.terrain) return;
+  if (!state.terrain) { log('No DEM is loaded.'); return; }
+  if (!window.confirm(`Remove the terrain model “${state.terrain.name}”? The ground becomes flat at RL 0.`)) return;
   state.terrain = null; for (const b of state.buildings) updateBase(b);
   updateDemInfo(); log('DEM removed – ground flat at RL 0.'); requestCompute(false);
 });
-$('btnClearB').addEventListener('click', () => { const n = state.buildings.length; state.buildings = []; geomChanged(); select(null); log(`Cleared ${n} building(s).`); requestCompute(false); });
+$('btnClearB').addEventListener('click', () => { const n = state.buildings.length; if (!n || !window.confirm(`Delete all ${n} building(s)?`)) return; state.buildings = []; geomChanged(); select(null); log(`Cleared ${n} building(s).`); requestCompute(false); });
 $('btnDemo').addEventListener('click', () => { loadDemo(); zoomExtents(); });
 $('btnFit').addEventListener('click', zoomExtents);
 
@@ -271,7 +272,7 @@ function loadDemo() {
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
   state.sources = [makeSource(0, 0, DEFAULT_EQ)]; state.ncas = []; state.assess.results = null;
   resetShifts('Demo shift'); state.provenance = [];
-  geomChanged(); select(null);
+  geomChanged(); select(null); renderShiftPanel(true);
   log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
   renderAssessPanel(); updateAssessButtons(); refreshBulkSelects(); requestCompute(false);
 }

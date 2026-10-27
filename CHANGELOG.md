@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.10.0 – UI pass
+
+### Changed
+- **New screen layout:**
+  - a top bar with the map tools, a results status button, *Report*, and *File*, *Clear*, *View* and *Guide* menus;
+  - panels around the map instead of one long menu.
+- **Three layouts** (*View → Layout*), remembered in this browser:
+  - **Workspace** (default):
+    - left panel: shifts, the current shift's plant and the selected item;
+    - right panel, in tabs: *Results*, *Site* and *Method*;
+    - bottom drawer: *Data sources* and *Log*.
+  - **Guided:** one panel with numbered steps (Site → Shifts → Method → Results → Report) and Back/Next buttons. The *Selected* card appears above the step while something is selected.
+  - **Single column:** everything in one scrolling panel, like before.
+- **Colours** (*View*): Light, Dark (the map too) and High contrast, plus a *Compact* density and an option to hide the help text.
+- **Shifts as chips, not a dropdown.**
+  - Each chip shows the shift name, period, plant count and dates, edged in the period's colour, with a results dot: green up to date, amber out of date, hollow not run.
+  - A banner on the map always shows which shift is displayed and its status.
+  - The time period now sits in the shift panel; it was a second control under Model.
+- **Plant list** for the current shift: effective Lw and % on per item, with the total. Click a row to select it, × to delete. Plant not in the realistic worst case is faded.
+- **Results update automatically.**
+  - Once a shift has been run, changing the plant, buildings or method re-runs it about a second later. *Update automatically* turns this off; it is skipped when a run takes over 3 s.
+  - The status button says *Up to date*, *Out of date* or *Not run*, and runs on click.
+  - *Compare & respite* runs any out-of-date shift first, so *Run all shifts* is optional.
+  - Runs asked for while one is going now wait their turn instead of being dropped.
+- **Clear menu.**
+  - Tidy the screen without deleting anything: deselect / stop drawing, hide map overlays, show all layers, map-only focus.
+  - Remove from the project (each asks first): plant in this shift, results, hoarding, buildings, NCAs, terrain, LiDAR/DSM grid, calibration points, the log, or everything for a new empty project.
+- **Map layers** (*View*): switch the heat map, impact colours, building and plant labels, NCAs, hoarding, hillshade, LiDAR points, probe paths, legend, probe box and shift banner on or off. Hidden hoarding still screens sound.
+- **Focus mode** (F or *Focus*): only the map; F or Esc brings the panels back. Each side panel can also be hidden on its own.
+- **Explanations:**
+  - a tooltip on every button;
+  - a short help line on each panel;
+  - a **Quick guide** (*? Guide*) with the usual steps, what each button does (including when *Run all shifts* is needed) and the keyboard shortcuts.
+- The legend floats on the map and shows the impact categories, or respite counts, when the map shows them.
+- The map tip for selecting or placing fades after a few seconds; drawing instructions stay up while you draw.
+- Panels fold by clicking their heading.
+- Removing buildings or terrain now asks first.
+- The probe is a floating box on the map that can be collapsed.
+- The status text moved to the bottom bar.
+
+### Tests
+103 tests, all passing (see `docs/test-evidence/v0.10.0.txt`). New ones cover:
+- the three layouts placing every panel, step navigation, and the layout being remembered;
+- themes (page and map) and density;
+- shift chips, banner, plant list and plant counts;
+- the Clear menu;
+- focus mode, panel hiding and the guide;
+- a tooltip on every button;
+- automatic updates on and off;
+- Compare running out-of-date shifts.
+
+The test runner opens menus, tabs and folded panels before using a control, as a user would, and runs with automatic updates off unless a test turns them on.
+
 ## 0.9.0 – Stage 4: outputs
 
 ### Added

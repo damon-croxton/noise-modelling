@@ -5,295 +5,538 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Construction Noise POC</title>
 <style>
+  /* ---- colour tokens: light (default), dark, high contrast ---- */
+  :root {
+    --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --text: #1d2330; --muted: #6b7280; --border: #d5d9e0; --line: #e8ebef;
+    --btn: #f8f9fb; --btn-hover: #eef2f7; --input: #ffffff; --accent: #1d4ed8; --accent-text: #ffffff; --go: #0f766e; --go-text: #ffffff;
+    --danger: #b91c1c; --danger-border: #e5b4b4; --warn-bg: #fffbeb; --warn-border: #fde68a; --warn-text: #92400e;
+    --ok: #15803d; --stale: #b45309; --none: #6b7280; --overlay: rgba(255,255,255,.93); --shadow: 0 6px 24px rgba(0,0,0,.16);
+    --log-bg: #0f172a; --log-text: #d1e7ff; --hint-bg: #f3f6fb; --row-hover: #eff6ff;
+    --fs: 13px; --fs-s: 11.5px; --pad: 10px; --gap: 6px;
+  }
+  .theme-dark {
+    --bg: #11151c; --panel: #1a1f29; --panel2: #222834; --text: #e5e7eb; --muted: #9ca3af; --border: #343c4b; --line: #2a3140;
+    --btn: #262d3a; --btn-hover: #2f3747; --input: #151a22; --accent: #3b82f6; --go: #14b8a6; --go-text: #06201d;
+    --danger: #f87171; --danger-border: #7f3a3a; --warn-bg: #2b2412; --warn-border: #6b5413; --warn-text: #fcd34d;
+    --ok: #4ade80; --stale: #fbbf24; --none: #9ca3af; --overlay: rgba(26,31,41,.94); --shadow: 0 6px 24px rgba(0,0,0,.5);
+    --log-bg: #0b0f16; --hint-bg: #1f2633; --row-hover: #243049;
+  }
+  .theme-contrast {
+    --bg: #ffffff; --panel: #ffffff; --panel2: #ffffff; --text: #000000; --muted: #222222; --border: #000000; --line: #555555;
+    --btn: #ffffff; --btn-hover: #ffff99; --input: #ffffff; --accent: #0000cc; --go: #000000; --go-text: #ffffff;
+    --danger: #b00000; --danger-border: #b00000; --warn-bg: #ffffcc; --warn-border: #000000; --warn-text: #000000;
+    --ok: #006400; --stale: #8a4b00; --none: #333333; --overlay: #ffffff; --shadow: 0 0 0 2px #000;
+    --hint-bg: #ffffcc; --row-hover: #ffff99;
+  }
+  .theme-contrast button, .theme-contrast input, .theme-contrast select { border-width: 2px; }
+  .density-compact { --fs: 12px; --fs-s: 10.5px; --pad: 7px; --gap: 4px; }
+
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; color: #1d2330; background: #eef0f3; }
-  #app { display: flex; height: 100vh; }
-  #side { width: 350px; flex: none; overflow-y: auto; background: #fff; border-right: 1px solid #d5d9e0; padding: 10px 12px 20px; }
+  html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; font-size: var(--fs); color: var(--text); background: var(--bg); }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  kbd { font: 10px Consolas, monospace; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 3px; padding: 0 3px; color: var(--muted); background: var(--panel2); }
+  button.on kbd, button.primary kbd { color: inherit; background: transparent; border-color: currentColor; opacity: .8; }
+
+  /* ---- top bar ---- */
+  #topbar { display: flex; align-items: center; gap: 10px; padding: 5px 10px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; position: relative; z-index: 20; }
+  .brand { white-space: nowrap; }
+  .brand b { font-size: 15px; } #ver { font-size: 11px; color: var(--muted); margin-left: 3px; }
+  .tag { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--warn-text); background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 10px; padding: 1px 6px; margin-left: 6px; }
+  #tools { flex: 1; justify-content: center; }
+  .actions { display: flex; gap: 6px; align-items: center; }
+  .menu { position: relative; }
+  .pop { position: absolute; right: 0; top: calc(100% + 4px); min-width: 250px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 3px; z-index: 30; max-height: 80vh; overflow: auto; }
+  .pop.wide { min-width: 330px; }
+  .pop > button { text-align: left; }
+  .pop hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+  .pophead { margin: 6px 2px 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .poprow { display: flex; gap: 6px; align-items: center; justify-content: space-between; }
+  .poprow select { font: inherit; max-width: 230px; background: var(--input); color: var(--text); border: 1px solid var(--border); border-radius: 3px; padding: 2px 4px; }
+  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .pill { border-radius: 14px; padding: 4px 10px; font-weight: 600; }
+  .pill.ok { color: var(--ok); border-color: var(--ok); } .pill.stale { color: var(--stale); border-color: var(--stale); } .pill.none { color: var(--none); } .pill.busy { color: var(--accent); border-color: var(--accent); }
+  span.pill { border: 1px solid; padding: 0 7px; font-size: 11px; display: inline-block; }
+
+  /* ---- panels ---- */
+  #body { flex: 1; display: flex; min-height: 0; }
+  #left, #right { position: relative; flex: none; background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  #left { width: 330px; border-right: 1px solid var(--border); }
+  #right { width: 350px; border-left: 1px solid var(--border); }
+  .slot { overflow-y: auto; flex: 1; padding: 0 var(--pad) var(--pad); }
+  .collapse { position: absolute; top: 4px; width: 22px; height: 22px; padding: 0; line-height: 18px; font-size: 13px; z-index: 2; }
+  #left > .collapse { right: 4px; } #right > .collapse { left: 4px; }
   #wrap { position: relative; flex: 1; min-width: 0; }
   #map { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
-  h1 { font-size: 16px; margin: 0 0 2px; }
-  h1 span { font-size: 11px; font-weight: 400; color: #6b7280; }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #4b5563; margin: 0 0 6px; }
-  .sub { margin: 0 0 8px; color: #6b7280; font-size: 12px; }
-  section { border-top: 1px solid #e5e7eb; padding: 9px 0; }
+  .paneltabs { display: flex; gap: 2px; padding: 4px var(--pad) 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; background: var(--panel); }
+  #rtabs { padding-left: 30px; } #steps { padding-right: 30px; }
+  .paneltabs button { border: 1px solid transparent; border-bottom: 0; border-radius: 5px 5px 0 0; background: transparent; padding: 5px 9px; color: var(--muted); margin-bottom: -1px; }
+  .paneltabs button.on { background: var(--panel); color: var(--text); border-color: var(--border); border-bottom: 1px solid var(--panel); font-weight: 600; }
+  .paneltabs button:hover:not(.on) { background: var(--btn-hover); color: var(--text); }
+  .stepnav { display: flex; justify-content: space-between; padding: 6px var(--pad); border-top: 1px solid var(--border); }
+  #bottom { position: relative; background: var(--panel); border-top: 1px solid var(--border); height: 175px; display: flex; flex-direction: column; flex: none; }
+  #bottom.closed { height: 31px; overflow: hidden; }
+  #bottom > .collapse { right: 8px; top: 4px; }
+  #bottom .slot { padding-top: 6px; }
+  #bottom .card { border: 0; padding: 0; }
+  #bottom .card > h2 { display: none; }
+  .app-focus #left, .app-focus #right, .app-focus #bottom, .app-focus #topbar #tools { display: none; }
+  .noleft #left { display: none; } .noright #right { display: none; } .nobottom #bottom { display: none; }
+  .layout-guided #right, .layout-single #right { display: none; }
+  .layout-guided #left, .layout-single #left { width: 380px; }
+
+  /* ---- cards ---- */
+  .card { border-top: 1px solid var(--line); padding: var(--pad) 0 calc(var(--pad) - 2px); }
+  .slot > .card:first-child { border-top: 0; }
+  .card > h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 var(--gap); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .card > h2::before { content: '▾'; font-size: 10px; width: 10px; transition: transform .1s; }
+  .card.collapsed > h2::before { transform: rotate(-90deg); }
+  .card.collapsed > :not(h2) { display: none !important; }
+  .help { font-size: var(--fs-s); color: var(--muted); margin: 0 0 var(--gap); line-height: 1.4; border-left: 2px solid var(--line); padding-left: 6px; }
+  .nohelp .help { display: none; }
+
   .seg, .btns { display: flex; gap: 4px; flex-wrap: wrap; }
-  button { font: inherit; padding: 5px 8px; border: 1px solid #c3c9d3; background: #f8f9fb; border-radius: 4px; cursor: pointer; color: inherit; }
-  button:hover { background: #eef2f7; }
-  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
-  button.on { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
-  button.danger { color: #b91c1c; border-color: #e5b4b4; }
-  button.primary { background: #0f766e; color: #fff; border-color: #0f766e; }
+  .btns { margin: var(--gap) 0 2px; }
+  button { font: inherit; padding: 4px 8px; border: 1px solid var(--border); background: var(--btn); border-radius: 4px; cursor: pointer; color: inherit; }
+  button:hover { background: var(--btn-hover); }
+  button:disabled { opacity: .5; cursor: default; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.danger { color: var(--danger); border-color: var(--danger-border); }
+  button.primary { background: var(--go); color: var(--go-text); border-color: var(--go); }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; }
   .row > label { flex: 1; }
-  .row input[type=number], .row input[type=text], .row select { width: 150px; font: inherit; padding: 3px 5px; border: 1px solid #c3c9d3; border-radius: 3px; }
-  .row input.bad { border-color: #dc2626; background: #fef2f2; }
+  .row input[type=number], .row input[type=text], .row select { width: 150px; font: inherit; padding: 3px 5px; border: 1px solid var(--border); border-radius: 3px; background: var(--input); color: var(--text); }
+  .row input.bad { border-color: #dc2626; background: #fef2f2; color: #111; }
   [hidden] { display: none !important; }
-  .chk { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
-  .hint { color: #374151; background: #f3f6fb; border-left: 3px solid #1d4ed8; padding: 5px 7px; margin: 6px 0 0; font-size: 12px; }
-  .muted { color: #6b7280; margin: 0; }
-  .kv { font-size: 11.5px; color: #374151; margin: 4px 0 0; line-height: 1.45; }
-  #legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 6px; font-size: 11px; }
+  .chk { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
+  .hint { position: absolute; left: 50%; transform: translateX(-50%); bottom: 10px; max-width: min(640px, calc(100% - 300px)); color: var(--text); background: var(--overlay); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 4px; padding: 4px 9px; margin: 0; font-size: 12px; pointer-events: none; box-shadow: var(--shadow); }
+  .muted { color: var(--muted); margin: 0; }
+  .kv { font-size: var(--fs-s); color: var(--text); margin: 4px 0 0; line-height: 1.45; }
+
+  /* ---- shifts and plant ---- */
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 4px; }
+  .chips button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 4px 9px 4px 8px; border-radius: 6px; border-left: 4px solid var(--pc, var(--border)); min-width: 110px; text-align: left; }
+  .chips button small { font-size: 10.5px; color: var(--muted); }
+  .chips button.on { background: var(--panel2); color: var(--text); border-color: var(--accent); border-left-color: var(--pc, var(--accent)); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .chips button.on small { color: var(--text); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; background: var(--none); }
+  .dot.d-ok { background: var(--ok); } .dot.d-stale { background: var(--stale); } .dot.d-none { background: transparent; border: 1px solid var(--none); }
+  #plantList table { width: 100%; border-collapse: collapse; font-size: var(--fs-s); }
+  #plantList th { text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); padding: 2px 3px; }
+  #plantList td { border-bottom: 1px solid var(--line); padding: 3px; }
+  #plantList td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  #plantList tr.sel td { background: var(--row-hover); font-weight: 600; }
+  #plantList tbody tr { cursor: pointer; } #plantList tbody tr:hover td { background: var(--row-hover); }
+  #plantList tr.excl td { opacity: .55; }
+  #plantList .x { padding: 0 5px; line-height: 16px; color: var(--danger); border-color: transparent; background: transparent; }
+
+  /* ---- map overlays ---- */
+  #banner { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); background: var(--overlay); border: 1px solid var(--border); border-left: 5px solid var(--pc, var(--accent)); border-radius: 5px; padding: 3px 10px; font-size: 12.5px; box-shadow: var(--shadow); white-space: nowrap; max-width: calc(100% - 340px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  #banner b { font-size: 13px; }
+  #legend { position: absolute; left: 8px; bottom: 8px; display: grid; grid-template-columns: repeat(3, auto); gap: 1px 8px; font-size: 10.5px; background: var(--overlay); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; pointer-events: none; }
   #legend div { display: flex; align-items: center; gap: 4px; }
-  #legend i { width: 16px; height: 11px; border: 1px solid rgba(0,0,0,.2); display: inline-block; }
+  #legend i { width: 14px; height: 10px; border: 1px solid rgba(0,0,0,.2); display: inline-block; }
+  #legend .lt { grid-column: 1 / -1; font-weight: 600; }
+  #probeBox { position: absolute; right: 8px; top: 44px; width: 380px; max-height: calc(100% - 100px); overflow: auto; background: var(--overlay); border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow); padding: 4px 8px 6px; font-size: 12px; }
+  #probeBox .ph { display: flex; align-items: center; gap: 6px; position: sticky; top: -4px; background: var(--overlay); padding: 2px 0; }
+  #probeBox .ph button { margin-left: auto; padding: 0 7px; }
+  #probeBox.min #probe { display: none; } #probeBox.min { width: auto; }
   #probe table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  #probe th, #probe td { text-align: right; padding: 2px 3px; border-bottom: 1px solid #eef0f3; }
+  #probe th, #probe td { text-align: right; padding: 2px 3px; border-bottom: 1px solid var(--line); }
   #probe th:first-child, #probe td:first-child { text-align: left; }
-  #probe .note td { color: #6b7280; text-align: left; font-size: 10.5px; }
-  #probe table.bands { margin-top: 2px; } #probe table.bands td, #probe table.bands th { padding: 0 3px; text-align: right; font-size: 10px; }
+  #probe .note td { color: var(--muted); text-align: left; font-size: 10.5px; }
+  #probe table.bands { margin-top: 2px; }
+  #probe table.bands td, #probe table.bands th { padding: 0 3px; text-align: right; font-size: 10px; }
   #probe .tot { font-weight: 600; font-size: 13px; margin-top: 4px; }
-  #log { font-family: Consolas, monospace; font-size: 10.5px; background: #0f172a; color: #d1e7ff; padding: 6px; height: 200px; overflow: auto; white-space: pre-wrap; margin: 0; border-radius: 4px; }
+  #mapbtns { position: absolute; left: 8px; top: 38px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+  #mapbtns button { background: var(--overlay); box-shadow: var(--shadow); }
+  #hud { position: absolute; right: 8px; bottom: 8px; background: var(--overlay); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-size: 12px; pointer-events: none; max-width: calc(100% - 16px); }
+  #busy { position: absolute; right: 40px; top: 7px; font-size: 11px; color: var(--muted); max-width: calc(100% - 260px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #attrib { position: absolute; right: 8px; bottom: 36px; background: var(--overlay); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 10.5px; }
+  #attrib a { color: var(--accent); }
+
+  #log { font-family: Consolas, monospace; font-size: 10.5px; background: var(--log-bg); color: var(--log-text); padding: 6px; height: 150px; overflow: auto; white-space: pre-wrap; margin: 0; border-radius: 4px; }
   #log .pass { color: #86efac; } #log .fail { color: #fca5a5; } #log .warn { color: #fde68a; }
-  #hud { position: absolute; right: 8px; bottom: 8px; background: rgba(255,255,255,.92); border: 1px solid #c3c9d3; border-radius: 4px; padding: 4px 8px; font-size: 12px; pointer-events: none; max-width: calc(100% - 16px); }
-  #busy { position: absolute; left: 8px; top: 8px; background: rgba(255,255,255,.92); border: 1px solid #c3c9d3; border-radius: 4px; padding: 3px 8px; font-size: 11px; color: #4b5563; pointer-events: none; }
-  #attrib { position: absolute; right: 8px; top: 8px; background: rgba(255,255,255,.9); border: 1px solid #c3c9d3; border-radius: 4px; padding: 2px 6px; font-size: 10.5px; }
-  #attrib a { color: #1d4ed8; }
-  .disclaimer { font-size: 11px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 5px 7px; border-radius: 4px; margin: 6px 0 0; }
+  .slot #log { height: auto; max-height: 60vh; min-height: 150px; }
+  #bottom .slot #log { height: 100%; max-height: none; min-height: 0; }
+  #bottom .slot { display: flex; flex-direction: column; } #bottom .slot > .card { flex: 1; min-height: 0; display: flex; flex-direction: column; } #bottom .slot > .card > pre { flex: 1; }
+  #provList table { width: 100%; border-collapse: collapse; font-size: var(--fs-s); }
+  #provList th, #provList td { text-align: left; border-bottom: 1px solid var(--line); padding: 3px 5px; vertical-align: top; }
+  #provList th { color: var(--muted); font-weight: 600; }
+
+  .disclaimer { font-size: 11px; color: var(--warn-text); background: var(--warn-bg); border: 1px solid var(--warn-border); padding: 5px 7px; border-radius: 4px; margin: 6px 0 0; }
   .rbl3 span { display: flex; gap: 3px; }
   .row.rbl3 input[type=number] { width: 48px; }
-  details.sub2 { margin-top: 8px; border-top: 1px dashed #e5e7eb; padding-top: 6px; }
-  details.sub2 summary { cursor: pointer; font-size: 12px; color: #374151; }
-  .stale { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 3px 6px; border-radius: 3px; margin: 4px 0; }
+  .stale { color: var(--warn-text); background: var(--warn-bg); border: 1px solid var(--warn-border); padding: 3px 6px; border-radius: 3px; margin: 4px 0; }
   table.mini { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
-  table.mini th, table.mini td { border-bottom: 1px solid #eef0f3; padding: 2px 3px; text-align: right; }
+  table.mini th, table.mini td { border-bottom: 1px solid var(--line); padding: 2px 3px; text-align: right; }
   table.mini th:first-child, table.mini td:first-child { text-align: left; }
-  table.mini th { font-weight: 600; color: #374151; vertical-align: bottom; }
+  table.mini th { font-weight: 600; color: var(--muted); vertical-align: bottom; }
   .chip { display: inline-block; width: 10px; height: 10px; border: 1px solid rgba(0,0,0,.25); vertical-align: -1px; margin-right: 3px; }
-  #ptable { position: absolute; inset: 8px; background: #fff; border: 1px solid #c3c9d3; border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.18); display: flex; flex-direction: column; z-index: 5; }
-  #ptable[hidden] { display: none; }
-  #ptable .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
-  #ptable .bar h2 { margin: 0 8px 0 0; }
-  #ptable .bar input[type=search], #ptable .bar select { font: inherit; padding: 3px 5px; border: 1px solid #c3c9d3; border-radius: 3px; }
+
+  /* ---- table overlay (property table, comparison) ---- */
+  #ptable { position: absolute; inset: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow); display: flex; flex-direction: column; z-index: 5; }
+  #ptable .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  #ptable .bar h2 { margin: 0 8px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  #ptable .bar input[type=search], #ptable .bar select { font: inherit; padding: 3px 5px; border: 1px solid var(--border); border-radius: 3px; background: var(--input); color: var(--text); }
   #ptable .scroll { overflow: auto; flex: 1; }
   #ptable table { border-collapse: collapse; width: 100%; font-size: 12px; }
-  #ptable th { position: sticky; top: 0; background: #f3f4f6; text-align: left; padding: 4px 6px; border-bottom: 1px solid #d5d9e0; cursor: pointer; white-space: nowrap; }
-  #ptable td { padding: 3px 6px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+  #ptable th { position: sticky; top: 0; background: var(--panel2); text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap; }
+  #ptable td { padding: 3px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   #ptable td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  #ptable tbody tr:hover { background: #eff6ff; cursor: pointer; }
-  #ptable .foot { padding: 5px 10px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; }
-  @media (max-width: 800px) {
-    #app { flex-direction: column; height: auto; }
-    #side { width: auto; border-right: 0; border-bottom: 1px solid #d5d9e0; }
-    #wrap { height: 70vh; }
+  #ptable tbody tr:hover { background: var(--row-hover); cursor: pointer; }
+  #ptable .foot { padding: 5px 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+
+  /* ---- quick guide ---- */
+  #guide { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .gbox { position: relative; background: var(--panel); color: var(--text); max-width: 760px; width: 100%; max-height: 90vh; overflow: auto; border-radius: 8px; padding: 16px 22px; box-shadow: var(--shadow); }
+  .gbox h2 { margin: 0 0 8px; font-size: 18px; } .gbox h3 { font-size: 13.5px; margin: 14px 0 6px; }
+  .gbox ol.steps { padding-left: 20px; margin: 0; } .gbox ol.steps li { margin: 5px 0; line-height: 1.45; }
+  .gtable { border-collapse: collapse; width: 100%; font-size: 12px; } .gtable td { border-bottom: 1px solid var(--line); padding: 4px 6px; vertical-align: top; } .gtable td:first-child { font-weight: 600; white-space: nowrap; width: 150px; }
+  .gclose { position: absolute; right: 10px; top: 10px; font-size: 18px; line-height: 18px; padding: 2px 8px; }
+
+  @media (max-width: 900px) {
+    #app { height: auto; min-height: 100vh; }
+    #body { flex-direction: column; }
+    #left, #right, .layout-guided #left, .layout-single #left { width: auto; border: 0; border-bottom: 1px solid var(--border); max-height: none; }
+    #wrap { height: 70vh; flex: none; }
+    #tools { justify-content: flex-start; }
+    #probeBox { width: calc(100% - 16px); top: auto; bottom: 70px; max-height: 45%; }
   }
 </style>
 </head>
 <body>
-<div id="app">
-  <aside id="side">
-    <h1>Construction Noise POC <span id="ver"></span></h1>
-    <p class="sub">Screening aid · L<sub>Aeq,15min</sub> dB(A) · TfNSW estimator basis or ISO 9613-2 · terrain, buildings, hoarding</p>
-
-    <section>
-      <h2>Mode</h2>
-      <div class="seg">
-        <button type="button" data-mode="select">Select / move (V)</button>
-        <button type="button" data-mode="source">Add source (S)</button>
-        <button type="button" data-mode="building">Draw building (B)</button>
-        <button type="button" data-mode="hoarding">Draw hoarding (H)</button>
-        <button type="button" data-mode="nca">Draw NCA (N)</button>
-      </div>
-      <p id="hint" class="hint"></p>
-      <div class="btns" style="margin-top:6px">
-        <button type="button" id="finishPoly" hidden>Finish (Enter)</button>
-        <button type="button" id="cancelPoly" hidden>Cancel (Esc)</button>
-      </div>
-    </section>
-
-    <section>
-      <h2>Shift</h2>
-      <p class="kv muted">Each shift has its own plant, time period and dates; buildings, NCAs and model settings are shared.</p>
-      <div class="row"><label for="shSel">Current shift</label><select id="shSel"></select></div>
-      <div class="btns"><button type="button" id="shNew">New</button><button type="button" id="shDup">Duplicate</button><button type="button" id="shDel" class="danger">Delete</button></div>
-      <div class="row"><label for="shName">Activity / shift name</label><input type="text" id="shName" maxlength="60"></div>
-      <div class="row"><label for="shPeriod">Time period</label><select id="shPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
-      <div class="row"><label for="shDates">Dates (YYYY-MM-DD, ranges a..b; night = start date)</label><input type="text" id="shDates" placeholder="2026-11-03..2026-11-05, 2026-11-10"></div>
-      <div class="row"><label for="shNotes">Notes</label><input type="text" id="shNotes" maxlength="500"></div>
-      <p class="kv muted" id="shInfo"></p>
-      <div class="btns"><button type="button" id="shRunAll" class="primary">Run all shifts</button><button type="button" id="shCompare">Compare &amp; respite</button><button type="button" id="btnReport">Report (print / PDF)</button></div>
-      <details class="sub2"><summary>Project details (for the report)</summary>
-        <div class="row"><label for="prjName">Project</label><input type="text" id="prjName" maxlength="120"></div>
-        <div class="row"><label for="prjBy">Prepared by</label><input type="text" id="prjBy" maxlength="120"></div>
-      </details>
-    </section>
-
-    <section>
-      <h2>Selection</h2>
-      <div id="selBody"></div>
-    </section>
-
-    <section>
-      <h2>Equipment library</h2>
-      <div class="btns">
-        <button type="button" id="btnLibExport">Export library</button>
-        <button type="button" id="btnLibImport">Import library</button>
-        <button type="button" id="btnLibReset" class="danger">Reset to built-in</button>
-      </div>
-      <input type="file" id="fileLib" accept=".json,application/json" hidden>
-      <p id="libInfo" class="kv muted"></p>
-    </section>
-
-    <section>
-      <h2>Building heights from LiDAR</h2>
-      <div class="btns">
-        <button type="button" id="btnLaz" class="primary">Load LiDAR (.laz / .las)</button>
-        <button type="button" id="btnLazCancel" class="danger" hidden>Cancel</button>
-      </div>
-      <input type="file" id="fileLaz" accept=".laz,.las" hidden>
-      <div id="lazInfo" class="kv"><span class="muted">No LiDAR loaded. Uses class 6 (building) points for roof levels; class 2 (ground) builds the terrain if no DEM is loaded. The file is read locally – nothing is uploaded.</span></div>
-      <label class="chk"><input type="checkbox" id="setLazShow" checked> Show LiDAR building points</label>
-    </section>
-
-    <section>
-      <h2>Buildings from free data</h2>
-      <div class="row"><label for="siteLL">Site (lat, lon)</label><input type="text" id="siteLL" placeholder="-33.8890, 151.2370"></div>
-      <div class="btns">
-        <button type="button" id="btnSite">Go to site</button>
-        <button type="button" id="btnOsm" class="primary">Fetch OSM buildings in view</button>
-        <button type="button" id="btnOsmLink">Copy OSM download link</button>
-        <button type="button" id="btnDsm">Load DSM for roof heights</button>
-      </div>
-      <input type="file" id="fileDsm" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
-      <label class="chk"><input type="checkbox" id="osmReplace"> Re-fetch replaces existing OSM buildings</label>
-      <div id="siteInfo" class="kv"></div>
-      <p class="kv muted">Footprints: OpenStreetMap. Heights: OSM <i>height</i> → <i>levels</i> × 3 m → typical height for the building type (dashed outline = estimated). A DSM (roof surface) overrides estimates.</p>
-    </section>
-
-    <section>
-      <h2>Terrain (DEM)</h2>
-      <div class="btns">
-        <button type="button" id="btnDem" class="primary">Load DEM (.tif / .asc / .xyz)</button>
-        <button type="button" id="btnDemClear" class="danger">Remove DEM</button>
-      </div>
-      <input type="file" id="fileDem" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
-      <div id="demInfo" class="kv"><span class="muted">No DEM loaded – ground is flat at RL 0.</span></div>
-      <label class="chk"><input type="checkbox" id="setTerr" checked> Terrain blocks sound</label>
-      <label class="chk"><input type="checkbox" id="setShade" checked> Show hillshade</label>
-    </section>
-
-    <section>
-      <h2>Model</h2>
-      <div class="row"><label for="setMethod">Method</label>
-        <select id="setMethod"><option value="tfnsw">TfNSW estimator</option><option value="iso">ISO 9613-2</option></select></div>
-      <p class="kv muted" id="methodNote"></p>
-      <div class="row"><label for="setPeriod">Time period</label>
-        <select id="setPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
-      <div class="row"><label for="setSeason">Season (air absorption)</label>
-        <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
-      <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
-      <div class="row"><label for="setCombine">Plant combination</label>
-        <select id="setCombine"><option value="all">All plant (conservative)</option><option value="estimator">Loudest 1–3 rows (TfNSW estimator)</option></select></div>
-      <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
-      <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
-      <label class="chk"><input type="checkbox" id="setLat" checked> Side diffraction around buildings and hoarding ends</label>
-      <label class="chk" id="rowBands"><input type="checkbox" id="setBands"> Octave bands 63 Hz – 8 kHz (source spectra)</label>
-      <div class="row"><label for="setRefl">Façade reflections (first order)</label>
-        <select id="setRefl"><option value="auto">Auto (ISO only)</option><option value="on">On</option><option value="off">Off</option></select></div>
-      <div class="row"><label for="setReflLoss">Reflection loss (dB)</label><input type="number" id="setReflLoss" min="0" max="10" step="0.5" value="1"></div>
-      <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
-      <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
-      <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
-      <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
-    </section>
-
-    <section>
-      <h2>Assessment</h2>
-      <p class="kv muted">Uses the time period set under Model. Each building is assessed on its exposed façades at 1.5 m above each floor; the worst point per floor is reported.</p>
-      <div class="row"><label for="asDefCat">Noise area outside NCAs</label><select id="asDefCat"></select></div>
-      <div class="row rbl3"><label>Measured RBL outside NCAs (day / eve / night)</label><span><input type="number" id="asRblD" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblE" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblN" min="20" max="80" step="1" placeholder="–"></span></div>
-      <div class="row"><label for="asFloorH">Floor height (m)</label><input type="number" id="asFloorH" min="2" max="6" step="0.1" value="3"></div>
-      <div class="row"><label for="asSpacing">Façade point spacing (m)</label><input type="number" id="asSpacing" min="2" max="50" step="1" value="10"></div>
-      <div class="row"><label for="asOffset">Distance in front of façade (m)</label><input type="number" id="asOffset" min="0.1" max="5" step="0.1" value="1"></div>
-      <div class="btns">
-        <button type="button" id="btnAssess" class="primary">Run assessment</button>
-        <button type="button" id="btnTable">Property table</button>
-        <button type="button" id="btnCsv">Export CSV</button>
-        <button type="button" id="btnNcaImport">Import NCAs (GeoJSON)</button>
-      </div>
-      <input type="file" id="fileNca" accept=".json,.geojson,application/json" hidden>
-      <div class="row"><label for="asDisplay">Map shows</label>
-        <select id="asDisplay"><option value="both">Impact categories + heat map</option><option value="cat">Impact categories only</option><option value="heat">Heat map only</option><option value="respite">Respite: dates above NML (all shifts)</option></select></div>
-      <div id="asStatus" class="kv"></div>
-      <div id="asSummary"></div>
-      <details class="sub2"><summary>Change land use in bulk</summary>
-        <div class="row"><label for="bulkFrom">Buildings with land use</label><select id="bulkFrom"></select></div>
-        <div class="row"><label for="bulkIn">Within</label><select id="bulkIn"></select></div>
-        <div class="row"><label for="bulkTo">Set land use to</label><select id="bulkTo"></select></div>
-        <div class="btns"><button type="button" id="btnBulk">Apply</button></div>
-      </details>
-      <details class="sub2"><summary>Assessment rules</summary>
-        <div class="row"><label for="rulesSet">Rule set</label><select id="rulesSet"></select></div>
-        <p id="rulesInfo" class="kv"></p>
-        <div class="btns">
-          <button type="button" id="btnRulesExport">Export rules</button>
-          <button type="button" id="btnRulesImport">Import rules</button>
-          <button type="button" id="btnRulesReset" class="danger">Reset to defaults</button>
+<div id="app" class="layout-workspace">
+  <header id="topbar">
+    <div class="brand"><b>Construction Noise POC</b> <span id="ver"></span><span class="tag" title="A screening aid – not a substitute for an assessment by a qualified acoustic consultant">screening aid</span></div>
+    <nav id="tools" class="seg" aria-label="Map tools">
+      <button type="button" data-mode="select" title="Select and move things on the map; drag empty space to pan (V)">Select <kbd>V</kbd></button>
+      <button type="button" data-mode="source" title="Click the map to place a plant item in the current shift (S)">+ Plant <kbd>S</kbd></button>
+      <button type="button" data-mode="building" title="Draw a building footprint corner by corner (B)">Building <kbd>B</kbd></button>
+      <button type="button" data-mode="hoarding" title="Draw a line of hoarding / noise barrier (H)">Hoarding <kbd>H</kbd></button>
+      <button type="button" data-mode="nca" title="Draw a noise catchment area boundary (N)">NCA <kbd>N</kbd></button>
+      <button type="button" id="finishPoly" class="primary" hidden title="Finish the shape you are drawing (Enter)">Finish</button>
+      <button type="button" id="cancelPoly" hidden title="Throw away the shape you are drawing (Esc)">Cancel</button>
+    </nav>
+    <div class="actions">
+      <button type="button" id="runState" class="pill" title="State of the results for the current shift – click to run the assessment now">Not run</button>
+      <button type="button" id="btnReport" class="primary" title="Create the printable report for the current shift (runs the assessment first if needed)">Report</button>
+      <div class="menu">
+        <button type="button" class="menubtn" data-menu="mFile" title="Save, open, import and examples">File ▾</button>
+        <div class="pop" id="mFile" hidden>
+          <button type="button" id="btnSave" title="Save the whole project (all shifts, buildings, NCAs, settings) as a JSON file – may contain addresses">Save project…</button>
+          <button type="button" id="btnLoad" title="Open a saved project JSON file">Open project…</button>
+          <button type="button" id="mGeo" title="Add building footprints from a GeoJSON or OpenStreetMap .osm file">Import buildings (GeoJSON / .osm)…</button>
+          <hr>
+          <label class="poprow">Example <select id="exampleSel" title="Synthetic example scenes for trying the tool"><option value="corridor">Inner-city night works – rail corridor</option><option value="street">Inner-city night works – street</option><option value="setback">Inner-city night works – 37 m set-back</option></select></label>
+          <button type="button" id="btnExample" title="Replace the project with the chosen synthetic example">Load example</button>
+          <button type="button" id="btnDemo" title="Replace the project with the small starting demo">Reset to demo</button>
         </div>
-        <input type="file" id="fileRules" accept=".json,application/json" hidden>
-      </details>
-    </section>
-
-    <section>
-      <h2>Calibration</h2>
-      <p class="kv muted">Import measured levels or another tool's receiver results (CSV: a receiver ID from the property list, or easting/northing or lat/lon with height, floor or RL, and an LAeq column) to see how this tool compares. Uses the current period, method and plant.</p>
-      <div class="btns">
-        <button type="button" id="btnCalImport">Import levels (CSV)</button>
-        <button type="button" id="btnCalExport">Export comparison</button>
-        <button type="button" id="btnCalClear" class="danger">Clear</button>
       </div>
-      <input type="file" id="fileCal" accept=".csv,.txt,text/csv" hidden>
-      <div id="calInfo" class="kv"></div>
-    </section>
+      <div class="menu">
+        <button type="button" class="menubtn" data-menu="mClear" title="Remove things from the project or tidy the screen">Clear ▾</button>
+        <div class="pop" id="mClear" hidden>
+          <p class="pophead">Tidy the screen (nothing is deleted)</p>
+          <button type="button" id="clrSel" title="Deselect and stop drawing (Esc)">Deselect / stop drawing</button>
+          <button type="button" id="clrOverlays" title="Hide the heat map, impact colours, labels and calculation paths; turn them back on under View → Map layers">Hide map overlays</button>
+          <button type="button" id="clrShowAll" title="Show every map layer again">Show all map layers</button>
+          <button type="button" id="btnFocus2" title="Hide the panels and show only the map (F); press F or Esc to bring them back">Map only (focus) <kbd>F</kbd></button>
+          <p class="pophead">Remove from the project (asks first)</p>
+          <button type="button" id="clrPlant" class="danger" title="Delete every plant item in the current shift">Plant in this shift</button>
+          <button type="button" id="clrResults" class="danger" title="Forget the results of every shift (they can be re-run)">Results (all shifts)</button>
+          <button type="button" id="clrHoard" class="danger" title="Delete all hoarding lines">Hoarding</button>
+          <button type="button" id="btnClearB" class="danger" title="Delete all buildings">Buildings</button>
+          <button type="button" id="clrNcas" class="danger" title="Delete all noise catchment areas">NCAs</button>
+          <button type="button" id="btnDemClear" class="danger" title="Remove the terrain model – ground becomes flat">Terrain (DEM)</button>
+          <button type="button" id="clrDsm" class="danger" title="Remove the loaded LiDAR / DSM roof grid (building heights already applied are kept)">LiDAR / DSM grid</button>
+          <button type="button" id="btnCalClear" class="danger" title="Remove imported calibration points">Calibration points</button>
+          <button type="button" id="clrLog" title="Empty the log panel">Log</button>
+          <button type="button" id="clrAll" class="danger" title="Start an empty project: removes all shifts, plant, buildings, hoarding, NCAs, terrain and data sources; keeps model settings and the equipment library">Everything (new project)</button>
+        </div>
+      </div>
+      <div class="menu">
+        <button type="button" class="menubtn" data-menu="mView" title="Layout, colours and map layers">View ▾</button>
+        <div class="pop wide" id="mView" hidden>
+          <p class="pophead">Layout</p>
+          <label class="chk" title="Shifts and plant on the left, method and site data on the right, data sources and log at the bottom"><input type="radio" name="uiLayout" value="workspace"> Workspace – panels around the map</label>
+          <label class="chk" title="One panel with numbered steps: site, shifts & plant, method, results, report"><input type="radio" name="uiLayout" value="guided"> Guided – step by step</label>
+          <label class="chk" title="Everything in one scrolling panel"><input type="radio" name="uiLayout" value="single"> Single column</label>
+          <p class="pophead">Colours</p>
+          <label class="chk"><input type="radio" name="uiTheme" value="light"> Light</label>
+          <label class="chk"><input type="radio" name="uiTheme" value="dark"> Dark</label>
+          <label class="chk"><input type="radio" name="uiTheme" value="contrast"> High contrast</label>
+          <label class="chk" title="Smaller text and spacing, so more fits on screen"><input type="checkbox" id="uiCompact"> Compact</label>
+          <label class="chk" title="Short explanations under each panel heading"><input type="checkbox" id="uiHelp"> Show help text</label>
+          <p class="pophead">Panels</p>
+          <label class="chk"><input type="checkbox" id="uiLeft"> Left panel</label>
+          <label class="chk"><input type="checkbox" id="uiRight"> Right panel</label>
+          <label class="chk"><input type="checkbox" id="uiBottom"> Data sources and log</label>
+          <p class="pophead">Map layers</p>
+          <div class="cols2">
+            <label class="chk"><input type="checkbox" id="lyHeat"> Heat map</label>
+            <label class="chk"><input type="checkbox" id="lyImpact"> Impact colours</label>
+            <label class="chk"><input type="checkbox" id="lyBLabels"> Building labels</label>
+            <label class="chk"><input type="checkbox" id="lySLabels"> Plant labels</label>
+            <label class="chk"><input type="checkbox" id="lyNcas"> NCAs</label>
+            <label class="chk" title="Hidden hoarding still screens sound"><input type="checkbox" id="lyHoard"> Hoarding</label>
+            <label class="chk"><input type="checkbox" id="setShade" checked> Hillshade</label>
+            <label class="chk"><input type="checkbox" id="setLazShow" checked> LiDAR points</label>
+            <label class="chk"><input type="checkbox" id="lyPaths"> Probe paths</label>
+            <label class="chk"><input type="checkbox" id="lyLegend"> Legend</label>
+            <label class="chk"><input type="checkbox" id="lyProbe"> Probe box</label>
+            <label class="chk"><input type="checkbox" id="lyBanner"> Shift banner</label>
+          </div>
+        </div>
+      </div>
+      <button type="button" id="btnHelp" title="Quick guide: what the buttons do and the usual steps">? Guide</button>
+    </div>
+  </header>
 
-    <section>
-      <h2>Display</h2>
-      <div class="row"><label for="setCell">Map detail</label>
-        <select id="setCell"><option value="3">Fine (3 px)</option><option value="5" selected>Normal (5 px)</option><option value="8">Coarse (8 px)</option></select></div>
-      <div class="row"><label for="setMin">Hide below</label>
-        <select id="setMin"><option>30</option><option selected>35</option><option>40</option><option>45</option><option>50</option></select></div>
-      <div class="row"><label for="setOp">Opacity</label><input type="range" id="setOp" min="0.2" max="1" step="0.05" value="0.7"></div>
+  <div id="body">
+    <aside id="left" aria-label="Works">
+      <div class="paneltabs" id="steps" hidden></div>
+      <div class="slot" id="slotLeft"></div>
+      <div class="stepnav" id="stepNav" hidden><button type="button" id="stepBack" title="Previous step">← Back</button><button type="button" id="stepNext" class="primary" title="Next step">Next →</button></div>
+      <button type="button" class="collapse" id="hideLeft" title="Hide this panel">«</button>
+    </aside>
+    <main id="wrap">
+      <canvas id="map" aria-label="Noise map"></canvas>
+      <div id="banner" title="The shift shown on the map – switch shifts in the Shifts panel"></div>
+      <p id="hint" class="hint"></p>
+      <div id="hud">–</div>
       <div id="legend" aria-label="Legend, dB(A)"></div>
-    </section>
-
-    <section>
-      <h2>Probe (hover the map)</h2>
-      <div id="probe" aria-live="polite"><p class="muted">Hover the map to see the calculation breakdown.</p></div>
-    </section>
-
-    <section>
-      <h2>Scenario</h2>
-      <div class="btns">
-        <button type="button" id="btnFit">Zoom to extents</button>
-        <button type="button" id="btnSave">Save JSON</button>
-        <button type="button" id="btnLoad">Load JSON</button>
-        <button type="button" id="btnGeo">Import buildings (GeoJSON / .osm)</button>
-        <button type="button" id="btnClearB" class="danger">Clear buildings</button>
-        <button type="button" id="btnDemo">Reset demo</button>
+      <div id="probeBox"><div class="ph"><b>Probe</b> <span class="muted">– hover the map</span><button type="button" id="probeMin" title="Collapse the probe">–</button></div><div id="probe" aria-live="polite"><p class="muted">Hover the map to see how the level is calculated.</p></div></div>
+      <div id="mapbtns">
+        <button type="button" id="btnFit" title="Zoom to show everything">Zoom to all</button>
+        <button type="button" id="btnFocus" title="Show only the map (F)">Focus <kbd>F</kbd></button>
+        <button type="button" id="showLeft" hidden title="Show the left panel">» Panel</button>
+        <button type="button" id="showRight" hidden title="Show the right panel">Panel «</button>
       </div>
-      <div class="row"><label for="exampleSel">Example</label><select id="exampleSel"><option value="corridor">Inner-city night works – rail corridor</option><option value="street">Inner-city night works – street</option><option value="setback">Inner-city night works – 37 m set-back</option></select></div>
-      <div class="btns"><button type="button" id="btnExample">Load example</button></div>
-      <input type="file" id="fileLoad" accept=".json,application/json" hidden>
-      <input type="file" id="fileGeo" hidden>
-      <p class="disclaimer">Screening and planning aid only. It does not replace an assessment by a qualified acoustic consultant and is not a validated compliance model. Plant levels and assessment defaults come from Transport for NSW documents – verify them against the current client strategy and replace them with project data where available. The DEM and LiDAR are not saved in the JSON – reload them after loading a scenario.</p>
-    </section>
+      <div id="ptable" hidden></div>
+      <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
+    </main>
+    <aside id="right" aria-label="Project data and method">
+      <div class="paneltabs" id="rtabs"></div>
+      <div class="slot" id="slotRight"></div>
+      <button type="button" class="collapse" id="hideRight" title="Hide this panel">»</button>
+    </aside>
+  </div>
 
-    <section>
-      <h2>About and licences</h2>
-      <p class="kv">Buildings: © OpenStreetMap contributors (ODbL). LAZ decoding: JavaScript port of LASzip by rapidlasso GmbH (Apache License 2.0). Plant levels, air and ground values: Transport for NSW, CNVG-PTI EMF-NV-GD-0060 v4.6 and the Construction Noise Estimator EMF-NV-TT-0068, used with acknowledgement. Methods: ISO 9613-1, ISO 9613-2, CONCAWE. Details: THIRD_PARTY_NOTICES.md in the source repository.</p>
-    </section>
-
-    <section>
-      <h2>Log</h2>
-      <pre id="log"></pre>
-    </section>
-  </aside>
-  <main id="wrap">
-    <canvas id="map" aria-label="Noise map"></canvas>
-    <div id="busy"></div>
-    <div id="hud">–</div>
-    <div id="ptable" hidden></div>
-    <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
-  </main>
+  <footer id="bottom">
+    <div class="paneltabs" id="btabs"></div>
+    <div id="busy" title="Last calculation"></div>
+    <button type="button" class="collapse" id="toggleBottom" title="Show or hide the data sources and log">▴</button>
+    <div class="slot" id="slotBottom"></div>
+  </footer>
 </div>
+
+<!-- Panel cards. The layout (View menu) places them in the panels above. -->
+<div id="cards" hidden>
+  <section class="card" id="card-shifts" data-title="Shifts">
+    <p class="help">A shift is one activity in one time period, with its own plant and dates. Buildings, NCAs and the method are shared. Click a shift to show it on the map.</p>
+    <div class="chips" id="shChips" role="tablist" aria-label="Shifts"></div>
+    <div class="btns"><button type="button" id="shNew" title="Add an empty shift">+ New shift</button><button type="button" id="shDup" title="Copy this shift, with its plant, to a new shift">Duplicate</button><button type="button" id="shDel" class="danger" title="Delete this shift and its plant">Delete</button></div>
+    <div class="row"><label for="shName">Activity / shift name</label><input type="text" id="shName" maxlength="60"></div>
+    <div class="row"><label for="setPeriod">Time period</label>
+      <select id="setPeriod" title="Sets the NML (RBL + 10 in standard hours, + 5 out of hours) and the impact bands"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
+    <div class="row"><label for="shDates">Dates <span class="muted">(YYYY-MM-DD, ranges a..b; a night counts on its start date)</span></label><input type="text" id="shDates" placeholder="e.g. 2026-11-03..2026-11-05" title="Used for the respite check across shifts"></div>
+    <div class="row"><label for="shNotes">Notes</label><input type="text" id="shNotes" maxlength="500"></div>
+    <p class="kv muted" id="shInfo"></p>
+  </section>
+
+  <section class="card" id="card-plant" data-title="Plant in this shift">
+    <p class="help">Click a row to select and edit it, or drag it on the map. Levels are the effective sound power after % time on, penalty and mitigation.</p>
+    <div id="plantList"></div>
+    <div class="btns"><button type="button" id="plAdd" class="primary" title="Then click the map where the plant will work (S)">+ Add plant on the map</button></div>
+  </section>
+
+  <section class="card" id="card-selection" data-title="Selected">
+    <div id="selBody"></div>
+  </section>
+
+  <section class="card" id="card-results" data-title="Results">
+    <p class="help">Results update by themselves after you change the plant, buildings or method (if <i>Update automatically</i> is ticked). <b>Run all shifts</b> is only needed to compare shifts or check respite – <i>Compare &amp; respite</i> does it for you.</p>
+    <div id="asStatus" class="kv"></div>
+    <div class="btns">
+      <button type="button" id="btnAssess" class="primary" title="Assess every building and floor for the current shift now">Run this shift</button>
+      <button type="button" id="shRunAll" title="Assess every shift in turn (needed for comparisons and respite)">Run all shifts</button>
+      <button type="button" id="shCompare" title="Compare all shifts and check respite – runs any shift that is out of date">Compare &amp; respite</button>
+      <button type="button" id="btnTable" title="Sortable, filterable list of every building and floor">Property table</button>
+      <button type="button" id="btnCsv" title="Property list as CSV for the community team – contains addresses">Export CSV</button>
+    </div>
+    <label class="chk" title="Re-run the current shift about a second after a change, when a run takes under 3 s"><input type="checkbox" id="asAuto" checked> Update automatically</label>
+    <div class="row"><label for="asDisplay">Map shows</label>
+      <select id="asDisplay"><option value="both">Impact categories + heat map</option><option value="cat">Impact categories only</option><option value="heat">Heat map only</option><option value="respite">Respite: dates above NML (all shifts)</option></select></div>
+    <div id="asSummary"></div>
+  </section>
+
+  <section class="card" id="card-report" data-title="Report and export">
+    <p class="help">The report is an HTML file: open it in Edge and print to PDF. The report and the CSV list properties and may contain addresses – keep them on approved storage.</p>
+    <div class="row"><label for="prjName">Project</label><input type="text" id="prjName" maxlength="120"></div>
+    <div class="row"><label for="prjBy">Prepared by</label><input type="text" id="prjBy" maxlength="120"></div>
+    <div class="btns"><button type="button" id="btnReportCard" class="primary" title="Create the printable report for the current shift">Create report</button><button type="button" id="btnCsvCard" title="Property list as CSV">Export CSV</button><button type="button" id="btnSaveCard" title="Save the whole project as JSON">Save project</button></div>
+  </section>
+
+  <section class="card" id="card-mapdisplay" data-title="Heat map">
+    <div class="row"><label for="setCell">Map detail</label>
+      <select id="setCell"><option value="3">Fine (3 px)</option><option value="5" selected>Normal (5 px)</option><option value="8">Coarse (8 px)</option></select></div>
+    <div class="row"><label for="setMin">Hide below (dB(A))</label>
+      <select id="setMin"><option>30</option><option selected>35</option><option>40</option><option>45</option><option>50</option></select></div>
+    <div class="row"><label for="setOp">Opacity</label><input type="range" id="setOp" min="0.2" max="1" step="0.05" value="0.7"></div>
+  </section>
+
+  <section class="card" id="card-site" data-title="Site and buildings">
+    <p class="help">Go to the site, then fetch building footprints from OpenStreetMap. If your network blocks the fetch, copy the download link and import the file. Dashed outlines are estimated heights.</p>
+    <div class="row"><label for="siteLL">Site (lat, lon)</label><input type="text" id="siteLL" placeholder="-33.8890, 151.2370"></div>
+    <div class="btns">
+      <button type="button" id="btnSite" title="Centre the map on these coordinates">Go to site</button>
+      <button type="button" id="btnOsm" class="primary" title="Download building footprints for the area in view (about 1 km × 1 km at most)">Fetch OSM buildings in view</button>
+      <button type="button" id="btnOsmLink" title="Copy a download link for this view, for when the fetch is blocked">Copy OSM download link</button>
+      <button type="button" id="btnGeo" title="Add footprints from a GeoJSON or .osm file">Import buildings…</button>
+      <button type="button" id="btnDsm" title="Roof heights from a DSM raster (roof surface)">Load DSM…</button>
+    </div>
+    <input type="file" id="fileDsm" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
+    <label class="chk"><input type="checkbox" id="osmReplace"> Re-fetch replaces existing OSM buildings</label>
+    <div id="siteInfo" class="kv"></div>
+    <p class="kv muted">Heights: OSM <i>height</i> → <i>levels</i> × 3 m → typical height for the building type. LiDAR or a DSM overrides estimates.</p>
+  </section>
+
+  <section class="card" id="card-lidar" data-title="Building heights from LiDAR">
+    <div class="btns">
+      <button type="button" id="btnLaz" class="primary" title="Read a .laz / .las point cloud locally – nothing is uploaded">Load LiDAR (.laz / .las)…</button>
+      <button type="button" id="btnLazCancel" class="danger" hidden title="Stop reading the LiDAR file">Cancel</button>
+    </div>
+    <input type="file" id="fileLaz" accept=".laz,.las" hidden>
+    <div id="lazInfo" class="kv"><span class="muted">No LiDAR loaded. Class 6 (building) points give roof levels; class 2 (ground) builds the terrain if no DEM is loaded. The file is read locally – nothing is uploaded.</span></div>
+  </section>
+
+  <section class="card" id="card-dem" data-title="Terrain (DEM)">
+    <div class="btns">
+      <button type="button" id="btnDem" class="primary" title="GeoTIFF, ESRI ASCII or XYZ in GDA94 / GDA2020 MGA">Load DEM (.tif / .asc / .xyz)…</button>
+    </div>
+    <input type="file" id="fileDem" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
+    <div id="demInfo" class="kv"><span class="muted">No DEM loaded – ground is flat at RL 0.</span></div>
+    <label class="chk"><input type="checkbox" id="setTerr" checked> Terrain blocks sound</label>
+  </section>
+
+  <section class="card" id="card-ncas" data-title="Noise catchment areas">
+    <p class="help">An NCA sets the background level (RBL) and so the NML for the buildings inside it. Draw them, import them, or use the default below for buildings outside every NCA.</p>
+    <div class="btns"><button type="button" id="ncaDraw" title="Draw an NCA boundary on the map (N)">Draw NCA</button><button type="button" id="btnNcaImport" title="NCA polygons from GeoJSON, with category and measured RBLs">Import NCAs (GeoJSON)…</button></div>
+    <input type="file" id="fileNca" accept=".json,.geojson,application/json" hidden>
+    <div class="row"><label for="asDefCat">Noise area outside NCAs</label><select id="asDefCat"></select></div>
+    <div class="row rbl3"><label>Measured RBL outside NCAs (day / eve / night)</label><span><input type="number" id="asRblD" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblE" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblN" min="20" max="80" step="1" placeholder="–"></span></div>
+  </section>
+
+  <section class="card" id="card-landuse" data-title="Land use in bulk">
+    <p class="help">Buildings with no land use in OSM are assumed residential. Change many at once here, or one at a time by selecting a building.</p>
+    <div class="row"><label for="bulkFrom">Buildings with land use</label><select id="bulkFrom"></select></div>
+    <div class="row"><label for="bulkIn">Within</label><select id="bulkIn"></select></div>
+    <div class="row"><label for="bulkTo">Set land use to</label><select id="bulkTo"></select></div>
+    <div class="btns"><button type="button" id="btnBulk" title="Change the land use of every building that matches">Apply</button></div>
+  </section>
+
+  <section class="card" id="card-library" data-title="Equipment library">
+    <div class="btns">
+      <button type="button" id="btnLibExport" title="Save the library as JSON">Export library</button>
+      <button type="button" id="btnLibImport" title="Load a project library JSON">Import library…</button>
+      <button type="button" id="btnLibReset" class="danger" title="Go back to the built-in TfNSW items">Reset to built-in</button>
+    </div>
+    <input type="file" id="fileLib" accept=".json,application/json" hidden>
+    <p id="libInfo" class="kv muted"></p>
+  </section>
+
+  <section class="card" id="card-model" data-title="Prediction method">
+    <div class="row"><label for="setMethod">Method</label>
+      <select id="setMethod"><option value="tfnsw">TfNSW estimator</option><option value="iso">ISO 9613-2</option></select></div>
+    <p class="kv muted" id="methodNote"></p>
+    <div class="row"><label for="setSeason">Season (air absorption)</label>
+      <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
+    <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
+    <div class="row"><label for="setCombine">Plant combination</label>
+      <select id="setCombine"><option value="all">All plant (conservative)</option><option value="estimator">Loudest 1–3 rows (TfNSW estimator)</option></select></div>
+    <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
+    <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
+    <label class="chk"><input type="checkbox" id="setLat" checked> Side diffraction around buildings and hoarding ends</label>
+    <label class="chk" id="rowBands"><input type="checkbox" id="setBands"> Octave bands 63 Hz – 8 kHz (source spectra)</label>
+    <div class="row"><label for="setRefl">Façade reflections (first order)</label>
+      <select id="setRefl"><option value="auto">Auto (ISO only)</option><option value="on">On</option><option value="off">Off</option></select></div>
+    <div class="row"><label for="setReflLoss">Reflection loss (dB)</label><input type="number" id="setReflLoss" min="0" max="10" step="0.5" value="1"></div>
+    <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
+  </section>
+
+  <section class="card" id="card-assess" data-title="Receivers and drawing">
+    <p class="help">Each building is assessed on its exposed façades at 1.5 m above each floor; the worst point per floor is reported.</p>
+    <div class="row"><label for="asFloorH">Floor height (m)</label><input type="number" id="asFloorH" min="2" max="6" step="0.1" value="3"></div>
+    <div class="row"><label for="asSpacing">Façade point spacing (m)</label><input type="number" id="asSpacing" min="2" max="50" step="1" value="10"></div>
+    <div class="row"><label for="asOffset">Distance in front of façade (m)</label><input type="number" id="asOffset" min="0.1" max="5" step="0.1" value="1"></div>
+    <div class="row"><label for="setHr">Heat map / probe height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
+    <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
+    <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
+  </section>
+
+  <section class="card" id="card-rules" data-title="Assessment rules">
+    <div class="row"><label for="rulesSet">Rule set</label><select id="rulesSet"></select></div>
+    <p id="rulesInfo" class="kv"></p>
+    <div class="btns">
+      <button type="button" id="btnRulesExport" title="Save the rules as editable JSON">Export rules</button>
+      <button type="button" id="btnRulesImport" title="Load project-specific rules">Import rules…</button>
+      <button type="button" id="btnRulesReset" class="danger" title="Back to the CNVG-PTI defaults">Reset to defaults</button>
+    </div>
+    <input type="file" id="fileRules" accept=".json,application/json" hidden>
+  </section>
+
+  <section class="card" id="card-calibration" data-title="Calibration">
+    <p class="help">Import measured levels or another tool's receiver results (CSV with a receiver ID, or easting/northing or lat/lon with height, floor or RL, and an LAeq column) to see how this tool compares.</p>
+    <div class="btns">
+      <button type="button" id="btnCalImport" title="Load measured levels or another tool's results to compare against">Import levels (CSV)…</button>
+      <button type="button" id="btnCalExport" title="Save the comparison as CSV">Export comparison</button>
+    </div>
+    <input type="file" id="fileCal" accept=".csv,.txt,text/csv" hidden>
+    <div id="calInfo" class="kv"></div>
+  </section>
+
+  <section class="card" id="card-about" data-title="About and licences">
+    <p class="disclaimer">Screening and planning aid only. It does not replace an assessment by a qualified acoustic consultant and is not a validated compliance model. Plant levels and assessment defaults come from Transport for NSW documents – verify them against the current client strategy and replace them with project data where available. The DEM and LiDAR are not saved in the project file – reload them after opening it.</p>
+    <p class="kv">Buildings: © OpenStreetMap contributors (ODbL). LAZ decoding: JavaScript port of LASzip by rapidlasso GmbH (Apache License 2.0). Plant levels, air and ground values: Transport for NSW, CNVG-PTI EMF-NV-GD-0060 v4.6 and the Construction Noise Estimator EMF-NV-TT-0068, used with acknowledgement. Methods: ISO 9613-1, ISO 9613-2, CONCAWE. Details: THIRD_PARTY_NOTICES.md in the source repository.</p>
+  </section>
+
+  <section class="card" id="card-sources" data-title="Data sources">
+    <div id="provList"></div>
+  </section>
+
+  <section class="card" id="card-log" data-title="Log">
+    <pre id="log"></pre>
+  </section>
+</div>
+
+<div id="guide" hidden role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+  <div class="gbox">
+    <button type="button" id="guideClose" class="gclose" title="Close (Esc)">×</button>
+    <h2 id="guideTitle">Quick guide</h2>
+    <ol class="steps">
+      <li><b>Site.</b> <i>Site and buildings</i>: go to the site and fetch OSM buildings (or import a file). Optionally load terrain (DEM) and LiDAR for heights. Draw or import the <i>noise catchment areas</i>.</li>
+      <li><b>Shift.</b> In <i>Shifts</i>, name the activity, pick the time period and enter the dates. Click <b>+ Plant</b> (or press S) and click the map where each item will work. Pick the equipment in <i>Selected</i>.</li>
+      <li><b>Results.</b> The first time, click <b>Run this shift</b> (or the status button at the top). After that the results update automatically when you change something. The map colours each building by its worst impact category; hover for the calculation.</li>
+      <li><b>More shifts.</b> <b>+ New shift</b> or <b>Duplicate</b>, then change the plant, period or dates. Click a shift chip to switch. <b>Compare &amp; respite</b> runs any shift that is out of date and checks the respite rules – you don't need to click <i>Run all shifts</i> first.</li>
+      <li><b>Outputs.</b> <b>Report</b> makes the printable report for the shift shown; <b>Export CSV</b> gives the property list for the community team. Both may contain addresses.</li>
+    </ol>
+    <h3>What the buttons do</h3>
+    <table class="gtable">
+      <tr><td>Status button (top)</td><td>Shows whether the current shift's results match the inputs: <span class="pill ok">Up to date</span> <span class="pill stale">Out of date</span> <span class="pill none">Not run</span>. Click it to run now.</td></tr>
+      <tr><td>Run this shift</td><td>Assesses every building and floor for the shift on the map.</td></tr>
+      <tr><td>Run all shifts</td><td>Assesses every shift in turn. Only needed for comparisons, respite or a report that covers all shifts.</td></tr>
+      <tr><td>Compare &amp; respite</td><td>Table of every shift and every affected property, with the CNVG-PTI respite-period check. Runs out-of-date shifts first.</td></tr>
+      <tr><td>File / Clear / View</td><td>Save and open projects; remove things or tidy the screen; change layout, colours and map layers.</td></tr>
+      <tr><td>Focus (F)</td><td>Hides the panels to show only the map. Press F or Esc to bring them back.</td></tr>
+    </table>
+    <h3>Keys</h3>
+    <p class="kv"><kbd>V</kbd> select · <kbd>S</kbd> add plant · <kbd>B</kbd> building · <kbd>H</kbd> hoarding · <kbd>N</kbd> NCA · <kbd>Enter</kbd> finish · <kbd>Esc</kbd> cancel / deselect · <kbd>Delete</kbd> remove selected · <kbd>F</kbd> focus map · wheel zoom · drag empty space to pan</p>
+    <p class="disclaimer">Screening aid only – not a substitute for an assessment by a qualified acoustic consultant.</p>
+  </div>
+</div>
+
+<input type="file" id="fileLoad" accept=".json,application/json" hidden>
+<input type="file" id="fileGeo" hidden>
 
 <script>
 (function () {
@@ -2472,7 +2715,7 @@ const DATA = {
  }
 };
 /* ============================== CONSTANTS ============================== */
-const VERSION = '0.9.0';
+const VERSION = '0.10.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
 /* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
    the three bands – the same values and conditions as the TfNSW Construction
@@ -3406,12 +3649,19 @@ function assessStale() { const R = state.assess.results; return !!R && R.sig !==
    point is reported. Points whose free-field upper bound (spreading only, no
    ground, air or screening losses) is already below the NML can't exceed it,
    so they are not calculated in full. */
-async function runAssessment() {
+/* Runs are queued: a run asked for while another is going waits for it. */
+function runAssessment(opts) {
+  const A = state.assess, p = (A.queue || Promise.resolve()).then(() => runAssessmentNow(opts || {}));
+  A.queue = p.catch(() => null);
+  return p;
+}
+async function runAssessmentNow(opts) {
   const A = state.assess, S = state.settings, period = S.period, B = state.buildings, srcs = activeSources();
   if (A.running) return null;
+  if (opts.auto) log(`Auto-update: inputs changed – re-running “${curShift().name}”.`);
   if (!srcs.length) { log('Add at least one source before running the assessment.', 'warn'); return null; }
   if (!B.length) { log('There are no buildings to assess – fetch, import or draw them first.', 'warn'); return null; }
-  A.running = true; updateAssessButtons();
+  A.running = true; updateAssessButtons(); updateRunState();
   const t0 = performance.now();
   try {
     prep(srcs); idx();
@@ -3466,7 +3716,7 @@ async function runAssessment() {
       period, method: S.method, at: new Date().toISOString(), receivers, byBuilding, sig: inputsSignature(),
       stats: { buildings: B.length, assessed: B.length - skipped - noFacade, skipped, noFacade, receivers: receivers.length, points: nPts, exact: nExact, bound: nBound, party, above: above.length, ms }
     };
-    const sh = curShift(); sh.results = A.results; A.results.shift = sh.name;
+    const sh = curShift(); sh.results = A.results; A.results.shift = sh.name; A.lastMs = ms; A.everRun = true;
     $('busy').textContent = `Assessment: ${receivers.length.toLocaleString()} building-floors, ${above.length} above NML · ${(ms / 1000).toFixed(1)} s`;
     log(`Assessment (${PERIODS[period]}, ${S.method === 'iso' ? 'ISO 9613-2' : 'TfNSW estimator basis'}): ${B.length - skipped - noFacade} of ${B.length} buildings, ${receivers.length.toLocaleString()} building-floors, ` +
       `${nPts.toLocaleString()} façade points (${nExact.toLocaleString()} calculated, ${nBound.toLocaleString()} below NML on distance alone, ${party.toLocaleString()} on party walls skipped). ` +
@@ -4034,6 +4284,36 @@ function buildHillshade() {
   shadeCtx.putImageData(img, 0, 0);
 }
 
+/* ============================ UI PREFERENCES =========================== */
+/* Per-viewer display choices (layout, colours, panels, map layers), kept in
+   this browser's localStorage. They are conveniences only: the app works the
+   same without them, and they are never saved in the project file. */
+const UI_KEY = 'noise-poc-ui';
+const UI = {
+  layout: 'workspace', theme: 'light', compact: false, help: true, auto: true,
+  left: true, right: true, bottom: true, focus: false, rtab: 'Results', btab: 'Data sources', step: 0, probeMin: false, collapsed: [],
+  layers: { heat: true, impact: true, blabels: true, slabels: true, ncas: true, hoard: true, paths: true, legend: true, probe: true, banner: true }
+};
+(function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem(UI_KEY) || 'null');
+    if (!p || typeof p !== 'object') return;
+    for (const k of Object.keys(UI)) if (k !== 'layers' && k in p && typeof p[k] === typeof UI[k]) UI[k] = p[k];
+    if (p.layers && typeof p.layers === 'object') for (const k of Object.keys(UI.layers)) if (typeof p.layers[k] === 'boolean') UI.layers[k] = p.layers[k];
+  } catch (e) { /* storage blocked: defaults */ }
+})();
+function savePrefs() { try { localStorage.setItem(UI_KEY, JSON.stringify(UI)); } catch (e) { /* storage blocked */ } }
+
+/* Map colours per theme (the canvas can't read CSS variables cheaply). */
+const MAPTHEME = {
+  light: { bg: '#f4f5f7', grid: '#e1e4e9', gridShade: 'rgba(0,0,0,0.06)', bfill: 'rgba(55,60,72,0.78)', bstroke: '#1f2937', bw: 1, blabel: '#ffffff', boxBg: 'rgba(255,255,255,0.9)', boxText: '#111827' },
+  dark: { bg: '#161b22', grid: '#232a35', gridShade: 'rgba(255,255,255,0.05)', bfill: 'rgba(130,140,158,0.82)', bstroke: '#e5e7eb', bw: 1, blabel: '#0b0f16', boxBg: 'rgba(26,31,41,0.92)', boxText: '#e5e7eb' },
+  contrast: { bg: '#ffffff', grid: '#c8c8c8', gridShade: 'rgba(0,0,0,0.12)', bfill: 'rgba(60,60,60,0.85)', bstroke: '#000000', bw: 1.6, blabel: '#ffffff', boxBg: '#ffffff', boxText: '#000000' }
+};
+let MT = MAPTHEME[UI.theme] || MAPTHEME.light;
+/* Period colours for shift chips and the map banner. */
+const PERIOD_COLOR = { std: '#16a34a', p1day: '#ca8a04', p1eve: '#c026d3', p2eve: '#7c3aed', p2night: '#1e40af' };
+const PERIOD_SHORT = { std: 'Standard hours', p1day: 'P1 day', p1eve: 'P1 evening', p2eve: 'P2 evening', p2night: 'P2 night' };
 /* ============================= VIEW / COORDS =========================== */
 function s2w(sx, sy) { const v = state.view; return [v.cx + (sx - cssW / 2) / v.scale, v.cy - (sy - cssH / 2) / v.scale]; }
 function w2s(x, y) { const v = state.view; return [(x - v.cx) * v.scale + cssW / 2, cssH / 2 - (y - v.cy) * v.scale]; }
@@ -4107,8 +4387,8 @@ function polyPath(pts, close) {
 }
 function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#f4f5f7'; ctx.fillRect(0, 0, cssW, cssH);
-  const v = state.view, S = state.settings, T = state.terrain;
+  const v = state.view, S = state.settings, T = state.terrain, L = UI.layers;
+  ctx.fillStyle = MT.bg; ctx.fillRect(0, 0, cssW, cssH);
 
   if (T && S.shade) {
     const [a, b] = w2s(T.x0, T.yTop);
@@ -4117,13 +4397,13 @@ function render() {
   }
   const step = niceStep(60 / v.scale);
   const [x0, y1] = s2w(0, 0), [x1, y0] = s2w(cssW, cssH);
-  ctx.strokeStyle = T && S.shade ? 'rgba(0,0,0,0.06)' : '#e1e4e9'; ctx.lineWidth = 1; ctx.beginPath();
+  ctx.strokeStyle = T && S.shade ? MT.gridShade : MT.grid; ctx.lineWidth = 1; ctx.beginPath();
   for (let x = Math.ceil(x0 / step) * step; x <= x1; x += step) { const sx = Math.round(w2s(x, 0)[0]) + 0.5; ctx.moveTo(sx, 0); ctx.lineTo(sx, cssH); }
   for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) { const sy = Math.round(w2s(0, y)[1]) + 0.5; ctx.moveTo(0, sy); ctx.lineTo(cssW, sy); }
   ctx.stroke();
 
-  const AR = state.assess.results, showRes = state.assess.display === 'respite' && state.respite, showCat = AR && !showRes && state.assess.display !== 'heat';
-  if (grid && state.sources.length && !(AR && state.assess.display === 'cat') && !showRes) {
+  const AR = state.assess.results, showRes = L.impact && state.assess.display === 'respite' && state.respite, showCat = L.impact && AR && !showRes && state.assess.display !== 'heat';
+  if (L.heat && grid && state.sources.length && !(showCat && state.assess.display === 'cat') && !showRes) {
     ctx.save(); ctx.globalAlpha = S.opacity; ctx.imageSmoothingEnabled = false;
     ctx.drawImage(off, 0, 0, grid.gw * grid.cellPx, grid.gh * grid.cellPx);
     ctx.restore();
@@ -4135,7 +4415,7 @@ function render() {
     ctx.drawImage(lazCv, a, b, D.w * D.cx * v.scale, D.h * D.cy * v.scale);
     ctx.restore();
   }
-  for (const n of state.ncas) {
+  for (const n of L.ncas ? state.ncas : []) {
     const sel = state.sel && state.sel.type === 'nca' && state.sel.id === n.id;
     polyPath(n.pts, true);
     ctx.fillStyle = sel ? 'rgba(13,148,136,0.10)' : 'rgba(13,148,136,0.04)'; ctx.fill();
@@ -4148,10 +4428,10 @@ function render() {
     let [lx, ly] = w2s(top[0], top[1]);
     lx = Math.min(Math.max(lx, Math.max(sb[0], 0) + 4), Math.min(sb[2], cssW) - w - 8);
     ly = Math.max(ly, Math.max(sb[1], 0) + 20, 46);   // clear of the status box at the top left
-    ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(lx - 2, ly - 16, w + 6, 15);
+    ctx.fillStyle = MT.boxBg; ctx.fillRect(lx - 2, ly - 16, w + 6, 15);
     ctx.fillStyle = '#0f766e'; ctx.fillText(label, lx + 1, ly - 2);
   }
-  const showLabels = state.buildings.length < 400;
+  const showLabels = L.blabels && state.buildings.length < 400;
   for (const b of state.buildings) {
     const bb = b.bbox;
     if (bb[2] < x0 || bb[0] > x1 || bb[3] < y0 || bb[1] > y1) continue;
@@ -4159,21 +4439,21 @@ function render() {
     polyPath(b.pts, true);
     const cat = showCat ? AR.byBuilding.get(b.id) : null, rsp = showRes ? state.respite.byBuilding.get(b.id) : null;
     const catFill = cat ? categoryColor(cat.worst) : rsp ? respiteColor(rsp.occ) : showRes ? '#d6dbe3' : null;
-    ctx.fillStyle = sel ? 'rgba(37,99,235,0.55)' : catFill || 'rgba(55,60,72,0.78)'; ctx.fill();
+    ctx.fillStyle = sel ? 'rgba(37,99,235,0.55)' : catFill || MT.bfill; ctx.fill();
     if (rsp && rsp.issues && !sel) { ctx.lineWidth = 3; ctx.strokeStyle = '#b91c1c'; ctx.stroke(); }
     else if (isEstimated(b) && !sel) { ctx.lineWidth = 1.5; ctx.strokeStyle = '#f59e0b'; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]); }
-    else { ctx.lineWidth = sel ? 2.5 : 1; ctx.strokeStyle = sel ? '#1d4ed8' : '#1f2937'; ctx.stroke(); }
+    else { ctx.lineWidth = sel ? 2.5 : MT.bw; ctx.strokeStyle = sel ? '#1d4ed8' : MT.bstroke; ctx.stroke(); }
     if (showLabels && (bb[2] - bb[0]) * v.scale > 34) {
       let cx = b.pts.reduce((a, p) => a + p[0], 0) / b.pts.length, cy = b.pts.reduce((a, p) => a + p[1], 0) / b.pts.length;
       if (!pip(cx, cy, b.pts)) { const p = b.pts; cx = (p[0][0] + p[1][0] + p[2][0]) / 3; cy = (p[0][1] + p[1][1] + p[2][1]) / 3; }
       const [lx, ly] = w2s(cx, cy);
       ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       if (showRes) { if (rsp && rsp.occ) { ctx.fillStyle = rsp.occ >= 4 && !sel ? '#fff' : '#111827'; ctx.fillText(`${rsp.occ}×${rsp.issues ? ' !' : ''}`, lx, ly); } continue; }
-      ctx.fillStyle = catFill && !sel && cat.worst !== 'Moderately intrusive' && cat.worst !== 'Highly intrusive' ? '#111827' : '#fff';
+      ctx.fillStyle = catFill && !sel && cat.worst !== 'Moderately intrusive' && cat.worst !== 'Highly intrusive' ? '#111827' : catFill || sel ? '#fff' : MT.blabel;
       ctx.fillText(cat ? `${cat.floors}F · ${cat.worst === 'Not assessed' ? 'n/a' : cat.maxLeq != null ? fmt(cat.maxLeq, 0) + ' dB' : '< NML'}` : `${fmt(b.h, 1)} m${isEstimated(b) ? '?' : ''}`, lx, ly);
     }
   }
-  for (const ho of state.hoardings) {
+  for (const ho of L.hoard ? state.hoardings : []) {
     const sel = state.sel && state.sel.type === 'hoarding' && state.sel.id === ho.id;
     polyPath(ho.pts, false);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -4197,19 +4477,23 @@ function render() {
     ctx.fillStyle = '#111827'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = sel ? '#60a5fa' : '#fff'; ctx.stroke();
     ctx.beginPath(); ctx.arc(sx, sy, 3, 0, 7); ctx.fillStyle = '#ef4444'; ctx.fill();
     ctx.font = '600 11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    const label = `${s.name} · Lw ${fmt(effectiveLw(s), 0)}${overMax(s) != null ? ' ⚠' : ''}${excl ? ' (not in worst case)' : ''}`, w = ctx.measureText(label).width;
-    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(sx + 11, sy - 8, w + 6, 16);
-    ctx.fillStyle = '#111827'; ctx.fillText(label, sx + 14, sy);
+    if (L.slabels || sel) {
+      const label = `${s.name} · Lw ${fmt(effectiveLw(s), 0)}${overMax(s) != null ? ' ⚠' : ''}${excl ? ' (not in worst case)' : ''}`, w = ctx.measureText(label).width;
+      ctx.fillStyle = MT.boxBg; ctx.fillRect(sx + 11, sy - 8, w + 6, 16);
+      ctx.fillStyle = MT.boxText; ctx.fillText(label, sx + 14, sy);
+    }
     ctx.restore();
   }
 
-  const sb = niceStep(110 / v.scale), sbPx = sb * v.scale;
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(8, cssH - 34, sbPx + 16, 26);
-  ctx.fillStyle = '#111827'; ctx.fillRect(16, cssH - 16, sbPx, 4);
+  // scale bar and north arrow, bottom right above the read-out
+  const sb = niceStep(110 / v.scale), sbPx = sb * v.scale, bx = cssW - sbPx - 60, by = cssH - 66;
+  ctx.fillStyle = MT.boxBg; ctx.fillRect(bx - 8, by, sbPx + 58, 26);
+  ctx.fillStyle = MT.boxText; ctx.fillRect(bx, by + 18, sbPx, 4);
   ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-  ctx.fillText(`${sb} m`, 16, cssH - 21);
+  ctx.fillText(`${sb} m`, bx, by + 13);
   ctx.textAlign = 'center'; ctx.font = '600 12px Segoe UI, sans-serif';
-  ctx.fillText('N ↑', cssW - 24, 40);
+  ctx.fillText('N ↑', bx + sbPx + 26, by + 18);
+  syncPlantList();
 }
 
 /* Respite map: dates (or shifts without dates) above NML, worst floor. */
@@ -4270,7 +4554,7 @@ function updateProbe() {
     <div class="tot">Total: ${fmt(L)} dB(A) L<sub>Aeq,15min</sub> <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>
     <p class="kv muted">${basis} · ${PERIODS[S.period]} · air ${!S.air ? 'off' : S.method === 'iso' && S.bands ? 'ISO 9613-1 per band' : fmt(airAlpha(S), 2) + ' dB/km'} · ${Math.round(S.soft * 100)} % soft ground</p>`;
   $('hud').textContent = `${hud} · ${fmt(L)} dB(A)`;
-  drawProbePaths(paths, wx, wy);
+  if (UI.layers.paths) drawProbePaths(paths, wx, wy);
 }
 
 
@@ -4312,6 +4596,7 @@ function bindNum(input, min, max, apply) {
 }
 function renderSelPanel() {
   const body = $('selBody'), s = getSel();
+  syncPinnedSelection();
   if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building, hoarding or NCA boundary in Select mode.</p>'; return; }
   const o = s.obj;
   if (s.type === 'source') {
@@ -4414,7 +4699,9 @@ function setMode(m) {
   if (state.mode !== m && state.draft.length) cancelDraft();
   state.mode = m;
   document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
-  $('hint').textContent = HINTS[m];
+  // drawing instructions stay up while drawing; the select / place tips fade after a few seconds
+  $('hint').textContent = HINTS[m]; $('hint').hidden = false;
+  clearTimeout(setMode.t); if (!isDrawMode(m)) setMode.t = setTimeout(() => { if (state.mode === m) $('hint').hidden = true; }, m === 'select' ? 6000 : 10000);
   canvas.style.cursor = m === 'select' ? 'default' : 'crosshair';
   updateDraftButtons(); requestRender();
 }
@@ -4587,9 +4874,16 @@ function syncSettingsUI() {
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
   $('setCell').value = String(S.cellPx); $('setMin').value = String(S.minDb); $('setOp').value = S.opacity; buildLegend(); renderShiftPanel();
 }
+/* Map legend: heat-map bands, and the impact categories (or respite counts) when the map shows them. */
 function buildLegend() {
-  const min = state.settings.minDb;
-  $('legend').innerHTML = BANDS.filter(b => b[0] >= min).map((b, i, arr) => `<div><i style="background:${b[1]}"></i>${b[0]}${i === arr.length - 1 ? '+' : '–' + (b[0] + 5)}</div>`).join('');
+  const min = state.settings.minDb, AR = state.assess.results, L = UI.layers, D = state.assess.display;
+  const showRes = L.impact && D === 'respite' && state.respite, showCat = L.impact && AR && !showRes && D !== 'heat';
+  let h = '';
+  if (L.heat && state.sources.length && !(showCat && D === 'cat') && !showRes)
+    h += '<div class="lt">L<sub>Aeq,15min</sub> dB(A)</div>' + BANDS.filter(b => b[0] >= min).map((b, i, arr) => `<div><i style="background:${b[1]}"></i>${b[0]}${i === arr.length - 1 ? '+' : '–' + (b[0] + 5)}</div>`).join('');
+  if (showCat) h += '<div class="lt">Impact (worst floor)</div>' + categoryList(AR.period).map(c => `<div><i style="background:${categoryColor(c)}"></i>${esc(c)}</div>`).join('');
+  if (showRes) h += '<div class="lt">Dates above NML (all shifts)</div>' + RESPITE_RAMP.map(([k, c], i, a) => `<div><i style="background:${c}"></i>${k}${a[i + 1] ? (a[i + 1][0] - 1 > k ? '–' + (a[i + 1][0] - 1) : '') : '+'}</div>`).join('') + '<div><i style="border:2px solid #b91c1c"></i>respite issue</div>';
+  $('legend').innerHTML = h; $('legend').hidden = !L.legend || !h;
 }
 
 /* =========================== EQUIPMENT LIBRARY ========================= */
@@ -4662,8 +4956,9 @@ const optNum = v => (v === '' || v == null ? null : num(v, 20, 80));
 
 function updateAssessButtons() {
   const A = state.assess, has = !!A.results;
-  $('btnAssess').disabled = A.running; $('btnAssess').textContent = A.running ? 'Running…' : 'Run assessment';
-  $('btnTable').disabled = !has || A.running; $('btnCsv').disabled = !has || A.running;
+  $('btnAssess').disabled = A.running; $('btnAssess').textContent = A.running ? 'Running…' : 'Run this shift';
+  $('btnTable').disabled = !has || A.running; $('btnCsv').disabled = !has || A.running; $('btnCsvCard').disabled = !has || A.running;
+  $('asAuto').checked = UI.auto;
 }
 function syncAssessUI() {
   const A = state.assess, r = A.defNca.rbl;
@@ -4689,7 +4984,8 @@ function refreshBulkSelects() {
 /* Status line and summary: building-floors per land use and category. */
 function renderAssessPanel() {
   const A = state.assess, R = A.results;
-  if (!R) { $('asStatus').innerHTML = '<span class="muted">Not run yet.</span>'; $('asSummary').innerHTML = ''; return; }
+  updateRunState(); buildLegend();
+  if (!R) { $('asStatus').innerHTML = `<span class="muted">Not run yet for “${esc(curShift().name)}”. Click <b>Run this shift</b>${UI.auto ? ' – after that, results update automatically' : ''}.</span>`; $('asSummary').innerHTML = ''; return; }
   const stale = assessStale();
   const st = R.stats, t = new Date(R.at);
   $('asStatus').innerHTML = (stale ? '<div class="stale">Inputs have changed since this run – run the assessment again.</div>' : '') +
@@ -4710,16 +5006,26 @@ function renderAssessPanel() {
   $('asSummary').innerHTML = html + '<p class="kv muted">Building-floors = one result per floor of each building (worst façade point). Screening estimate only.</p>';
 }
 let staleTimer = 0;
+let autoTimer = 0;
 function assessStatusTick() {   // called after full recomputes; debounced check that keeps the stale warning current
   clearTimeout(staleTimer);
   staleTimer = setTimeout(() => {
+    updateRunState();
+    if (autoWanted()) { clearTimeout(autoTimer); autoTimer = setTimeout(() => { if (autoWanted()) runAssessment({ auto: true }); }, 900); }
     if (!state.assess.results || state.assess.running) return;
     if (assessStale() !== !!$('asStatus').querySelector('.stale')) renderAssessPanel();
   }, 300);
 }
+/* Update automatically: once something has been assessed this session, re-run the
+   current shift when its results are missing or out of date, if a run is quick. */
+function autoWanted() {
+  const A = state.assess;
+  return UI.auto && A.everRun && !A.running && !state.batch && (A.lastMs || 0) < 3000 && state.sources.length > 0 && state.buildings.length > 0 && (!A.results || assessStale());
+}
 
 /* -------- panel bindings -------- */
 $('btnAssess').addEventListener('click', () => runAssessment());
+$('asAuto').addEventListener('change', e => { UI.auto = e.target.checked; savePrefs(); log(`Update automatically ${UI.auto ? 'ON' : 'OFF'}.`); if (UI.auto) assessStatusTick(); });
 $('asDefCat').addEventListener('change', e => { state.assess.defNca.cat = e.target.value; log(`Noise area outside NCAs: ${e.target.value}.`); renderAssessPanel(); requestRender(); });
 [['asRblD', 'day'], ['asRblE', 'evening'], ['asRblN', 'night']].forEach(([id, k]) => $(id).addEventListener('input', e => {
   const v = optNum(e.target.value); e.target.classList.toggle('bad', e.target.value !== '' && v === null);
@@ -4730,6 +5036,7 @@ bindNum($('asSpacing'), 2, 50, v => { state.assess.spacing = v; });
 bindNum($('asOffset'), 0.1, 5, v => { state.assess.offset = v; });
 $('asDisplay').addEventListener('change', e => {
   state.assess.display = e.target.value;
+  buildLegend();
   if (e.target.value === 'respite') { const rs = computeRespite(); log(`Respite map: ${rs.shifts.length} shift(s) with results; colour = dates above NML at the worst floor (shifts without dates count once), red outline = respite issue.`); }
   requestRender();
 });
@@ -5231,21 +5538,26 @@ function computeRespite() {
 }
 
 /* ---- batch run ---- */
-async function runAllShifts() {
+/* onlyStale: skip shifts whose results already match their inputs (used by Compare). */
+async function runAllShifts(onlyStale) {
   const orig = curShift(), t0 = performance.now();
   if (state.assess.running) return null;
-  log(`Running all ${state.shifts.length} shift(s)…`);
+  orig.results = state.assess.results;
+  const todo = state.shifts.filter(sh => !onlyStale || shiftStatus(sh) !== 'current');
+  if (onlyStale && !todo.length) return computeRespite();
+  log(onlyStale ? `Running ${todo.length} shift(s) that are not up to date…` : `Running all ${state.shifts.length} shift(s)…`);
   let n = 0;
+  state.batch = true;
   try {
-    for (const sh of state.shifts.slice()) {
+    for (const sh of todo) {
       switchShift(sh.id, true);
-      $('busy').textContent = `Shift ${n + 1} of ${state.shifts.length}: ${sh.name}…`;
+      $('busy').textContent = `Shift ${n + 1} of ${todo.length}: ${sh.name}…`;
       const R = await runAssessment();
       sh.results = R; if (R) n++;
     }
-  } finally { switchShift(orig.id, true); syncSettingsUI(); renderShiftPanel(true); renderAssessPanel(); requestCompute(false); }
+  } finally { state.batch = false; switchShift(orig.id, true); syncSettingsUI(); renderShiftPanel(true); renderAssessPanel(); requestCompute(false); }
   const rs = computeRespite();
-  log(`All shifts: ${n} of ${state.shifts.length} run in ${((performance.now() - t0) / 1000).toFixed(1)} s. ${rs.list.filter(x => x.above).length} building-floor(s) above NML in at least one shift; ${rs.list.filter(x => x.issues.length).length} with a respite-period issue.`, 'pass');
+  log(`${onlyStale ? 'Shifts brought up to date' : 'All shifts'}: ${n} of ${todo.length} run in ${((performance.now() - t0) / 1000).toFixed(1)} s. ${rs.list.filter(x => x.above).length} building-floor(s) above NML in at least one shift; ${rs.list.filter(x => x.issues.length).length} with a respite-period issue.`, 'pass');
   return rs;
 }
 
@@ -5311,21 +5623,32 @@ function exportShiftCsv() {
 /* ---- panel ---- */
 /* Button handlers that log a failure instead of failing silently. */
 const guarded = (what, fn) => async () => { try { await fn(); } catch (e) { log(`${what} FAILED: ${e.message}`, 'fail'); console.error(e); } };
+/* Shift chips: one per shift, coloured by period, with a results-status dot. */
+let chipSig = '';
+function renderShiftChips() {
+  const cur = curShift(), DOT = { current: 'd-ok', 'out of date': 'd-stale', 'not run': 'd-none' };
+  const info = state.shifts.map(s => [s, shiftStatus(s)]);
+  const sig = info.map(([s, st]) => [s.id, s.name, s.period, s.sources.length, s.dates.length, st, s === cur].join(':')).join('|');
+  if (sig === chipSig) return;
+  chipSig = sig;
+  $('shChips').innerHTML = info.map(([s, st]) =>
+    `<button type="button" role="tab" aria-selected="${s === cur}" class="${s === cur ? 'on' : ''}" data-id="${s.id}" style="--pc:${PERIOD_COLOR[s.period]}" title="${esc(PERIODS[s.period])} · ${s.sources.length} plant item(s) · results ${st}${s === cur ? ' – shown on the map' : ' – click to show this shift'}">` +
+    `<span><span class="dot ${DOT[st]}"></span>${esc(s.name)}</span><small>${esc(PERIOD_SHORT[s.period])} · ${s.sources.length} plant${s.dates.length ? ` · ${s.dates.length} date${s.dates.length > 1 ? 's' : ''}` : ''}</small></button>`).join('');
+  $('shChips').querySelectorAll('button').forEach(b => b.addEventListener('click', () => switchShift(+b.dataset.id)));
+}
 function renderShiftPanel(force) {
   const cur = curShift(), keep = el => !force && document.activeElement === el;
-  $('shSel').innerHTML = state.shifts.map(s => `<option value="${s.id}">${esc(s.name)} – ${esc(PERIODS[s.period])}</option>`).join('');
-  $('shSel').value = String(cur.id);
+  renderShiftChips();
   if (!keep($('shName'))) $('shName').value = cur.name;
   if (!keep($('shDates'))) { $('shDates').value = datesText(cur.dates); $('shDates').classList.remove('bad'); }
   if (!keep($('shNotes'))) $('shNotes').value = cur.notes;
-  $('shPeriod').value = cur.period;
   $('shDel').disabled = state.shifts.length < 2;
-  const hint = cur.dates.length && cur.dates.some(d => seasonOfDate(d) !== cur.season) ? ` <b>Season under Model (${cur.season === 'warm' ? 'Oct–Apr' : 'May–Sep'}) doesn't match all the dates.</b>` : '';
-  $('shInfo').innerHTML = `${cur.sources.length} source(s) · ${cur.dates.length ? cur.dates.length + ' date(s)' : 'no dates'} · ${shiftStatus(cur)}${hint}`;
+  const hint = cur.dates.length && cur.dates.some(d => seasonOfDate(d) !== cur.season) ? ` <b>Season under Prediction method (${cur.season === 'warm' ? 'Oct–Apr' : 'May–Sep'}) doesn't match all the dates.</b>` : '';
+  $('shInfo').innerHTML = `${state.shifts.length} shift(s). Results: <span class="dot d-ok"></span>up to date <span class="dot d-stale"></span>out of date <span class="dot d-none"></span>not run.${hint}`;
   if (!keep($('prjName'))) $('prjName').value = state.project.name;
   if (!keep($('prjBy'))) $('prjBy').value = state.project.by;
+  renderSources(); updateRunState();
 }
-$('shSel').addEventListener('change', e => switchShift(+e.target.value));
 $('shNew').addEventListener('click', () => {
   const sh = makeShift(`Shift ${state.shifts.length + 1}`, []); curShift(); state.shifts.push(sh);
   switchShift(sh.id); log(`New shift “${sh.name}” – add its plant on the map.`);
@@ -5342,7 +5665,7 @@ $('shDel').addEventListener('click', () => {
   switchShift(next.id, true); state.shifts.splice(i, 1);
   log(`Deleted shift “${cur.name}”.`); syncSettingsUI(); renderShiftPanel(true); renderAssessPanel(); requestCompute(false);
 });
-$('shName').addEventListener('input', e => { curShift().name = e.target.value.slice(0, 60) || 'Shift'; renderShiftPanel(); });
+$('shName').addEventListener('input', e => { curShift().name = e.target.value.slice(0, 60) || 'Shift'; renderShiftPanel(); renderAssessPanel(); });
 $('shNotes').addEventListener('input', e => { curShift().notes = e.target.value.slice(0, 500); });
 $('shDates').addEventListener('change', e => {
   const { dates, bad } = parseDates(e.target.value), cur = curShift();
@@ -5351,9 +5674,8 @@ $('shDates').addEventListener('change', e => {
   cur.dates = dates; renderShiftPanel();
   log(`Shift “${cur.name}”: ${dates.length} date(s)${dates.length ? ` (${datesText(dates)})` : ''}.`);
 });
-$('shPeriod').addEventListener('change', e => { $('setPeriod').value = e.target.value; $('setPeriod').dispatchEvent(new Event('change')); });
 $('shRunAll').addEventListener('click', guarded('Run all shifts', async () => { await runAllShifts(); openShiftCompare(); }));
-$('shCompare').addEventListener('click', guarded('Shift comparison', openShiftCompare));
+$('shCompare').addEventListener('click', guarded('Shift comparison', async () => { await runAllShifts(true); openShiftCompare(); }));
 $('prjName').addEventListener('input', e => { state.project.name = e.target.value.slice(0, 120); });
 $('prjBy').addEventListener('input', e => { state.project.by = e.target.value.slice(0, 120); });
 /* ================================ REPORT =============================== */
@@ -5558,6 +5880,279 @@ async function exportReport() {
   return html;
 }
 $('btnReport').addEventListener('click', guarded('Report', exportReport));
+/* ================================ LAYOUT =============================== */
+/* The panels are built from the cards in #cards. A layout says which card
+   goes where; switching layout moves the same elements (and their event
+   handlers), so nothing is rebuilt. */
+const LAYOUTS = {
+  workspace: {
+    label: 'Workspace',
+    left: ['card-shifts', 'card-plant', 'card-selection'],
+    right: {
+      Results: ['card-results', 'card-report', 'card-mapdisplay', 'card-calibration'],
+      Site: ['card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse'],
+      Method: ['card-model', 'card-assess', 'card-rules', 'card-library', 'card-about']
+    }
+  },
+  guided: {
+    label: 'Guided',
+    steps: {
+      '1 Site': ['card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse'],
+      '2 Shifts': ['card-shifts', 'card-plant', 'card-library'],
+      '3 Method': ['card-model', 'card-assess', 'card-rules'],
+      '4 Results': ['card-results', 'card-mapdisplay', 'card-calibration'],
+      '5 Report': ['card-report', 'card-about']
+    },
+    pinned: 'card-selection'
+  },
+  single: {
+    label: 'Single column',
+    left: ['card-shifts', 'card-plant', 'card-selection', 'card-results', 'card-report', 'card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse',
+      'card-model', 'card-assess', 'card-rules', 'card-library', 'card-mapdisplay', 'card-calibration', 'card-about']
+  }
+};
+const BOTTOM = { 'Data sources': ['card-sources'], Log: ['card-log'] };
+const appEl = $('app');
+
+/* card headings (click to fold) */
+document.querySelectorAll('#cards .card').forEach(c => {
+  const h = document.createElement('h2'); h.textContent = c.dataset.title; h.title = 'Click to fold or unfold';
+  c.prepend(h);
+  if (UI.collapsed.includes(c.id)) c.classList.add('collapsed');
+  h.addEventListener('click', () => {
+    c.classList.toggle('collapsed');
+    UI.collapsed = [...document.querySelectorAll('.card.collapsed')].map(x => x.id); savePrefs();
+  });
+});
+const card = id => $(id);
+
+/* Tab strip: groups = { label: [card ids] }; shows one group at a time. */
+function buildTabs(tabsEl, slotEl, groups, active, onPick) {
+  tabsEl.innerHTML = ''; slotEl.innerHTML = '';
+  const names = Object.keys(groups), cur = names.includes(active) ? active : names[0], panes = {};
+  for (const name of names) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = name; b.dataset.tab = name;
+    b.classList.toggle('on', name === cur); tabsEl.appendChild(b);
+    const pane = document.createElement('div'); pane.className = 'pane'; pane.hidden = name !== cur; panes[name] = pane;
+    for (const id of groups[name]) pane.appendChild(card(id));
+    slotEl.appendChild(pane);
+    b.addEventListener('click', () => {
+      tabsEl.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      for (const n of names) panes[n].hidden = n !== name;
+      slotEl.scrollTop = 0; onPick(name);
+    });
+  }
+  return cur;
+}
+function applyLayout() {
+  const Lo = LAYOUTS[UI.layout] || LAYOUTS.workspace, hold = $('cards');
+  document.querySelectorAll('.card').forEach(c => hold.appendChild(c));
+  ['slotLeft', 'slotRight', 'steps', 'rtabs'].forEach(id => { $(id).innerHTML = ''; });
+  appEl.classList.remove('layout-workspace', 'layout-guided', 'layout-single'); appEl.classList.add('layout-' + UI.layout);
+  $('steps').hidden = !Lo.steps; $('stepNav').hidden = !Lo.steps;
+  if (Lo.left) for (const id of Lo.left) $('slotLeft').appendChild(card(id));
+  if (Lo.steps) {
+    const names = Object.keys(Lo.steps);
+    UI.step = Math.min(Math.max(0, UI.step | 0), names.length - 1);
+    const pin = card(Lo.pinned);
+    buildTabs($('steps'), $('slotLeft'), Lo.steps, names[UI.step], name => { UI.step = names.indexOf(name); savePrefs(); updateStepNav(); });
+    $('slotLeft').prepend(pin);
+    updateStepNav();
+  }
+  if (Lo.right) buildTabs($('rtabs'), $('slotRight'), Lo.right, UI.rtab, name => { UI.rtab = name; savePrefs(); });
+  buildTabs($('btabs'), $('slotBottom'), BOTTOM, UI.btab, name => { UI.btab = name; savePrefs(); if (!UI.bottom) toggleBottom(true); });
+  syncPinnedSelection(); applyPanels();
+}
+function updateStepNav() {
+  const names = Object.keys(LAYOUTS.guided.steps);
+  $('stepBack').disabled = UI.step <= 0; $('stepNext').disabled = UI.step >= names.length - 1;
+  $('stepNext').textContent = UI.step < names.length - 1 ? `Next: ${names[UI.step + 1].replace(/^\d+ /, '')} →` : 'Next →';
+}
+function gotoStep(i) { const b = $('steps').querySelectorAll('button')[i]; if (b) b.click(); }
+$('stepBack').addEventListener('click', () => gotoStep(UI.step - 1));
+$('stepNext').addEventListener('click', () => gotoStep(UI.step + 1));
+/* In the guided layout the Selected card shows above the step only while something is selected. */
+function syncPinnedSelection() { card('card-selection').hidden = UI.layout === 'guided' && !state.sel; }
+
+/* panels, theme, density, help, focus */
+function applyPanels() {
+  const Lo = LAYOUTS[UI.layout] || LAYOUTS.workspace;
+  appEl.classList.toggle('noleft', !UI.left); appEl.classList.toggle('noright', !UI.right || !Lo.right);
+  $('bottom').classList.toggle('closed', !UI.bottom); $('toggleBottom').textContent = UI.bottom ? '▾' : '▴';
+  appEl.classList.toggle('app-focus', UI.focus); $('btnFocus').classList.toggle('on', UI.focus);
+  $('showLeft').hidden = UI.left || UI.focus; $('showRight').hidden = UI.right || UI.focus || !Lo.right;
+  appEl.classList.toggle('nohelp', !UI.help);
+  const root = document.documentElement;
+  root.classList.remove('theme-light', 'theme-dark', 'theme-contrast'); root.classList.add('theme-' + UI.theme);
+  root.classList.toggle('density-compact', UI.compact);
+  MT = MAPTHEME[UI.theme] || MAPTHEME.light;
+  $('probeBox').hidden = !UI.layers.probe; $('probeBox').classList.toggle('min', UI.probeMin); $('probeMin').textContent = UI.probeMin ? '+' : '–';
+  $('banner').hidden = !UI.layers.banner;
+  syncViewMenu(); buildLegend(); requestRender();
+}
+function syncViewMenu() {
+  document.querySelectorAll('input[name=uiLayout]').forEach(r => { r.checked = r.value === UI.layout; });
+  document.querySelectorAll('input[name=uiTheme]').forEach(r => { r.checked = r.value === UI.theme; });
+  $('uiCompact').checked = UI.compact; $('uiHelp').checked = UI.help;
+  $('uiLeft').checked = UI.left; $('uiRight').checked = UI.right; $('uiBottom').checked = UI.bottom;
+  for (const [id, k] of LAYER_IDS) $(id).checked = UI.layers[k];
+}
+function setFocus(on) { UI.focus = on; savePrefs(); applyPanels(); log(on ? 'Focus: map only – press F or Esc to bring the panels back.' : 'Panels shown.'); }
+function toggleBottom(open) { UI.bottom = open == null ? !UI.bottom : open; savePrefs(); applyPanels(); }
+document.querySelectorAll('input[name=uiLayout]').forEach(r => r.addEventListener('change', () => { UI.layout = r.value; savePrefs(); applyLayout(); log(`Layout: ${LAYOUTS[UI.layout].label}.`); }));
+document.querySelectorAll('input[name=uiTheme]').forEach(r => r.addEventListener('change', () => { UI.theme = r.value; savePrefs(); applyPanels(); }));
+$('uiCompact').addEventListener('change', e => { UI.compact = e.target.checked; savePrefs(); applyPanels(); });
+$('uiHelp').addEventListener('change', e => { UI.help = e.target.checked; savePrefs(); applyPanels(); });
+$('uiLeft').addEventListener('change', e => { UI.left = e.target.checked; savePrefs(); applyPanels(); });
+$('uiRight').addEventListener('change', e => { UI.right = e.target.checked; savePrefs(); applyPanels(); });
+$('uiBottom').addEventListener('change', e => toggleBottom(e.target.checked));
+$('hideLeft').addEventListener('click', () => { UI.left = false; savePrefs(); applyPanels(); });
+$('hideRight').addEventListener('click', () => { UI.right = false; savePrefs(); applyPanels(); });
+$('showLeft').addEventListener('click', () => { UI.left = true; savePrefs(); applyPanels(); });
+$('showRight').addEventListener('click', () => { UI.right = true; savePrefs(); applyPanels(); });
+$('toggleBottom').addEventListener('click', () => toggleBottom());
+$('btnFocus').addEventListener('click', () => setFocus(!UI.focus));
+$('probeMin').addEventListener('click', () => { UI.probeMin = !UI.probeMin; savePrefs(); applyPanels(); });
+
+/* map layers */
+const LAYER_IDS = [['lyHeat', 'heat'], ['lyImpact', 'impact'], ['lyBLabels', 'blabels'], ['lySLabels', 'slabels'], ['lyNcas', 'ncas'], ['lyHoard', 'hoard'], ['lyPaths', 'paths'], ['lyLegend', 'legend'], ['lyProbe', 'probe'], ['lyBanner', 'banner']];
+for (const [id, k] of LAYER_IDS) $(id).addEventListener('change', e => { UI.layers[k] = e.target.checked; savePrefs(); applyPanels(); });
+function setLayers(on, keys) { for (const k of keys || Object.keys(UI.layers)) UI.layers[k] = on; savePrefs(); applyPanels(); }
+
+/* drop-down menus */
+function closeMenus(except) { document.querySelectorAll('.pop').forEach(p => { if (p !== except) p.hidden = true; }); }
+document.querySelectorAll('.menubtn').forEach(b => b.addEventListener('click', e => {
+  const pop = $(b.dataset.menu); e.stopPropagation(); closeMenus(pop); pop.hidden = !pop.hidden;
+}));
+document.addEventListener('click', e => { if (!e.target.closest('.pop')) closeMenus(); });
+document.querySelectorAll('.pop').forEach(p => p.addEventListener('click', e => { if (e.target.closest('button')) closeMenus(); }));
+$('mGeo').addEventListener('click', () => $('fileGeo').click());
+
+/* Clear menu */
+const ask = msg => window.confirm(msg);
+$('clrSel').addEventListener('click', () => { if (state.draft.length) cancelDraft(); setMode('select'); select(null); });
+$('clrOverlays').addEventListener('click', () => { setLayers(false, ['heat', 'impact', 'blabels', 'slabels', 'paths', 'legend']); log('Map overlays hidden (heat map, impact colours, labels, paths, legend). View → Map layers turns them back on.'); });
+$('clrShowAll').addEventListener('click', () => { setLayers(true); log('All map layers shown.'); });
+$('btnFocus2').addEventListener('click', () => setFocus(true));
+$('clrPlant').addEventListener('click', () => {
+  const n = state.sources.length; if (!n || !ask(`Delete all ${n} plant item(s) in “${curShift().name}”?`)) return;
+  state.sources = []; activeCache.sig = ''; select(null); log(`Deleted ${n} plant item(s) from “${curShift().name}”.`); renderShiftPanel(); requestCompute(false);
+});
+$('clrResults').addEventListener('click', () => {
+  if (!ask('Forget the results of every shift? They can be run again.')) return;
+  state.shifts.forEach(s => { s.results = null; }); state.assess.results = null; state.respite = null;
+  log('Results cleared for all shifts.'); renderAssessPanel(); renderShiftPanel(); renderSelPanel(); requestRender();
+});
+$('clrHoard').addEventListener('click', () => {
+  const n = state.hoardings.length; if (!n || !ask(`Delete all ${n} hoarding line(s)?`)) return;
+  state.hoardings = []; geomChanged(); select(null); log(`Deleted ${n} hoarding line(s).`); requestCompute(false);
+});
+$('clrNcas').addEventListener('click', () => {
+  const n = state.ncas.length; if (!n || !ask(`Delete all ${n} NCA(s)? Buildings will use the default noise area.`)) return;
+  state.ncas = []; select(null); refreshBulkSelects(); log(`Deleted ${n} NCA(s).`); renderAssessPanel(); requestCompute(false);
+});
+$('clrDsm').addEventListener('click', () => {
+  if (!state.dsm) { log('No LiDAR or DSM grid is loaded.'); return; }
+  state.dsm = null; log('LiDAR / DSM grid removed (building heights already applied are kept).'); requestRender();
+});
+$('clrLog').addEventListener('click', () => { $('log').innerHTML = ''; log('Log cleared.'); });
+$('clrAll').addEventListener('click', () => {
+  if (!ask('Start an empty project? This removes every shift and its plant, all buildings, hoarding, NCAs, terrain, LiDAR and data sources. Model settings and the equipment library are kept.\n\nSave the project first if you need it.')) return;
+  state.sources = []; state.buildings = []; state.hoardings = []; state.ncas = []; state.terrain = null; state.dsm = null; state.calib = null; state.origin = null;
+  state.provenance = []; state.project = { name: '', by: '' }; state.assess.results = null;
+  resetShifts('Shift 1'); geomChanged(); select(null); setMode('select');
+  updateDemInfo(); renderCalPanel(); syncAssessUI(); syncSettingsUI(); renderShiftPanel(true); updateSiteInfo();
+  $('attrib').hidden = true; log('New empty project.'); zoomExtents();
+});
+
+/* quick guide */
+function openGuide(on) { $('guide').hidden = !on; if (on) $('guideClose').focus(); }
+$('btnHelp').addEventListener('click', () => openGuide(true));
+$('guideClose').addEventListener('click', () => openGuide(false));
+$('guide').addEventListener('click', e => { if (e.target === $('guide')) openGuide(false); });
+
+/* keys: F focus, Esc closes guide / menus / focus (other keys in 22-interaction) */
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (e.key === 'Escape') { if (!$('guide').hidden) { openGuide(false); return; } closeMenus(); if (UI.focus && !state.draft.length && !state.sel) setFocus(false); return; }
+  if (tag === 'input' || tag === 'select' || tag === 'textarea' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key.toLowerCase() === 'f') setFocus(!UI.focus);
+  else if (e.key === '?') openGuide(true);
+});
+
+/* buttons that do the same as another one */
+$('plAdd').addEventListener('click', () => setMode('source'));
+$('ncaDraw').addEventListener('click', () => setMode('nca'));
+$('btnReportCard').addEventListener('click', () => $('btnReport').click());
+$('btnCsvCard').addEventListener('click', () => $('btnCsv').click());
+$('btnSaveCard').addEventListener('click', () => $('btnSave').click());
+$('runState').addEventListener('click', guarded('Run', () => runAssessment()));
+
+/* ---- status button, banner ---- */
+function updateRunState() {
+  const A = state.assess, R = A.results, b = $('runState');
+  const st = A.running ? 'busy' : !R ? 'none' : assessStale() ? 'stale' : 'ok';
+  b.className = 'pill ' + st;
+  b.textContent = { busy: 'Running…', none: 'Not run – click to run', stale: 'Out of date – click to run', ok: '✓ Results up to date' }[st];
+  renderShiftChips();
+  b.title = { busy: 'The assessment is running', none: 'No results for this shift yet – click to run the assessment', stale: 'The inputs have changed since the last run – click to run again', ok: `Results match the inputs (run ${R ? new Date(R.at).toLocaleTimeString() : ''}) – click to run again` }[st];
+  updateBanner(st);
+}
+function updateBanner(st) {
+  const sh = state.shifts.find(s => s.id === state.shiftId) || { name: 'Shift 1', period: state.settings.period, dates: [] };
+  const el = $('banner'), n = state.sources.length;
+  el.style.setProperty('--pc', PERIOD_COLOR[state.settings.period]);
+  el.innerHTML = `Shift: <b>${esc(sh.name)}</b> · ${esc(PERIODS[state.settings.period])} · ${n} plant item${n === 1 ? '' : 's'}${sh.dates && sh.dates.length ? ` · ${sh.dates.length} date(s)` : ''}` +
+    (state.shifts.length > 1 ? ` <span class="muted">(${state.shifts.indexOf(sh) + 1} of ${state.shifts.length})</span>` : '') +
+    ` · <span style="color:var(--${st === 'ok' ? 'ok' : st === 'stale' ? 'stale' : 'none'})">${{ busy: 'running…', none: 'not run', stale: 'out of date', ok: 'up to date' }[st || 'none']}</span>`;
+}
+
+/* ---- plant list (current shift) ---- */
+let plantSig = '';
+function syncPlantList() {
+  const sel = state.sel && state.sel.type === 'source' ? state.sel.id : null, excl = state.settings.combine === 'estimator' ? activeSources() : null;
+  const sig = state.shiftId + '|' + sel + '|' + state.settings.combine + '|' + state.sources.map(s => [s.id, s.name, s.eq, s.lw, s.on, s.pen, s.mit].join(':')).join(',');
+  if (sig === plantSig) return;
+  plantSig = sig; renderShiftChips();
+  const el = $('plantList');
+  if (!state.sources.length) { el.innerHTML = '<p class="kv muted">No plant in this shift yet. Click <b>+ Add plant on the map</b>, then click where it will work.</p>'; return; }
+  const tot = 10 * Math.log10((excl || state.sources).reduce((a, s) => a + Math.pow(10, effectiveLw(s) / 10), 0));
+  el.innerHTML = `<table><thead><tr><th>Plant</th><th title="Effective sound power: Lw + 10·lg(% on) + penalty − mitigation">L<sub>w,eff</sub></th><th title="% of 15 minutes operating">On</th><th></th></tr></thead><tbody>` +
+    state.sources.map(s => `<tr data-id="${s.id}" class="${s.id === sel ? 'sel' : ''}${excl && !excl.includes(s) ? ' excl' : ''}" title="${esc(libItem(s.eq).name)}${excl && !excl.includes(s) ? ' – not in the realistic worst case' : ''}"><td>${esc(s.name)}${overMax(s) != null ? ' ⚠' : ''}</td><td class="n">${fmt(effectiveLw(s), 1)}</td><td class="n">${fmt(s.on, 0)} %</td><td><button type="button" class="x" data-del="${s.id}" title="Delete this plant item">×</button></td></tr>`).join('') +
+    `</tbody></table><p class="kv muted">${state.sources.length} item(s) · total ${fmt(tot, 1)} dB(A)${excl ? ' (loudest rows only)' : ''}</p>`;
+  el.querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', e => {
+    const id = +tr.dataset.id;
+    if (e.target.closest('[data-del]')) { const s = state.sources.find(x => x.id === id); state.sources = state.sources.filter(x => x.id !== id); if (state.sel && state.sel.id === id) select(null); log(`Deleted plant “${s ? s.name : id}”.`); renderShiftPanel(); requestCompute(false); return; }
+    const s = state.sources.find(x => x.id === id); if (!s) return;
+    const [sx, sy] = w2s(s.x, s.y); if (sx < 0 || sy < 0 || sx > cssW || sy > cssH) { state.view.cx = s.x; state.view.cy = s.y; requestCompute(false); }
+    setMode('select'); select('source', id);
+  }));
+}
+
+/* ---- data sources ---- */
+function renderSources() {
+  const P = state.provenance;
+  $('provList').innerHTML = (P.length ? `<table><thead><tr><th>Data</th><th>Source</th><th>Details</th><th>File date</th><th>Loaded</th></tr></thead><tbody>${P.map(p => `<tr><td>${esc(p.kind)}</td><td>${esc(p.name)}</td><td>${esc(p.detail)}</td><td>${p.fileDate ? esc(p.fileDate.slice(0, 10)) : '–'}</td><td>${p.loaded ? esc(p.loaded.slice(0, 16).replace('T', ' ')) : '–'}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="kv muted">No external data loaded yet – buildings, NCAs and terrain drawn or entered here. Loaded files (DEM, LiDAR, DSM, OSM, GeoJSON, NCAs) are listed here with their dates and go into the report.</p>') +
+    `<p class="kv muted">Plant: equipment library (${state.libraryEdited ? 'project library' : 'CNVG-PTI Table 19 and the TfNSW estimator list'}). Rules: ${esc(RULES.name)}. Terrain and LiDAR are not saved in the project file – reload them after opening it.</p>`;
+}
+
+/* Make an element reachable: open its menu, switch to its tab, unfold its card, show its panel. */
+function revealEl(target) {
+  const el = typeof target === 'string' ? document.querySelector(target) : target; if (!el) return false;
+  const pop = el.closest('.pop'); if (pop && pop.hidden) { closeMenus(pop); pop.hidden = false; }
+  const pane = el.closest('.pane');
+  if (pane && pane.hidden) { const slot = pane.parentElement, i = [...slot.children].filter(c => c.classList.contains('pane')).indexOf(pane), tabs = slot.previousElementSibling && slot.previousElementSibling.classList.contains('paneltabs') ? slot.previousElementSibling : slot.parentElement.querySelector('.paneltabs'); const b = tabs && tabs.querySelectorAll('button')[i]; if (b) b.click(); }
+  const c = el.closest('.card'); if (c && c.classList.contains('collapsed') && el !== c.firstElementChild) c.classList.remove('collapsed');
+  if (c && c.hidden && c.id === 'card-selection') c.hidden = false;
+  const panel = el.closest('#left, #right, #bottom');
+  if (panel && (UI.focus || (panel.id === 'left' && !UI.left) || (panel.id === 'right' && !UI.right) || (panel.id === 'bottom' && !UI.bottom))) {
+    UI.focus = false; if (panel.id === 'left') UI.left = true; if (panel.id === 'right') UI.right = true; if (panel.id === 'bottom') UI.bottom = true; applyPanels();
+  }
+  return true;
+}
+
+applyLayout();
 /* ======================= LAS / LAZ READER (pure JS) ======================
    Port of the LASzip decoder (arithmetic coder by A. Said; LASzip by
    M. Isenburg, Apache-2.0). Supports:
@@ -6742,11 +7337,12 @@ $('fileDem').addEventListener('change', async () => {
   }
 });
 $('btnDemClear').addEventListener('click', () => {
-  if (!state.terrain) return;
+  if (!state.terrain) { log('No DEM is loaded.'); return; }
+  if (!window.confirm(`Remove the terrain model “${state.terrain.name}”? The ground becomes flat at RL 0.`)) return;
   state.terrain = null; for (const b of state.buildings) updateBase(b);
   updateDemInfo(); log('DEM removed – ground flat at RL 0.'); requestCompute(false);
 });
-$('btnClearB').addEventListener('click', () => { const n = state.buildings.length; state.buildings = []; geomChanged(); select(null); log(`Cleared ${n} building(s).`); requestCompute(false); });
+$('btnClearB').addEventListener('click', () => { const n = state.buildings.length; if (!n || !window.confirm(`Delete all ${n} building(s)?`)) return; state.buildings = []; geomChanged(); select(null); log(`Cleared ${n} building(s).`); requestCompute(false); });
 $('btnDemo').addEventListener('click', () => { loadDemo(); zoomExtents(); });
 $('btnFit').addEventListener('click', zoomExtents);
 
@@ -6761,7 +7357,7 @@ function loadDemo() {
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
   state.sources = [makeSource(0, 0, DEFAULT_EQ)]; state.ncas = []; state.assess.results = null;
   resetShifts('Demo shift'); state.provenance = [];
-  geomChanged(); select(null);
+  geomChanged(); select(null); renderShiftPanel(true);
   log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
   renderAssessPanel(); updateAssessButtons(); refreshBulkSelects(); requestCompute(false);
 }
@@ -6973,7 +7569,7 @@ syncSettingsUI(); updateLibInfo(); syncAssessUI(); renderCalPanel(); setMode('se
 if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
 resize();
 requestAnimationFrame(() => zoomExtents());
-window.__noise = { buildReferenceExample, runCalibration, runAllShifts, buildReport, _t: { openShiftCompare, parseDates, datesText, dateRuns, respiteCheck, computeRespite, switchShift, curShift, makeShift, parseCsv, levelAt, estimatorRowLevel, estimatorCombine, estimatorLevel, activeSources, setRuleSet, crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings, nmlFor, classify, sleepCheck, landUseFromTags, luOf, floorsOf, addressOf, facadePoints, makeBuilding, makeNca, geomChanged, rules: () => RULES }, runAssessment, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
+window.__noise = { _reveal: revealEl, buildReferenceExample, runCalibration, runAllShifts, buildReport, _t: { openShiftCompare, parseDates, datesText, dateRuns, respiteCheck, computeRespite, switchShift, curShift, makeShift, parseCsv, levelAt, estimatorRowLevel, estimatorCombine, estimatorLevel, activeSources, setRuleSet, crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings, nmlFor, classify, sleepCheck, landUseFromTags, luOf, floorsOf, addressOf, facadePoints, makeBuilding, makeNca, geomChanged, rules: () => RULES }, runAssessment, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
 })();
 </script>
 </body>

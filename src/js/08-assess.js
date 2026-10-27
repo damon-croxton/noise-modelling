@@ -53,12 +53,19 @@ function assessStale() { const R = state.assess.results; return !!R && R.sig !==
    point is reported. Points whose free-field upper bound (spreading only, no
    ground, air or screening losses) is already below the NML can't exceed it,
    so they are not calculated in full. */
-async function runAssessment() {
+/* Runs are queued: a run asked for while another is going waits for it. */
+function runAssessment(opts) {
+  const A = state.assess, p = (A.queue || Promise.resolve()).then(() => runAssessmentNow(opts || {}));
+  A.queue = p.catch(() => null);
+  return p;
+}
+async function runAssessmentNow(opts) {
   const A = state.assess, S = state.settings, period = S.period, B = state.buildings, srcs = activeSources();
   if (A.running) return null;
+  if (opts.auto) log(`Auto-update: inputs changed – re-running “${curShift().name}”.`);
   if (!srcs.length) { log('Add at least one source before running the assessment.', 'warn'); return null; }
   if (!B.length) { log('There are no buildings to assess – fetch, import or draw them first.', 'warn'); return null; }
-  A.running = true; updateAssessButtons();
+  A.running = true; updateAssessButtons(); updateRunState();
   const t0 = performance.now();
   try {
     prep(srcs); idx();
@@ -113,7 +120,7 @@ async function runAssessment() {
       period, method: S.method, at: new Date().toISOString(), receivers, byBuilding, sig: inputsSignature(),
       stats: { buildings: B.length, assessed: B.length - skipped - noFacade, skipped, noFacade, receivers: receivers.length, points: nPts, exact: nExact, bound: nBound, party, above: above.length, ms }
     };
-    const sh = curShift(); sh.results = A.results; A.results.shift = sh.name;
+    const sh = curShift(); sh.results = A.results; A.results.shift = sh.name; A.lastMs = ms; A.everRun = true;
     $('busy').textContent = `Assessment: ${receivers.length.toLocaleString()} building-floors, ${above.length} above NML · ${(ms / 1000).toFixed(1)} s`;
     log(`Assessment (${PERIODS[period]}, ${S.method === 'iso' ? 'ISO 9613-2' : 'TfNSW estimator basis'}): ${B.length - skipped - noFacade} of ${B.length} buildings, ${receivers.length.toLocaleString()} building-floors, ` +
       `${nPts.toLocaleString()} façade points (${nExact.toLocaleString()} calculated, ${nBound.toLocaleString()} below NML on distance alone, ${party.toLocaleString()} on party walls skipped). ` +

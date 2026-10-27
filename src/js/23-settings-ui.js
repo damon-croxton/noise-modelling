@@ -40,8 +40,15 @@ function syncSettingsUI() {
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
   $('setCell').value = String(S.cellPx); $('setMin').value = String(S.minDb); $('setOp').value = S.opacity; buildLegend(); renderShiftPanel();
 }
+/* Map legend: heat-map bands, and the impact categories (or respite counts) when the map shows them. */
 function buildLegend() {
-  const min = state.settings.minDb;
-  $('legend').innerHTML = BANDS.filter(b => b[0] >= min).map((b, i, arr) => `<div><i style="background:${b[1]}"></i>${b[0]}${i === arr.length - 1 ? '+' : '–' + (b[0] + 5)}</div>`).join('');
+  const min = state.settings.minDb, AR = state.assess.results, L = UI.layers, D = state.assess.display;
+  const showRes = L.impact && D === 'respite' && state.respite, showCat = L.impact && AR && !showRes && D !== 'heat';
+  let h = '';
+  if (L.heat && state.sources.length && !(showCat && D === 'cat') && !showRes)
+    h += '<div class="lt">L<sub>Aeq,15min</sub> dB(A)</div>' + BANDS.filter(b => b[0] >= min).map((b, i, arr) => `<div><i style="background:${b[1]}"></i>${b[0]}${i === arr.length - 1 ? '+' : '–' + (b[0] + 5)}</div>`).join('');
+  if (showCat) h += '<div class="lt">Impact (worst floor)</div>' + categoryList(AR.period).map(c => `<div><i style="background:${categoryColor(c)}"></i>${esc(c)}</div>`).join('');
+  if (showRes) h += '<div class="lt">Dates above NML (all shifts)</div>' + RESPITE_RAMP.map(([k, c], i, a) => `<div><i style="background:${c}"></i>${k}${a[i + 1] ? (a[i + 1][0] - 1 > k ? '–' + (a[i + 1][0] - 1) : '') : '+'}</div>`).join('') + '<div><i style="border:2px solid #b91c1c"></i>respite issue</div>';
+  $('legend').innerHTML = h; $('legend').hidden = !L.legend || !h;
 }
 

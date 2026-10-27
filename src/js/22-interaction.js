@@ -20,6 +20,7 @@ function bindNum(input, min, max, apply) {
 }
 function renderSelPanel() {
   const body = $('selBody'), s = getSel();
+  syncPinnedSelection();
   if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building, hoarding or NCA boundary in Select mode.</p>'; return; }
   const o = s.obj;
   if (s.type === 'source') {
@@ -122,7 +123,9 @@ function setMode(m) {
   if (state.mode !== m && state.draft.length) cancelDraft();
   state.mode = m;
   document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
-  $('hint').textContent = HINTS[m];
+  // drawing instructions stay up while drawing; the select / place tips fade after a few seconds
+  $('hint').textContent = HINTS[m]; $('hint').hidden = false;
+  clearTimeout(setMode.t); if (!isDrawMode(m)) setMode.t = setTimeout(() => { if (state.mode === m) $('hint').hidden = true; }, m === 'select' ? 6000 : 10000);
   canvas.style.cursor = m === 'select' ? 'default' : 'crosshair';
   updateDraftButtons(); requestRender();
 }

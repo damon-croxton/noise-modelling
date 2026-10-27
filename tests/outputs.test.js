@@ -74,7 +74,7 @@ module.exports = [
       await page.evaluate(() => window.__noise._t.switchShift(window.__noise.state.shiftId));   // refresh panel
       await page.click('#shDup');
       await page.fill('#shName', 'Evening saw');
-      await page.selectOption('#shPeriod', 'p1eve');
+      await page.selectOption('#setPeriod', 'p1eve');
       await page.fill('#shDates', '2026-11-02..2026-11-04'); await page.locator('#shDates').dispatchEvent('change');
       await page.click('#shNew'); await page.fill('#shName', 'Empty');
       const r = await page.evaluate(() => {
@@ -87,11 +87,11 @@ module.exports = [
         { name: 'Empty', period: 'p1eve', dates: 0, n: 0, notes: '' }]);
       assert.deepStrictEqual(r[3], { cur: 2, srcs: 0, period: 'p1eve' });
       // switching back restores that shift's plant and period, and the copy's plant is independent
-      await page.selectOption('#shSel', { label: 'Night saw – OOHW Period 2 – night' });
+      await page.click('#shChips button:has-text("Night saw")');
       const s = await page.evaluate(() => { const st = window.__noise.state; st.sources[0].lw = 100; return { period: st.settings.period, ui: document.getElementById('setPeriod').value, copy: st.shifts[1].sources[0].lw, name: document.getElementById('shName').value }; });
       assert.deepStrictEqual(s, { period: 'p2night', ui: 'p2night', copy: 110, name: 'Night saw' });
       page.once('dialog', d => d.accept());
-      await page.selectOption('#shSel', { label: 'Empty – OOHW Period 1 – evening' });
+      await page.click('#shChips button:has-text("Empty")');
       await page.click('#shDel');
       assert.strictEqual(await page.evaluate(() => window.__noise.state.shifts.length), 2);
     }
