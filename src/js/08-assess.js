@@ -39,7 +39,7 @@ function inputsSignature() {
   const S = state.settings, A = state.assess, r2 = v => Math.round(v * 100);
   let h = 5381;
   const add = v => { const s = String(v); for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; h = ((h * 33) ^ 124) >>> 0; };
-  [S.method, S.soft, S.season, S.period, S.barCap, S.air, S.barriers, S.terrain, S.combine, A.floorH, A.spacing, A.offset, JSON.stringify(A.defNca), RULES.id, state.rulesEdited ? JSON.stringify(RULES).length : 0, state.terrain ? state.terrain.name : ''].forEach(add);
+  [S.method, S.soft, S.season, S.period, S.barCap, S.air, S.barriers, S.terrain, S.combine, S.lateral, S.reflect, S.reflLoss, S.bands, A.floorH, A.spacing, A.offset, JSON.stringify(A.defNca), RULES.id, state.rulesEdited ? JSON.stringify(RULES).length : 0, state.terrain ? state.terrain.name : ''].forEach(add);
   for (const s of state.sources) [r2(s.x), r2(s.y), s.h, s.lw, s.on, s.pen, s.mit].forEach(add);
   for (const b of state.buildings) { [b.id, r2(b.h), r2(b.base), b.landUse, b.floors].forEach(add); for (const p of b.pts) { add(r2(p[0])); add(r2(p[1])); } }
   for (const ho of state.hoardings) { add(ho.h); for (const p of ho.pts) { add(r2(p[0])); add(r2(p[1])); } }

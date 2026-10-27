@@ -130,15 +130,20 @@ function updateProbe() {
   }
   const srcsA = activeSources(); prep(srcsA);
   let e = 0, rows = '';
+  const paths = [];
   for (const s of srcsA) {
     const r = contrib(s, wx, wy, S, B, true, gr);
     e += Math.pow(10, r.Lp / 10);
+    paths.push({ s, r });
     rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
     let note = `${lwBreakdown(s)} · src RL ${fmt(s._z, 1)} · rcv RL ${fmt(r.zr, 1)}${r.Domega ? ` · DΩ +${fmt(r.Domega)}` : ''}`;
     if (r.bar) {
       const k = r.bar.kinds, parts = [];
       if (k.terrain) parts.push(k.terrain + ' terrain'); if (k.building) parts.push(k.building + ' building'); if (k.hoarding) parts.push(k.hoarding + ' hoarding');
-      note += ` · edges: ${parts.join(', ')} · δ ${fmt(r.bar.delta, 2)} m · Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ` (capped at ${S.method === 'iso' ? (r.bar.n >= 2 ? 25 : 20) : S.barCap})` : ''}`;
+      note += ` · over the top: ${parts.join(', ')} edge(s), δ ${fmt(r.bar.delta, 2)} m, Dz ${fmt(r.bar.top.Dz)}`;
+      if (r.bar.lat && r.bar.lat.length) note += ` · side paths: ${r.bar.lat.map(l => `${l.n} edge(s), δ ${fmt(l.delta, 1)} m, Dz ${fmt(l.Dz)}`).join('; ')}`;
+      else if (S.lateral !== false) note += r.bar.terrainEdge ? ' · no side paths (terrain in the path)' : ' · no side paths (receiver or source enclosed)';
+      note += ` · combined Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ` (capped at ${fmt(r.bar.cap, 0)})` : ''}`;
     } else note += ' · line of sight';
     rows += `<tr class="note"><td colspan="8">${note}</td></tr>`;
   }
@@ -148,5 +153,23 @@ function updateProbe() {
     <div class="tot">Total: ${fmt(L)} dB(A) L<sub>Aeq,15min</sub> <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>
     <p class="kv muted">${basis} · ${PERIODS[S.period]} · air ${S.air ? fmt(airAlpha(S), 2) + ' dB/km' : 'off'} · ${Math.round(S.soft * 100)} % soft ground</p>`;
   $('hud').textContent = `${hud} · ${fmt(L)} dB(A)`;
+  drawProbePaths(paths, wx, wy);
 }
 
+
+/* Propagation paths for the probe point: direct (grey), side paths around
+   obstacles (orange dashed) and reflections (blue dashed). Drawn over the map
+   after render(). */
+function drawProbePaths(paths, wx, wy) {
+  ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.lineWidth = 1.5;
+  const line = (pts, color, dash) => {
+    ctx.beginPath(); pts.forEach((p, i) => { const [x, y] = w2s(p[0], p[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = color; ctx.setLineDash(dash); ctx.stroke();
+  };
+  for (const { s, r } of paths) {
+    line([[s.x, s.y], [wx, wy]], r.bar ? 'rgba(17,24,39,0.35)' : 'rgba(17,24,39,0.6)', r.bar ? [3, 3] : []);
+    if (r.bar && r.bar.lat) for (const l of r.bar.lat) line([[s.x, s.y]].concat(l.pts, [[wx, wy]]), 'rgba(234,88,12,0.9)', [6, 4]);
+    if (r.refl) for (const f of r.refl) line([[s.x, s.y], f.p, [wx, wy]], 'rgba(37,99,235,0.9)', [2, 3]);
+  }
+  ctx.restore();
+}

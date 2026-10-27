@@ -66,7 +66,7 @@ function sanitizeSettings(raw, cur) {
   const bool = v => typeof v === 'boolean';
   pick('method', oneOf('tfnsw', 'iso')); pick('combine', oneOf('all', 'estimator')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
-  pick('air', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
+  pick('air', bool); pick('lateral', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
   pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
   pick('newH', inR(0.5, 300)); pick('newHo', inR(0.3, 20));
   if (!('soft' in raw) && (raw.ground === 'soft' || raw.ground === 'hard')) {

@@ -51,6 +51,23 @@ function selfTest() {
     check('2.4 m hoarding @ 5 m (Dz)', Dz(contrib(src, 50, 0, S0, [], true)), single(1.5, 1.5, 5, 2.4, 50), 0.05);
     state.hoardings = [];
 
+    // Side diffraction: Dz of the path over the top and the two side paths
+    // (Kmet = 1) summed by energy, then capped (ISO 9613-2 eq. 14, 15).
+    const dzOf = (delta, C3, km) => 10 * Math.log10(3 + (20 / LAMBDA) * C3 * delta * km);
+    const sumDz = (...d) => -10 * Math.log10(d.reduce((a, x) => a + Math.pow(10, -x / 10), 0));
+    const SL = Object.assign({}, S0, { lateral: true });
+    state.hoardings = [makeHoarding([[25, -10], [25, 10]], 4, 'short hoarding')]; prep([src]);
+    const latH = dzOf(2 * Math.hypot(25, 10) - 50, 1, 1);
+    check('Side diffraction: 20 m hoarding, 4 m high @ 25 m', Dz(contrib(src, 50, 0, SL, [], true)), sumDz(single(1.5, 1.5, 25, 4, 50), latH, latH), 0.05);
+    check('Side diffraction off: same hoarding, top path only', Dz(contrib(src, 50, 0, Object.assign({}, SL, { lateral: false }), [], true)), single(1.5, 1.5, 25, 4, 50), 0.05);
+    state.hoardings = [];
+    state.buildings = [makeBuilding(rect(20, -10, 30, 10), 10, 'block')]; geomChanged(); prep([src]);
+    const q = Math.pow(5 * LAMBDA / 10, 2), C3b = (1 + q) / (1 / 3 + q), aT = Math.hypot(20, 8.5), dT = 2 * aT + 10 - 50;
+    const topB = dzOf(dT, C3b, Math.exp(-(1 / 2000) * Math.sqrt(aT * aT * 50 / (2 * dT))));
+    const latB = dzOf(2 * Math.hypot(20, 10) + 10 - 50, C3b, 1);
+    check('Side diffraction: 10 × 20 m block, 10 m high (two edges each way)', Dz(contrib(src, 50, 0, SL, state.buildings, true)), sumDz(topB, latB, latB), 0.05);
+    state.buildings = []; geomChanged();
+
     const mkT = (fn) => { const w = 121, h = 41, z = new Float32Array(w * h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) z[j * w + i] = fn(i - 10, 20 - j); return { w, h, cx: 1, cy: 1, x0: -10.5, yTop: 20.5, z, zmin: 0, zmax: 0 }; };
     state.terrain = mkT(() => 30); prep([src]);
     check('Flat terrain RL 30 = flat ground', contrib(src, 50, 0, S0, [], false), 105 - (20 * Math.log10(50) + 11) + 3, 0.01);

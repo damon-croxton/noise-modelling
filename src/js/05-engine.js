@@ -38,9 +38,62 @@ function upperHull(P) {
   return H;
 }
 
+/* Barrier attenuation of one diffracted path, ISO 9613-2 eq. 14:
+   Dz = 10·lg(3 + (C2/λ)·C3·z·Kmet), C2 = 20; C3 for two or more edges from
+   their spread e (eq. 15); capped. Kmet = 1 for lateral paths. */
+function dzPath(delta, n, e, kmet, lambda, cap) {
+  let C3 = 1;
+  if (n >= 2 && e > 1e-6) { const q = Math.pow(5 * lambda / e, 2); C3 = (1 + q) / (1 / 3 + q); }
+  return Math.min(10 * Math.log10(3 + (20 / lambda) * C3 * delta * kmet), cap);
+}
+/* Convex hull (anticlockwise) of [x, y, tag] points; collinear points kept so
+   that S and R stay on the hull when they sit on an edge. */
+function hullTagged(P) {
+  const pts = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]).filter((p, i, a) => !i || p[0] !== a[i - 1][0] || p[1] !== a[i - 1][1]);
+  if (pts.length < 3) return pts;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], hi = [];
+  for (const p of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) < -1e-9) lo.pop(); lo.push(p); }
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) < -1e-9) hi.pop(); hi.push(p); }
+  lo.pop(); hi.pop();
+  return lo.concat(hi);
+}
+/* Lateral (side) paths in plan around the obstacles that block the direct
+   path: the two chains of the convex hull of S, R and the corners of those
+   obstacles (as CNOSSOS-EU). Further buildings that a side path runs through
+   are not added: that would only lower the side path's contribution, so
+   ignoring them is conservative (and keeps the cost small in dense areas).
+   Returns [{ n, e, delta, pts }] for the two sides, or null when S or R lies
+   inside the hull (e.g. an enclosed yard). */
+function lateralGeom(sx, sy, rx, ry, zs, zr, d2, blockB, blockH) {
+  const P = [[sx, sy, 'S'], [rx, ry, 'R']];
+  for (const b of blockB) for (const p of b.pts) P.push([p[0], p[1], 0]);
+  for (const ho of blockH) for (const p of ho.pts) P.push([p[0], p[1], 0]);
+  const H = hullTagged(P), m = H.length;
+  const iS = H.findIndex(p => p[2] === 'S'), iR = H.findIndex(p => p[2] === 'R');
+  if (iS < 0 || iR < 0) return null;
+  const dz = zs - zr, direct = Math.hypot(d2, dz), out = [];
+  for (const step of [1, -1]) {
+    const ch = [];
+    for (let k = (iS + step + m) % m; k !== iR; k = (k + step + m) % m) ch.push(H[k]);
+    if (!ch.length) continue;
+    let Lh = hyp([sx, sy], ch[0]) + hyp(ch[ch.length - 1], [rx, ry]);
+    for (let k = 0; k < ch.length - 1; k++) Lh += hyp(ch[k], ch[k + 1]);
+    const e = ch.length >= 2 ? Lh - hyp([sx, sy], ch[0]) - hyp(ch[ch.length - 1], [rx, ry]) : 0;
+    out.push({ n: ch.length, e, delta: Math.hypot(Lh, dz) - direct, pts: ch.map(p => [p[0], p[1]]) });
+  }
+  return out;
+}
+
+/* Screening between source and receiver. The path over the top is the upper
+   convex hull of everything above the line of sight in the vertical section
+   (terrain, roofs, hoarding). When buildings or hoarding (not terrain) form
+   that path and side diffraction is on, the two lateral paths are added.
+   Returns the path geometry (so it can be evaluated per frequency) and the
+   single-band (500 Hz) values. */
 const _cand = [];
 function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
-  const prof = [];
+  const prof = [], blockB = new Set(), blockH = new Set();
   const above = (s, z) => z > zs + (zr - zs) * (s / d2) + 1e-6;
   const dx = rx - src.x, dy = ry - src.y;
   let kinds = detail ? { terrain: 0, building: 0, hoarding: 0 } : null;
@@ -62,8 +115,8 @@ function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
         if (!iv) continue;
         const top = topOf(b);
         for (const [t0, t1] of iv) {
-          if (above(t0 * d2, top)) prof.push([t0 * d2, top, 1]);
-          if (above(t1 * d2, top)) prof.push([t1 * d2, top, 1]);
+          if (above(t0 * d2, top)) prof.push([t0 * d2, top, 1, b]);
+          if (above(t1 * d2, top)) prof.push([t1 * d2, top, 1, b]);
         }
       }
     }
@@ -78,7 +131,7 @@ function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
         const t = (wx * ey - wy * ex) / den, u = (wx * dy - wy * dx) / den;
         if (t <= 0 || t >= 1 || u < 0 || u > 1) continue;
         const top = ground(src.x + dx * t, src.y + dy * t) + ho.h;
-        if (above(t * d2, top)) prof.push([t * d2, top, 2]);
+        if (above(t * d2, top)) prof.push([t * d2, top, 2, ho]);
       }
     }
   }
@@ -92,15 +145,39 @@ function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
   if (delta <= 0) return null;
   const n = H.length - 2;
   const dss = hyp(H[0], H[1]), dsr = hyp(H[n], H[n + 1]);
-  const e = hyp(H[1], H[n]) > 0 ? (function () { let s = 0; for (let k = 1; k < n; k++) s += hyp(H[k], H[k + 1]); return s; })() : 0;
-  let C3 = 1, cap = 20;
-  if (n >= 2) { cap = 25; if (e > 1e-6) { const q = Math.pow(5 * LAMBDA / e, 2); C3 = (1 + q) / (1 / 3 + q); } }
-  if (S.method !== 'iso' && S.barCap > 0) cap = Math.min(cap, S.barCap);
+  const e = n >= 2 ? (function () { let s = 0; for (let k = 1; k < n; k++) s += hyp(H[k], H[k + 1]); return s; })() : 0;
   const Kmet = Math.exp(-(1 / 2000) * Math.sqrt(dss * dsr * direct / (2 * delta)));
-  let Dz = 10 * Math.log10(3 + (20 / LAMBDA) * C3 * delta * Kmet);
-  const capped = Dz > cap; if (capped) Dz = cap;
+  let terrainEdge = false;
+  for (let k = 1; k <= n; k++) { const kd = H[k][2]; if (kd === 0) terrainEdge = true; else if (kd === 1) blockB.add(H[k][3]); else if (kd === 2) blockH.add(H[k][3]); }
+  // blocking obstacles = every building / hoarding with a crossing above the line of sight
+  for (const p of prof) { if (p[2] === 1) blockB.add(p[3]); else if (p[2] === 2) blockH.add(p[3]); }
+  const iso = S.method === 'iso', cap = Math.min(n >= 2 ? 25 : 20, !iso && S.barCap > 0 ? S.barCap : Infinity);
+  const top = { delta, n, e, Kmet, Dz: dzPath(delta, n, e, Kmet, LAMBDA, Infinity) };
+  let lat = null;
+  if (S.lateral !== false && !terrainEdge && (blockB.size || blockH.size)) {
+    lat = lateralGeom(src.x, src.y, rx, ry, zs, zr, d2, blockB, blockH);
+    if (lat) for (const l of lat) l.Dz = dzPath(l.delta, l.n, l.e, 1, LAMBDA, Infinity);
+  }
   if (detail) for (let k = 1; k <= n; k++) { const kd = H[k][2]; if (kd === 0) kinds.terrain++; else if (kd === 1) kinds.building++; else if (kd === 2) kinds.hoarding++; }
-  return { Dz, delta, n, e, Kmet, C3, capped, kinds };
+  const r = { delta, n, e, Kmet, cap, top, lat, kinds, terrainEdge };
+  r.Dz = combineDz(r, LAMBDA); r.capped = r.raw > cap;
+  return r;
+}
+/* Barrier term from all diffracted paths at one wavelength: the uncapped Dz of
+   the path over the top (with Kmet) and of each side path (Kmet = 1) are summed
+   by energy, then the cap (20 dB single / 25 dB multiple edges in ISO, the
+   screening cap on the TfNSW basis) is applied once to the result. Capping each
+   path first would make a long wall screen less than a short one. */
+function combineDz(r, lambda) {
+  const t = r.top;
+  let raw = dzPath(t.delta, t.n, t.e, t.Kmet, lambda, Infinity);
+  if (r.lat && r.lat.length) {
+    let e = Math.pow(10, -raw / 10);
+    for (const l of r.lat) e += Math.pow(10, -dzPath(l.delta, l.n, l.e, 1, lambda, Infinity) / 10);
+    raw = -10 * Math.log10(e);
+  }
+  r.raw = raw;
+  return Math.min(raw, r.cap);
 }
 
 /* Air absorption coefficient (dB/km) for the season and time period. */
@@ -136,6 +213,9 @@ function groundUnderScreening(agr, abar) {
      hard ground: Agr = As + Ar + Am = −1.5 − 1.5 − 3q (G = 0, §7.3.1);
      soft ground: eq. 10 with DΩ (§7.3.2); mixed: linear blend by %soft;
      Abar = Dz − Agr ≥ 0 with the 20/25 dB caps.
+   Side diffraction (S.lateral, default on): Dz is the energy sum of the path
+   over the top and the two side paths around the blocking buildings / hoarding
+   (see combineDz), then capped and combined with ground as above.
    Lw is the effective level from prep(): time-on, penalty and mitigation applied.
    gr: ground RL at the receiver if already known; zrAbs: absolute receiver RL
    (default ground + S.hr). */
