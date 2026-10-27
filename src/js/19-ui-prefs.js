@@ -2,11 +2,11 @@
 /* Per-viewer display choices (layout, colours, panels, map layers), kept in
    this browser's localStorage. They are conveniences only: the app works the
    same without them, and they are never saved in the project file. */
-const UI_KEY = 'noise-poc-ui';
+const UI_KEY = 'noise-poc-ui-v2';   // v2: guided layout and the corridor example became the defaults
 const UI = {
-  layout: 'workspace', theme: 'light', compact: false, help: true, auto: true,
+  layout: 'guided', theme: 'light', compact: false, help: true, auto: true, start: 'corridor',
   left: true, right: true, bottom: true, focus: false, rtab: 'Results', btab: 'Data sources', step: 0, probeMin: false, collapsed: [],
-  layers: { heat: true, impact: true, blabels: true, slabels: true, ncas: true, hoard: true, paths: true, legend: true, probe: true, banner: true }
+  layers: { osm: true, heat: true, impact: true, blabels: true, slabels: true, ncas: true, hoard: true, paths: true, legend: true, probe: true, banner: true }
 };
 (function loadPrefs() {
   try {

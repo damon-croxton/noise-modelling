@@ -3,7 +3,7 @@ $('ver').textContent = 'v' + VERSION;
 log(`Noise POC v${VERSION} starting. λ = ${LAMBDA.toFixed(3)} m (${F_BAND} Hz). DecompressionStream: ${typeof DecompressionStream !== 'undefined' ? 'yes' : 'NO'}.`);
 const selftest = selfTest();
 nextId = 1;
-syncSettingsUI(); updateLibInfo(); syncAssessUI(); renderCalPanel(); setMode('select'); loadDemo(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
+syncSettingsUI(); updateLibInfo(); syncAssessUI(); renderCalPanel(); setMode('select'); startScene(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
 if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
 resize();
 requestAnimationFrame(() => zoomExtents());

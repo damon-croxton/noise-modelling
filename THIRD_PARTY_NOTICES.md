@@ -20,6 +20,15 @@ If the tool is ever commercialised or distributed externally, revisit the TfNSW 
 
 Building footprints fetched or imported from OpenStreetMap are © OpenStreetMap contributors, available under the Open Database Licence (ODbL), <https://www.openstreetmap.org/copyright>. The app shows this attribution whenever OSM buildings are loaded.
 
+- **Footprints** are fetched from the OSM editing API (`api.openstreetmap.org/api/0.6/map`), one small bounding box (about 1 km² or less) per click. The API usage policy (<https://operations.osmfoundation.org/policies/api/>) allows occasional reads like this. It isn't meant for bulk or repeated downloads.
+- **The street-map underlay** (*View → Map layers → OSM street map*) uses the standard tiles from `tile.openstreetmap.org`, under the tile usage policy (<https://operations.osmfoundation.org/policies/tiles/>). The app:
+  - shows the attribution on the map whenever tiles are drawn;
+  - requests only the tiles in view (at most 80 per view);
+  - caches them in the browser;
+  - never prefetches or bulk-downloads.
+
+  The tile servers learn which area is being viewed, but no addresses or project data are sent. For heavier or organisation-wide use, a commercial tile provider or a self-hosted tile server would be the right choice. The policy can also block pages opened from local disk, which send no `Referer` header; if that happens, the underlay doesn't draw, and the model is unaffected.
+
 ## Transport for NSW material
 
 The following come from Transport for NSW publications:

@@ -82,7 +82,7 @@ module.exports = [
     name: 'Clear menu: tidy the screen without deleting; remove plant, hoarding, NCAs, buildings; new project',
     async run({ page, assert }) {
       await page.click('#clrOverlays');
-      let L = await page.evaluate(() => ({ ...JSON.parse(localStorage.getItem('noise-poc-ui')).layers }));
+      let L = await page.evaluate(() => ({ ...JSON.parse(localStorage.getItem('noise-poc-ui-v2')).layers }));
       assert.deepStrictEqual([L.heat, L.impact, L.blabels, L.slabels, L.legend, L.ncas, L.hoard], [false, false, false, false, false, true, true]);
       assert.ok(!(await page.isVisible('#legend')));
       await page.click('#clrShowAll');

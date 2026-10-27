@@ -60,6 +60,7 @@ function readJSONFile(input, cb) {
 function noteSource(kind, name, detail, file) {
   const e = { kind, name: String(name || '').slice(0, 200), detail: String(detail || '').slice(0, 300), loaded: new Date().toISOString(), fileDate: file && file.lastModified ? new Date(file.lastModified).toISOString() : null };
   state.provenance = state.provenance.filter(p => !(p.kind === kind && p.name === e.name)).concat(e);
+  renderSources();
   return e;
 }
 function sourceOut(s) {
@@ -141,6 +142,7 @@ readJSONFile($('fileLoad'), (d, name) => {
     const cur = state.shifts[Number.isInteger(d.shift) && state.shifts[d.shift] ? d.shift : 0];
     state.shiftId = cur.id; state.sources = cur.sources; state.settings.period = cur.period; state.settings.season = cur.season;
   } else resetShifts();
+  state.example = null;
   state.project = { name: String((d.project && d.project.name) || '').slice(0, 120), by: String((d.project && d.project.by) || '').slice(0, 120) };
   state.provenance = (Array.isArray(d.provenance) ? d.provenance : []).filter(p => p && typeof p.kind === 'string').slice(0, 200)
     .map(p => ({ kind: p.kind.slice(0, 40), name: String(p.name || '').slice(0, 200), detail: String(p.detail || '').slice(0, 300), loaded: String(p.loaded || '').slice(0, 30), fileDate: p.fileDate ? String(p.fileDate).slice(0, 30) : null }));
@@ -271,7 +273,7 @@ function loadDemo() {
   ];
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
   state.sources = [makeSource(0, 0, DEFAULT_EQ)]; state.ncas = []; state.assess.results = null;
-  resetShifts('Demo shift'); state.provenance = [];
+  resetShifts('Demo shift'); state.provenance = []; state.example = null;
   geomChanged(); select(null); renderShiftPanel(true);
   log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
   renderAssessPanel(); updateAssessButtons(); refreshBulkSelects(); requestCompute(false);

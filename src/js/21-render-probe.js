@@ -9,6 +9,10 @@ function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const v = state.view, S = state.settings, T = state.terrain, L = UI.layers;
   ctx.fillStyle = MT.bg; ctx.fillRect(0, 0, cssW, cssH);
+  drawOsmUnderlay();
+  const osmB = state.buildings.some(b => b.osmId);
+  $('attrib').hidden = !(TILES.drawn || osmB);
+  $('attribWhat').textContent = TILES.drawn && osmB ? 'Map and buildings' : TILES.drawn ? 'Map' : 'Buildings';
 
   if (T && S.shade) {
     const [a, b] = w2s(T.x0, T.yTop);
@@ -106,7 +110,7 @@ function render() {
   }
 
   // scale bar and north arrow, bottom right above the read-out
-  const sb = niceStep(110 / v.scale), sbPx = sb * v.scale, bx = cssW - sbPx - 60, by = cssH - 66;
+  const sb = niceStep(110 / v.scale), sbPx = sb * v.scale, bx = cssW - sbPx - 60, by = cssH - 94;
   ctx.fillStyle = MT.boxBg; ctx.fillRect(bx - 8, by, sbPx + 58, 26);
   ctx.fillStyle = MT.boxText; ctx.fillRect(bx, by + 18, sbPx, 4);
   ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';

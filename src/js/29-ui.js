@@ -8,14 +8,14 @@ const LAYOUTS = {
     left: ['card-shifts', 'card-plant', 'card-selection'],
     right: {
       Results: ['card-results', 'card-report', 'card-mapdisplay', 'card-calibration'],
-      Site: ['card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse'],
+      Site: ['card-site', 'card-dem', 'card-lidar', 'card-ncas', 'card-landuse'],
       Method: ['card-model', 'card-assess', 'card-rules', 'card-library', 'card-about']
     }
   },
   guided: {
     label: 'Guided',
     steps: {
-      '1 Site': ['card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse'],
+      '1 Site': ['card-site', 'card-dem', 'card-lidar', 'card-ncas', 'card-landuse'],
       '2 Shifts': ['card-shifts', 'card-plant', 'card-library'],
       '3 Method': ['card-model', 'card-assess', 'card-rules'],
       '4 Results': ['card-results', 'card-mapdisplay', 'card-calibration'],
@@ -25,7 +25,7 @@ const LAYOUTS = {
   },
   single: {
     label: 'Single column',
-    left: ['card-shifts', 'card-plant', 'card-selection', 'card-results', 'card-report', 'card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse',
+    left: ['card-shifts', 'card-plant', 'card-selection', 'card-results', 'card-report', 'card-site', 'card-dem', 'card-lidar', 'card-ncas', 'card-landuse',
       'card-model', 'card-assess', 'card-rules', 'card-library', 'card-mapdisplay', 'card-calibration', 'card-about']
   }
 };
@@ -133,7 +133,7 @@ $('btnFocus').addEventListener('click', () => setFocus(!UI.focus));
 $('probeMin').addEventListener('click', () => { UI.probeMin = !UI.probeMin; savePrefs(); applyPanels(); });
 
 /* map layers */
-const LAYER_IDS = [['lyHeat', 'heat'], ['lyImpact', 'impact'], ['lyBLabels', 'blabels'], ['lySLabels', 'slabels'], ['lyNcas', 'ncas'], ['lyHoard', 'hoard'], ['lyPaths', 'paths'], ['lyLegend', 'legend'], ['lyProbe', 'probe'], ['lyBanner', 'banner']];
+const LAYER_IDS = [['lyOsm', 'osm'], ['lyHeat', 'heat'], ['lyImpact', 'impact'], ['lyBLabels', 'blabels'], ['lySLabels', 'slabels'], ['lyNcas', 'ncas'], ['lyHoard', 'hoard'], ['lyPaths', 'paths'], ['lyLegend', 'legend'], ['lyProbe', 'probe'], ['lyBanner', 'banner']];
 for (const [id, k] of LAYER_IDS) $(id).addEventListener('change', e => { UI.layers[k] = e.target.checked; savePrefs(); applyPanels(); });
 function setLayers(on, keys) { for (const k of keys || Object.keys(UI.layers)) UI.layers[k] = on; savePrefs(); applyPanels(); }
 
@@ -176,12 +176,26 @@ $('clrDsm').addEventListener('click', () => {
 $('clrLog').addEventListener('click', () => { $('log').innerHTML = ''; log('Log cleared.'); });
 $('clrAll').addEventListener('click', () => {
   if (!ask('Start an empty project? This removes every shift and its plant, all buildings, hoarding, NCAs, terrain, LiDAR and data sources. Model settings and the equipment library are kept.\n\nSave the project first if you need it.')) return;
-  state.sources = []; state.buildings = []; state.hoardings = []; state.ncas = []; state.terrain = null; state.dsm = null; state.calib = null; state.origin = null;
-  state.provenance = []; state.project = { name: '', by: '' }; state.assess.results = null;
+  newProject(); log('New empty project.'); zoomExtents();
+});
+/* Empty project: one empty shift, no geometry, terrain, data sources or location. */
+function newProject(keepOrigin) {
+  state.sources = []; state.buildings = []; state.hoardings = []; state.ncas = []; state.terrain = null; state.dsm = null; state.calib = null;
+  if (!keepOrigin) state.origin = null;
+  state.provenance = []; state.project = { name: '', by: '' }; state.assess.results = null; state.example = null;
   resetShifts('Shift 1'); geomChanged(); select(null); setMode('select');
   updateDemInfo(); renderCalPanel(); syncAssessUI(); syncSettingsUI(); renderShiftPanel(true); updateSiteInfo();
-  $('attrib').hidden = true; log('New empty project.'); zoomExtents();
-});
+  $('attrib').hidden = true;
+}
+/* What the app shows when it opens (File menu). */
+function startScene() {
+  if (['corridor', 'street', 'setback'].includes(UI.start)) buildReferenceExample(UI.start);
+  else if (UI.start === 'empty') { newProject(); log('Empty project.'); }
+  else loadDemo();
+}
+$('uiStart').value = UI.start;
+$('uiStart').addEventListener('change', e => { UI.start = e.target.value; savePrefs(); log(`On start-up: ${e.target.options[e.target.selectedIndex].text}.`); });
+$('uiStart').addEventListener('click', e => e.stopPropagation());
 
 /* quick guide */
 function openGuide(on) { $('guide').hidden = !on; if (on) $('guideClose').focus(); }
@@ -201,7 +215,6 @@ document.addEventListener('keydown', e => {
 /* buttons that do the same as another one */
 $('plAdd').addEventListener('click', () => setMode('source'));
 $('ncaDraw').addEventListener('click', () => setMode('nca'));
-$('btnReportCard').addEventListener('click', () => $('btnReport').click());
 $('btnCsvCard').addEventListener('click', () => $('btnCsv').click());
 $('btnSaveCard').addEventListener('click', () => $('btnSave').click());
 $('runState').addEventListener('click', guarded('Run', () => runAssessment()));
@@ -247,8 +260,20 @@ function syncPlantList() {
   }));
 }
 
+/* ---- site steps: tick off what has been done ---- */
+function updateSiteSteps() {
+  const real = !!(state.origin && state.origin.zone), osm = state.buildings.some(b => b.osmId), P = state.provenance;
+  const done = { site: real || $('siteLL').value.trim() !== '', go: real, osm, dem: !!state.terrain, lidar: P.some(p => /LiDAR|DSM/.test(p.kind)) };
+  document.querySelectorAll('#card-site li[data-step]').forEach(li => li.classList.toggle('done', !!done[li.dataset.step]));
+  const next = ['site', 'go', 'osm'].find(k => !done[k]);
+  document.querySelectorAll('#card-site li[data-step]').forEach(li => li.classList.toggle('next', li.dataset.step === next));
+  $('exampleNote').hidden = !state.example;
+}
+$('siteLL').addEventListener('input', () => updateSiteSteps());
+
 /* ---- data sources ---- */
 function renderSources() {
+  updateSiteSteps();
   const P = state.provenance;
   $('provList').innerHTML = (P.length ? `<table><thead><tr><th>Data</th><th>Source</th><th>Details</th><th>File date</th><th>Loaded</th></tr></thead><tbody>${P.map(p => `<tr><td>${esc(p.kind)}</td><td>${esc(p.name)}</td><td>${esc(p.detail)}</td><td>${p.fileDate ? esc(p.fileDate.slice(0, 10)) : '–'}</td><td>${p.loaded ? esc(p.loaded.slice(0, 16).replace('T', ' ')) : '–'}</td></tr>`).join('')}</tbody></table>`
     : '<p class="kv muted">No external data loaded yet – buildings, NCAs and terrain drawn or entered here. Loaded files (DEM, LiDAR, DSM, OSM, GeoJSON, NCAs) are listed here with their dates and go into the report.</p>') +

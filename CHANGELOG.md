@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.11.0 – Site workflow
+
+### Changed
+- **OSM footprints come from the OpenStreetMap API only.**
+  - Overpass is removed; it was the first choice before, and in practice it never got through.
+  - If the fetch is blocked, the manual route is unchanged: copy the download link, open it in Edge, then import the file.
+- **Opens on the rail-corridor example in the guided layout**, at step 1 *Site*.
+  - *File → On start-up show* can choose another example, the small demo or an empty project.
+  - Saved display preferences start again from these defaults once (new storage key).
+- **The site set-up is a numbered procedure.** Completed steps are ticked and the next one is highlighted:
+  1. In Google Maps, right-click the project location and click the coordinates to copy them, then paste them in.
+  2. Click **Go to site**.
+  3. Click **Fetch OSM buildings** (with an *If the fetch fails* fold-out).
+  4. Optional: download a 1 m DEM from the ELVIS portal, which improves accuracy with the ground surface profile.
+  5. Optional: download LiDAR from ELVIS, which improves building heights.
+
+  The Terrain and LiDAR panels are marked *Optional* and say what to download from ELVIS. The DSM button moved into the LiDAR panel.
+- **Go to site from an example** asks, then clears the example and starts a new project there. The view opens about 600 m across, inside the OSM download limit. The log names the next step after each one.
+- **Report moved** out of the top bar into the *Results* tab (*Report and export*: **Create report**). In the guided layout it is step 5.
+
+### Added
+- **OSM street-map underlay** (*View → Map layers → OSM street map*, on by default). Once the project has a real location, standard OSM tiles are drawn faintly under the model for bearings; they play no part in the calculation.
+  - Tiles are fitted onto the MGA view per tile.
+  - Only the tiles in view are requested (at most 80), cached in the browser, with the attribution on the map.
+  - Offline or blocked: nothing is drawn, and the log says so once.
+  - Dark theme: the tiles are inverted.
+
+### Fixed
+- The *Data sources* panel now updates as soon as a file is loaded.
+
+### Tests
+107 tests, all passing (see `docs/test-evidence/v0.11.0.txt`). New ones cover:
+- the start-up layout and scene;
+- the procedural site steps;
+- Go to site from the example (cancel and accept);
+- the fetch using only the OSM API;
+- the underlay: the right tiles are requested and attributed, and turned off with the layer or when there is no location.
+
+Network calls are simulated in the tests. The real OSM servers couldn't be reached from the development environment, so the live fetch and tiles still need checking on a normal network.
+
 ## 0.10.0 – UI pass
 
 ### Changed

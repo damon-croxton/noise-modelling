@@ -203,6 +203,22 @@
     #tools { justify-content: flex-start; }
     #probeBox { width: calc(100% - 16px); top: auto; bottom: 70px; max-height: 45%; }
   }
+
+  /* ---- procedural steps (Site) ---- */
+  ol.proc { margin: 2px 0 4px; padding-left: 0; list-style: none; counter-reset: step; }
+  ol.proc[start="4"] { counter-reset: step 3; }
+  ol.proc > li { counter-increment: step; position: relative; padding: 6px 6px 6px 32px; margin: 3px 0; border: 1px solid var(--line); border-radius: 6px; line-height: 1.4; font-size: var(--fs-s); }
+  ol.proc > li::before { content: counter(step); position: absolute; left: 7px; top: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--panel2); border: 1px solid var(--border); text-align: center; line-height: 17px; font-size: 11px; font-weight: 600; }
+  ol.proc > li.done::before { content: '✓'; background: var(--ok); border-color: var(--ok); color: #fff; }
+  ol.proc > li.next { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  ol.proc > li.next::before { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  ol.proc .row input[type=text] { width: 100%; }
+  ol.proc code { font: 11px Consolas, monospace; background: var(--panel2); padding: 0 3px; border-radius: 3px; }
+  .proc-h { margin: 8px 0 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .note { font-size: var(--fs-s); background: var(--hint-bg); border-left: 3px solid var(--accent); padding: 5px 8px; border-radius: 3px; margin: 0 0 6px; line-height: 1.4; }
+  .help a, ol.proc a { color: var(--accent); }
+  #steps { flex-wrap: nowrap; gap: 0; padding-left: 6px; }
+  #steps button { padding: 5px 7px; white-space: nowrap; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -220,7 +236,6 @@
     </nav>
     <div class="actions">
       <button type="button" id="runState" class="pill" title="State of the results for the current shift – click to run the assessment now">Not run</button>
-      <button type="button" id="btnReport" class="primary" title="Create the printable report for the current shift (runs the assessment first if needed)">Report</button>
       <div class="menu">
         <button type="button" class="menubtn" data-menu="mFile" title="Save, open, import and examples">File ▾</button>
         <div class="pop" id="mFile" hidden>
@@ -230,7 +245,9 @@
           <hr>
           <label class="poprow">Example <select id="exampleSel" title="Synthetic example scenes for trying the tool"><option value="corridor">Inner-city night works – rail corridor</option><option value="street">Inner-city night works – street</option><option value="setback">Inner-city night works – 37 m set-back</option></select></label>
           <button type="button" id="btnExample" title="Replace the project with the chosen synthetic example">Load example</button>
-          <button type="button" id="btnDemo" title="Replace the project with the small starting demo">Reset to demo</button>
+          <button type="button" id="btnDemo" title="Replace the project with the small starting demo">Load small demo</button>
+          <hr>
+          <label class="poprow" title="What the app shows when it opens">On start-up show <select id="uiStart"><option value="corridor">Rail corridor example</option><option value="street">Street example</option><option value="setback">Set-back example</option><option value="demo">Small demo</option><option value="empty">Empty project</option></select></label>
         </div>
       </div>
       <div class="menu">
@@ -279,6 +296,7 @@
             <label class="chk"><input type="checkbox" id="lySLabels"> Plant labels</label>
             <label class="chk"><input type="checkbox" id="lyNcas"> NCAs</label>
             <label class="chk" title="Hidden hoarding still screens sound"><input type="checkbox" id="lyHoard"> Hoarding</label>
+            <label class="chk" title="OpenStreetMap street map under the model, for your bearings, once the project has a real location (needs internet; the map tiles are requested from tile.openstreetmap.org)"><input type="checkbox" id="lyOsm"> OSM street map</label>
             <label class="chk"><input type="checkbox" id="setShade" checked> Hillshade</label>
             <label class="chk"><input type="checkbox" id="setLazShow" checked> LiDAR points</label>
             <label class="chk"><input type="checkbox" id="lyPaths"> Probe paths</label>
@@ -313,7 +331,7 @@
         <button type="button" id="showRight" hidden title="Show the right panel">Panel «</button>
       </div>
       <div id="ptable" hidden></div>
-      <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
+      <div id="attrib" hidden><span id="attribWhat">Buildings</span> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
     </main>
     <aside id="right" aria-label="Project data and method">
       <div class="paneltabs" id="rtabs"></div>
@@ -374,7 +392,7 @@
     <p class="help">The report is an HTML file: open it in Edge and print to PDF. The report and the CSV list properties and may contain addresses – keep them on approved storage.</p>
     <div class="row"><label for="prjName">Project</label><input type="text" id="prjName" maxlength="120"></div>
     <div class="row"><label for="prjBy">Prepared by</label><input type="text" id="prjBy" maxlength="120"></div>
-    <div class="btns"><button type="button" id="btnReportCard" class="primary" title="Create the printable report for the current shift">Create report</button><button type="button" id="btnCsvCard" title="Property list as CSV">Export CSV</button><button type="button" id="btnSaveCard" title="Save the whole project as JSON">Save project</button></div>
+    <div class="btns"><button type="button" id="btnReport" class="primary" title="Create the printable report for the current shift (runs the assessment first if needed)">Create report</button><button type="button" id="btnCsvCard" title="Property list as CSV">Export CSV</button><button type="button" id="btnSaveCard" title="Save the whole project as JSON">Save project</button></div>
   </section>
 
   <section class="card" id="card-mapdisplay" data-title="Heat map">
@@ -386,31 +404,42 @@
   </section>
 
   <section class="card" id="card-site" data-title="Site and buildings">
-    <p class="help">Go to the site, then fetch building footprints from OpenStreetMap. If your network blocks the fetch, copy the download link and import the file. Dashed outlines are estimated heights.</p>
-    <div class="row"><label for="siteLL">Site (lat, lon)</label><input type="text" id="siteLL" placeholder="-33.8890, 151.2370"></div>
-    <div class="btns">
-      <button type="button" id="btnSite" title="Centre the map on these coordinates">Go to site</button>
-      <button type="button" id="btnOsm" class="primary" title="Download building footprints for the area in view (about 1 km × 1 km at most)">Fetch OSM buildings in view</button>
-      <button type="button" id="btnOsmLink" title="Copy a download link for this view, for when the fetch is blocked">Copy OSM download link</button>
-      <button type="button" id="btnGeo" title="Add footprints from a GeoJSON or .osm file">Import buildings…</button>
-      <button type="button" id="btnDsm" title="Roof heights from a DSM raster (roof surface)">Load DSM…</button>
-    </div>
-    <input type="file" id="fileDsm" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
-    <label class="chk"><input type="checkbox" id="osmReplace"> Re-fetch replaces existing OSM buildings</label>
+    <div id="exampleNote" class="note" hidden>You are looking at a <b>synthetic example</b> (no real location). Follow steps 1–3 to start your own project at your site – the example is cleared when you go to the site.</div>
+    <ol class="proc" id="siteSteps">
+      <li data-step="site"><b>Copy the site location.</b> In Google Maps, right-click the project location, then click the coordinates at the top of the menu (for example <code>-33.88901, 151.23702</code>) – that copies them. Paste them here:
+        <div class="row"><input type="text" id="siteLL" placeholder="Paste here, e.g. -33.88901, 151.23702" title="Latitude, longitude in decimal degrees, as Google Maps copies them"></div></li>
+      <li data-step="go"><b>Click Go to site.</b> The map moves there and shows the OSM street map for your bearings.
+        <div class="btns"><button type="button" id="btnSite" class="primary" title="Centre the map on the pasted coordinates">Go to site</button></div></li>
+      <li data-step="osm"><b>Click Fetch OSM buildings.</b> Downloads the building footprints in view from OpenStreetMap (zoom so the view is about 1 km across or less).
+        <div class="btns"><button type="button" id="btnOsm" class="primary" title="Download building footprints for the area in view from the OpenStreetMap API">Fetch OSM buildings</button></div>
+        <details class="sub2"><summary>If the fetch fails</summary>
+          <p class="kv">Your network may block it. Click <b>Copy OSM download link</b>, paste the link into a new Edge tab, save the file it downloads (rename it <i>map.osm</i>), then click <b>Import buildings</b> and pick that file.</p>
+          <div class="btns"><button type="button" id="btnOsmLink" title="Copy a download link for this view, for when the fetch is blocked">Copy OSM download link</button><button type="button" id="btnGeo" title="Add footprints from a GeoJSON or .osm file">Import buildings…</button></div>
+          <label class="chk"><input type="checkbox" id="osmReplace"> Re-fetch replaces existing OSM buildings</label>
+        </details></li>
+    </ol>
+    <p class="proc-h">Optional – improves accuracy</p>
+    <ol class="proc" start="4">
+      <li data-step="dem"><b>Terrain:</b> download a 1 m DEM for the site from the <a href="https://elevation.fsdf.org.au/" target="_blank" rel="noopener">ELVIS portal</a> and load it in <i>Terrain (DEM)</i> below. Improves accuracy with the ground surface profile (cuttings, embankments, hills).</li>
+      <li data-step="lidar"><b>Building heights:</b> download LiDAR point cloud tiles (.laz) for the site from <a href="https://elevation.fsdf.org.au/" target="_blank" rel="noopener">ELVIS</a> and load them in <i>Building heights from LiDAR</i>. Improves accuracy of building heights – estimated heights are shown with dashed outlines.</li>
+    </ol>
     <div id="siteInfo" class="kv"></div>
-    <p class="kv muted">Heights: OSM <i>height</i> → <i>levels</i> × 3 m → typical height for the building type. LiDAR or a DSM overrides estimates.</p>
   </section>
 
-  <section class="card" id="card-lidar" data-title="Building heights from LiDAR">
+  <section class="card" id="card-lidar" data-title="Optional: building heights from LiDAR">
+    <p class="help">In <a href="https://elevation.fsdf.org.au/" target="_blank" rel="noopener">ELVIS</a>, find the site, pick a LiDAR point-cloud product covering it and download the .laz tile(s). Some datasets download straight away; others email a link. Then load the file here.</p>
     <div class="btns">
       <button type="button" id="btnLaz" class="primary" title="Read a .laz / .las point cloud locally – nothing is uploaded">Load LiDAR (.laz / .las)…</button>
       <button type="button" id="btnLazCancel" class="danger" hidden title="Stop reading the LiDAR file">Cancel</button>
     </div>
     <input type="file" id="fileLaz" accept=".laz,.las" hidden>
+    <div class="btns"><button type="button" id="btnDsm" title="Roof heights from a DSM raster (roof surface) instead of LiDAR points">Or load a DSM…</button></div>
+    <input type="file" id="fileDsm" accept=".tif,.tiff,.asc,.xyz,.txt,.csv" hidden>
     <div id="lazInfo" class="kv"><span class="muted">No LiDAR loaded. Class 6 (building) points give roof levels; class 2 (ground) builds the terrain if no DEM is loaded. The file is read locally – nothing is uploaded.</span></div>
   </section>
 
-  <section class="card" id="card-dem" data-title="Terrain (DEM)">
+  <section class="card" id="card-dem" data-title="Optional: terrain (DEM)">
+    <p class="help">In <a href="https://elevation.fsdf.org.au/" target="_blank" rel="noopener">ELVIS</a>, find the site and download a <b>1 m DEM</b> (GeoTIFF or ASCII grid) covering the works and the nearby buildings. Then load it here.</p>
     <div class="btns">
       <button type="button" id="btnDem" class="primary" title="GeoTIFF, ESRI ASCII or XYZ in GDA94 / GDA2020 MGA">Load DEM (.tif / .asc / .xyz)…</button>
     </div>
@@ -514,11 +543,11 @@
     <button type="button" id="guideClose" class="gclose" title="Close (Esc)">×</button>
     <h2 id="guideTitle">Quick guide</h2>
     <ol class="steps">
-      <li><b>Site.</b> <i>Site and buildings</i>: go to the site and fetch OSM buildings (or import a file). Optionally load terrain (DEM) and LiDAR for heights. Draw or import the <i>noise catchment areas</i>.</li>
+      <li><b>Site.</b> <i>Site and buildings</i>: paste the site coordinates from Google Maps (right-click → click the coordinates), click <b>Go to site</b>, then <b>Fetch OSM buildings</b>. Optionally load a 1 m DEM and LiDAR from ELVIS. Draw or import the <i>noise catchment areas</i>.</li>
       <li><b>Shift.</b> In <i>Shifts</i>, name the activity, pick the time period and enter the dates. Click <b>+ Plant</b> (or press S) and click the map where each item will work. Pick the equipment in <i>Selected</i>.</li>
       <li><b>Results.</b> The first time, click <b>Run this shift</b> (or the status button at the top). After that the results update automatically when you change something. The map colours each building by its worst impact category; hover for the calculation.</li>
       <li><b>More shifts.</b> <b>+ New shift</b> or <b>Duplicate</b>, then change the plant, period or dates. Click a shift chip to switch. <b>Compare &amp; respite</b> runs any shift that is out of date and checks the respite rules – you don't need to click <i>Run all shifts</i> first.</li>
-      <li><b>Outputs.</b> <b>Report</b> makes the printable report for the shift shown; <b>Export CSV</b> gives the property list for the community team. Both may contain addresses.</li>
+      <li><b>Outputs.</b> <b>Create report</b> (Results / Report step) makes the printable report for the shift shown; <b>Export CSV</b> gives the property list for the community team. Both may contain addresses.</li>
     </ol>
     <h3>What the buttons do</h3>
     <table class="gtable">
@@ -2715,7 +2744,7 @@ const DATA = {
  }
 };
 /* ============================== CONSTANTS ============================== */
-const VERSION = '0.10.0';
+const VERSION = '0.11.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
 /* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
    the three bands – the same values and conditions as the TfNSW Construction
@@ -4284,15 +4313,80 @@ function buildHillshade() {
   shadeCtx.putImageData(img, 0, 0);
 }
 
+/* ============================ OSM UNDERLAY ============================= */
+/* OpenStreetMap street map under the model, for bearings only (it plays no
+   part in the calculation). Shown once the project has a real location (MGA
+   origin). Standard OSM tiles (Web Mercator) are drawn onto the MGA view with
+   an affine fit per tile – exact enough at street scale. Tiles come from
+   tile.openstreetmap.org, so the browser asks the OSM servers for the area in
+   view (no addresses or project data are sent). Attribution is shown on the
+   map. Offline or blocked: nothing is drawn, and the log says so once. */
+const TILES = { cache: new Map(), fails: 0, loaded: 0, warned: false, drawn: false, max: 400 };
+const TILE_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+function lon2tx(lon, z) { return (lon + 180) / 360 * Math.pow(2, z); }
+function lat2ty(lat, z) { const r = lat * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z); }
+function tx2lon(x, z) { return x / Math.pow(2, z) * 360 - 180; }
+function ty2lat(y, z) { const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); }
+function tileImg(z, x, y) {
+  const key = z + '/' + x + '/' + y;
+  let t = TILES.cache.get(key);
+  if (t) { t.used = performance.now(); return t; }
+  t = { img: new Image(), ok: false, bad: false, used: performance.now() };
+  t.img.onload = () => { t.ok = true; TILES.loaded++; requestRender(); };
+  t.img.onerror = () => {
+    t.bad = true; TILES.fails++;
+    if (!TILES.warned && TILES.fails >= 3 && !TILES.loaded) { TILES.warned = true; log('OSM street map could not be loaded (offline, or tile.openstreetmap.org is blocked on this network). The model works without it; turn it off under View → Map layers.', 'warn'); }
+  };
+  t.img.src = TILE_URL(z, x, y);
+  TILES.cache.set(key, t);
+  if (TILES.cache.size > TILES.max) {   // forget the least recently used tiles
+    const old = [...TILES.cache.entries()].sort((a, b) => a[1].used - b[1].used).slice(0, TILES.cache.size - TILES.max);
+    for (const [k] of old) TILES.cache.delete(k);
+  }
+  return t;
+}
+function osmUnderlayOn() { const o = state.origin; return UI.layers.osm && !!(o && o.type === 'projected' && o.zone); }
+/* Draws the tiles for the current view. Returns true when anything was drawn. */
+function drawOsmUnderlay() {
+  TILES.drawn = false;
+  if (!osmUnderlayOn()) return false;
+  const v = state.view, c = local2ll(v.cx, v.cy), coslat = Math.cos(c[0] * Math.PI / 180);
+  // zoom where one tile pixel ≈ one screen pixel (×1.4 for sharper text), within OSM's 0–19
+  let z = Math.max(2, Math.min(19, Math.round(Math.log2(156543.034 * coslat * v.scale * 1.4))));
+  const corners = [[0, 0], [cssW, 0], [0, cssH], [cssW, cssH]].map(p => { const w = s2w(p[0], p[1]); return local2ll(w[0], w[1]); });
+  let x0, x1, y0, y1;
+  for (;;) {
+    x0 = Math.floor(Math.min(...corners.map(p => lon2tx(p[1], z)))); x1 = Math.floor(Math.max(...corners.map(p => lon2tx(p[1], z))));
+    y0 = Math.floor(Math.min(...corners.map(p => lat2ty(p[0], z)))); y1 = Math.floor(Math.max(...corners.map(p => lat2ty(p[0], z))));
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) <= 80 || z <= 2) break;
+    z--;
+  }
+  const scr = (tx, ty) => { const l = ll2local(ty2lat(ty, z), tx2lon(tx, z)); return w2s(l[0], l[1]); };
+  ctx.save();
+  ctx.globalAlpha = UI.theme === 'dark' ? 0.55 : 0.6;
+  ctx.filter = UI.theme === 'dark' ? 'invert(1) hue-rotate(180deg) grayscale(0.6)' : 'grayscale(0.7)';
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+    if (ty < 0 || ty >= Math.pow(2, z)) continue;
+    const t = tileImg(z, ((tx % Math.pow(2, z)) + Math.pow(2, z)) % Math.pow(2, z), ty);
+    if (!t.ok) continue;
+    const a = scr(tx, ty), b = scr(tx + 1, ty), d = scr(tx, ty + 1);
+    ctx.setTransform(dpr * (b[0] - a[0]) / 256, dpr * (b[1] - a[1]) / 256, dpr * (d[0] - a[0]) / 256, dpr * (d[1] - a[1]) / 256, dpr * a[0], dpr * a[1]);
+    ctx.drawImage(t.img, 0, 0, 257, 257);   // 1 px overlap hides seams
+    TILES.drawn = true;
+  }
+  ctx.restore();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return TILES.drawn;
+}
 /* ============================ UI PREFERENCES =========================== */
 /* Per-viewer display choices (layout, colours, panels, map layers), kept in
    this browser's localStorage. They are conveniences only: the app works the
    same without them, and they are never saved in the project file. */
-const UI_KEY = 'noise-poc-ui';
+const UI_KEY = 'noise-poc-ui-v2';   // v2: guided layout and the corridor example became the defaults
 const UI = {
-  layout: 'workspace', theme: 'light', compact: false, help: true, auto: true,
+  layout: 'guided', theme: 'light', compact: false, help: true, auto: true, start: 'corridor',
   left: true, right: true, bottom: true, focus: false, rtab: 'Results', btab: 'Data sources', step: 0, probeMin: false, collapsed: [],
-  layers: { heat: true, impact: true, blabels: true, slabels: true, ncas: true, hoard: true, paths: true, legend: true, probe: true, banner: true }
+  layers: { osm: true, heat: true, impact: true, blabels: true, slabels: true, ncas: true, hoard: true, paths: true, legend: true, probe: true, banner: true }
 };
 (function loadPrefs() {
   try {
@@ -4389,6 +4483,10 @@ function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const v = state.view, S = state.settings, T = state.terrain, L = UI.layers;
   ctx.fillStyle = MT.bg; ctx.fillRect(0, 0, cssW, cssH);
+  drawOsmUnderlay();
+  const osmB = state.buildings.some(b => b.osmId);
+  $('attrib').hidden = !(TILES.drawn || osmB);
+  $('attribWhat').textContent = TILES.drawn && osmB ? 'Map and buildings' : TILES.drawn ? 'Map' : 'Buildings';
 
   if (T && S.shade) {
     const [a, b] = w2s(T.x0, T.yTop);
@@ -4486,7 +4584,7 @@ function render() {
   }
 
   // scale bar and north arrow, bottom right above the read-out
-  const sb = niceStep(110 / v.scale), sbPx = sb * v.scale, bx = cssW - sbPx - 60, by = cssH - 66;
+  const sb = niceStep(110 / v.scale), sbPx = sb * v.scale, bx = cssW - sbPx - 60, by = cssH - 94;
   ctx.fillStyle = MT.boxBg; ctx.fillRect(bx - 8, by, sbPx + 58, 26);
   ctx.fillStyle = MT.boxText; ctx.fillRect(bx, by + 18, sbPx, 4);
   ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -5890,14 +5988,14 @@ const LAYOUTS = {
     left: ['card-shifts', 'card-plant', 'card-selection'],
     right: {
       Results: ['card-results', 'card-report', 'card-mapdisplay', 'card-calibration'],
-      Site: ['card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse'],
+      Site: ['card-site', 'card-dem', 'card-lidar', 'card-ncas', 'card-landuse'],
       Method: ['card-model', 'card-assess', 'card-rules', 'card-library', 'card-about']
     }
   },
   guided: {
     label: 'Guided',
     steps: {
-      '1 Site': ['card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse'],
+      '1 Site': ['card-site', 'card-dem', 'card-lidar', 'card-ncas', 'card-landuse'],
       '2 Shifts': ['card-shifts', 'card-plant', 'card-library'],
       '3 Method': ['card-model', 'card-assess', 'card-rules'],
       '4 Results': ['card-results', 'card-mapdisplay', 'card-calibration'],
@@ -5907,7 +6005,7 @@ const LAYOUTS = {
   },
   single: {
     label: 'Single column',
-    left: ['card-shifts', 'card-plant', 'card-selection', 'card-results', 'card-report', 'card-site', 'card-ncas', 'card-dem', 'card-lidar', 'card-landuse',
+    left: ['card-shifts', 'card-plant', 'card-selection', 'card-results', 'card-report', 'card-site', 'card-dem', 'card-lidar', 'card-ncas', 'card-landuse',
       'card-model', 'card-assess', 'card-rules', 'card-library', 'card-mapdisplay', 'card-calibration', 'card-about']
   }
 };
@@ -6015,7 +6113,7 @@ $('btnFocus').addEventListener('click', () => setFocus(!UI.focus));
 $('probeMin').addEventListener('click', () => { UI.probeMin = !UI.probeMin; savePrefs(); applyPanels(); });
 
 /* map layers */
-const LAYER_IDS = [['lyHeat', 'heat'], ['lyImpact', 'impact'], ['lyBLabels', 'blabels'], ['lySLabels', 'slabels'], ['lyNcas', 'ncas'], ['lyHoard', 'hoard'], ['lyPaths', 'paths'], ['lyLegend', 'legend'], ['lyProbe', 'probe'], ['lyBanner', 'banner']];
+const LAYER_IDS = [['lyOsm', 'osm'], ['lyHeat', 'heat'], ['lyImpact', 'impact'], ['lyBLabels', 'blabels'], ['lySLabels', 'slabels'], ['lyNcas', 'ncas'], ['lyHoard', 'hoard'], ['lyPaths', 'paths'], ['lyLegend', 'legend'], ['lyProbe', 'probe'], ['lyBanner', 'banner']];
 for (const [id, k] of LAYER_IDS) $(id).addEventListener('change', e => { UI.layers[k] = e.target.checked; savePrefs(); applyPanels(); });
 function setLayers(on, keys) { for (const k of keys || Object.keys(UI.layers)) UI.layers[k] = on; savePrefs(); applyPanels(); }
 
@@ -6058,12 +6156,26 @@ $('clrDsm').addEventListener('click', () => {
 $('clrLog').addEventListener('click', () => { $('log').innerHTML = ''; log('Log cleared.'); });
 $('clrAll').addEventListener('click', () => {
   if (!ask('Start an empty project? This removes every shift and its plant, all buildings, hoarding, NCAs, terrain, LiDAR and data sources. Model settings and the equipment library are kept.\n\nSave the project first if you need it.')) return;
-  state.sources = []; state.buildings = []; state.hoardings = []; state.ncas = []; state.terrain = null; state.dsm = null; state.calib = null; state.origin = null;
-  state.provenance = []; state.project = { name: '', by: '' }; state.assess.results = null;
+  newProject(); log('New empty project.'); zoomExtents();
+});
+/* Empty project: one empty shift, no geometry, terrain, data sources or location. */
+function newProject(keepOrigin) {
+  state.sources = []; state.buildings = []; state.hoardings = []; state.ncas = []; state.terrain = null; state.dsm = null; state.calib = null;
+  if (!keepOrigin) state.origin = null;
+  state.provenance = []; state.project = { name: '', by: '' }; state.assess.results = null; state.example = null;
   resetShifts('Shift 1'); geomChanged(); select(null); setMode('select');
   updateDemInfo(); renderCalPanel(); syncAssessUI(); syncSettingsUI(); renderShiftPanel(true); updateSiteInfo();
-  $('attrib').hidden = true; log('New empty project.'); zoomExtents();
-});
+  $('attrib').hidden = true;
+}
+/* What the app shows when it opens (File menu). */
+function startScene() {
+  if (['corridor', 'street', 'setback'].includes(UI.start)) buildReferenceExample(UI.start);
+  else if (UI.start === 'empty') { newProject(); log('Empty project.'); }
+  else loadDemo();
+}
+$('uiStart').value = UI.start;
+$('uiStart').addEventListener('change', e => { UI.start = e.target.value; savePrefs(); log(`On start-up: ${e.target.options[e.target.selectedIndex].text}.`); });
+$('uiStart').addEventListener('click', e => e.stopPropagation());
 
 /* quick guide */
 function openGuide(on) { $('guide').hidden = !on; if (on) $('guideClose').focus(); }
@@ -6083,7 +6195,6 @@ document.addEventListener('keydown', e => {
 /* buttons that do the same as another one */
 $('plAdd').addEventListener('click', () => setMode('source'));
 $('ncaDraw').addEventListener('click', () => setMode('nca'));
-$('btnReportCard').addEventListener('click', () => $('btnReport').click());
 $('btnCsvCard').addEventListener('click', () => $('btnCsv').click());
 $('btnSaveCard').addEventListener('click', () => $('btnSave').click());
 $('runState').addEventListener('click', guarded('Run', () => runAssessment()));
@@ -6129,8 +6240,20 @@ function syncPlantList() {
   }));
 }
 
+/* ---- site steps: tick off what has been done ---- */
+function updateSiteSteps() {
+  const real = !!(state.origin && state.origin.zone), osm = state.buildings.some(b => b.osmId), P = state.provenance;
+  const done = { site: real || $('siteLL').value.trim() !== '', go: real, osm, dem: !!state.terrain, lidar: P.some(p => /LiDAR|DSM/.test(p.kind)) };
+  document.querySelectorAll('#card-site li[data-step]').forEach(li => li.classList.toggle('done', !!done[li.dataset.step]));
+  const next = ['site', 'go', 'osm'].find(k => !done[k]);
+  document.querySelectorAll('#card-site li[data-step]').forEach(li => li.classList.toggle('next', li.dataset.step === next));
+  $('exampleNote').hidden = !state.example;
+}
+$('siteLL').addEventListener('input', () => updateSiteSteps());
+
 /* ---- data sources ---- */
 function renderSources() {
+  updateSiteSteps();
   const P = state.provenance;
   $('provList').innerHTML = (P.length ? `<table><thead><tr><th>Data</th><th>Source</th><th>Details</th><th>File date</th><th>Loaded</th></tr></thead><tbody>${P.map(p => `<tr><td>${esc(p.kind)}</td><td>${esc(p.name)}</td><td>${esc(p.detail)}</td><td>${p.fileDate ? esc(p.fileDate.slice(0, 10)) : '–'}</td><td>${p.loaded ? esc(p.loaded.slice(0, 16).replace('T', ' ')) : '–'}</td></tr>`).join('')}</tbody></table>`
     : '<p class="kv muted">No external data loaded yet – buildings, NCAs and terrain drawn or entered here. Loaded files (DEM, LiDAR, DSM, OSM, GeoJSON, NCAs) are listed here with their dates and go into the report.</p>') +
@@ -6817,7 +6940,6 @@ $('fileLaz').addEventListener('change', () => { const f = $('fileLaz').files[0];
 $('setLazShow').addEventListener('change', () => requestRender());
 
 /* ======================= FREE BUILDING DATA (OSM) ====================== */
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
 const OSM_SKIP = new Set(['roof', 'carport', 'no', 'ruins', 'collapsed', 'demolished', 'proposed', 'canopy']);
 const LEVEL_H = 3.0, ROOF_ALLOW = 1.0;
 const TYPE_H = {
@@ -6863,24 +6985,6 @@ function assembleRings(segs) {
   return rings;
 }
 function viewBoxLocal() { const a = s2w(0, 0), b = s2w(cssW, cssH); return [a[0], b[1], b[0], a[1]]; }
-async function fetchOverpass(query) {
-  let lastErr = null;
-  for (const url of OVERPASS) {
-    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
-    try {
-      log(`Overpass: querying ${url.split('/')[2]}…`);
-      const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(query), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
-      clearTimeout(timer);
-      if (!r.ok) { lastErr = new Error(`HTTP ${r.status}${r.status === 429 ? ' (rate limited – wait a minute)' : r.status === 504 ? ' (server busy)' : ''}`); log(`Overpass ${url.split('/')[2]}: ${lastErr.message}`, 'warn'); continue; }
-      return await r.json();
-    } catch (err) {
-      clearTimeout(timer);
-      lastErr = err.name === 'AbortError' ? new Error('timed out after 20 s (likely blocked)') : err;
-      log(`Overpass ${url.split('/')[2]}: ${lastErr.message}${err instanceof TypeError ? ' (blocked by network/proxy, or offline)' : ''}`, 'warn');
-    }
-  }
-  throw lastErr || new Error('no Overpass server responded');
-}
 function osmApiUrl(W, S, E, N) { return `https://api.openstreetmap.org/api/0.6/map?bbox=${W.toFixed(6)},${S.toFixed(6)},${E.toFixed(6)},${N.toFixed(6)}`; }
 async function fetchOsmApi(url) {
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 30000);
@@ -6934,25 +7038,18 @@ async function fetchOsmBuildings() {
   const corners = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]]].map(p => local2ll(p[0], p[1]));
   const S = Math.min(...corners.map(c => c[0])), N = Math.max(...corners.map(c => c[0])), W = Math.min(...corners.map(c => c[1])), E = Math.max(...corners.map(c => c[1]));
   const bbox = [S, W, N, E].map(v => v.toFixed(6)).join(',');
-  const q = `[out:json][timeout:80];(way["building"](${bbox});relation["building"]["type"="multipolygon"](${bbox}););out geom;`;
   osmBusy = true; $('btnOsm').disabled = true; $('busy').textContent = 'Fetching OSM buildings…';
   const t0 = performance.now();
   try {
     log(`Fetching OSM buildings for ${fmt(w, 0)} × ${fmt(h, 0)} m view (bbox ${bbox}).`);
     const apiUrl = osmApiUrl(W, S, E, N);
     state.lastOsmUrl = apiUrl;
-    // Overpass first: the OSM editing API is a fallback (OSMF API usage policy).
-    let data = null;
-    try { data = await fetchOverpass(q); log('Overpass reachable – using it.', 'pass'); }
-    catch (e1) {
-      log(`Overpass: ${e1.message} – trying the OSM API.`, 'warn');
-      data = await fetchOsmApi(apiUrl);
-    }
-    importOsm(data, t0, { name: `Fetched ${new Date().toISOString().slice(0, 10)}, bbox ${bbox}` });
+    const data = await fetchOsmApi(apiUrl);
+    importOsm(data, t0, { name: `OpenStreetMap API, fetched ${new Date().toISOString().slice(0, 10)}, bbox ${bbox}` });
+    log('Next: optionally load terrain (DEM) and LiDAR from ELVIS, then draw or import the noise catchment areas.');
   } catch (err) {
-    log(`OSM fetch FAILED from inside the app – your network blocks these requests. Manual route (works if your browser can open openstreetmap.org): click “Copy OSM download link”, paste it into a new Edge tab, save the file it downloads (“map” → rename to map.osm), then use “Import buildings” and pick that file.`, 'fail');
+    log(`OSM fetch FAILED (${err.message}${err instanceof TypeError ? ' – blocked by the network or proxy, or offline' : ''}). Manual route: click “Copy OSM download link”, paste it into a new Edge tab, save the file it downloads (“map” → rename to map.osm), then use “Import buildings” and pick that file.`, 'fail');
     log(`Download link for this view: ${state.lastOsmUrl}`);
-    console.log('Overpass query (for overpass-turbo.eu):\n' + q);
     $('busy').textContent = 'OSM fetch failed – see log';
   } finally { osmBusy = false; $('btnOsm').disabled = false; }
 }
@@ -7045,14 +7142,19 @@ function goToSite() {
   const lat = +m[1], lon = +m[2];
   if (!(lat >= -45 && lat <= -9 && lon >= 108 && lon <= 160)) { $('siteLL').classList.add('bad'); log('That location is outside Australia (MGA zones 49–56).', 'warn'); return; }
   $('siteLL').classList.remove('bad');
+  if (state.example) {
+    if (!window.confirm('Start your project at this site? The synthetic example (its buildings, hoarding, NCAs and plant) will be cleared.')) { log('Go to site cancelled – the example is still loaded.'); return; }
+    newProject(); log('Example cleared – new project at the site.');
+  }
   const z = (state.origin && state.origin.zone) || zoneOf(lon), p = ll2mga(lat, lon, z);
   const first = !state.origin;
   ensureOrigin(p[0], p[1], null, z, 'site location');
   const loc = ll2local(lat, lon);
-  if (first && state.sources.length && state.buildings.every(b => !b.osmId)) log('Tip: “Clear buildings” removes the demo blocks before you fetch real ones.', 'warn');
-  state.view.cx = loc[0]; state.view.cy = loc[1]; state.view.scale = Math.max(state.view.scale, 2);
-  log(`Moved to site ${lat.toFixed(5)}, ${lon.toFixed(5)} → E ${fmt(p[0] , 1)}, N ${fmt(p[1], 1)}.`);
-  updateSiteInfo(); requestCompute(false);
+  if (first && state.sources.length && state.buildings.length && state.buildings.every(b => !b.osmId)) log('Tip: Clear → Buildings removes the demo blocks before you fetch real ones.', 'warn');
+  // about 600 m across: inside the OSM download limit, wide enough for the nearby receivers
+  state.view.cx = loc[0]; state.view.cy = loc[1]; state.view.scale = Math.min(60, Math.max(0.5, Math.min(cssW, cssH) / 600));
+  log(`Moved to site ${lat.toFixed(5)}, ${lon.toFixed(5)} → E ${fmt(p[0] , 1)}, N ${fmt(p[1], 1)}. Next: Fetch OSM buildings.`);
+  updateSiteInfo(); updateSiteSteps(); requestCompute(false);
 }
 $('btnSite').addEventListener('click', goToSite);
 $('siteLL').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); goToSite(); } });
@@ -7145,6 +7247,7 @@ function readJSONFile(input, cb) {
 function noteSource(kind, name, detail, file) {
   const e = { kind, name: String(name || '').slice(0, 200), detail: String(detail || '').slice(0, 300), loaded: new Date().toISOString(), fileDate: file && file.lastModified ? new Date(file.lastModified).toISOString() : null };
   state.provenance = state.provenance.filter(p => !(p.kind === kind && p.name === e.name)).concat(e);
+  renderSources();
   return e;
 }
 function sourceOut(s) {
@@ -7226,6 +7329,7 @@ readJSONFile($('fileLoad'), (d, name) => {
     const cur = state.shifts[Number.isInteger(d.shift) && state.shifts[d.shift] ? d.shift : 0];
     state.shiftId = cur.id; state.sources = cur.sources; state.settings.period = cur.period; state.settings.season = cur.season;
   } else resetShifts();
+  state.example = null;
   state.project = { name: String((d.project && d.project.name) || '').slice(0, 120), by: String((d.project && d.project.by) || '').slice(0, 120) };
   state.provenance = (Array.isArray(d.provenance) ? d.provenance : []).filter(p => p && typeof p.kind === 'string').slice(0, 200)
     .map(p => ({ kind: p.kind.slice(0, 40), name: String(p.name || '').slice(0, 200), detail: String(p.detail || '').slice(0, 300), loaded: String(p.loaded || '').slice(0, 30), fileDate: p.fileDate ? String(p.fileDate).slice(0, 30) : null }));
@@ -7356,7 +7460,7 @@ function loadDemo() {
   ];
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
   state.sources = [makeSource(0, 0, DEFAULT_EQ)]; state.ncas = []; state.assess.results = null;
-  resetShifts('Demo shift'); state.provenance = [];
+  resetShifts('Demo shift'); state.provenance = []; state.example = null;
   geomChanged(); select(null); renderShiftPanel(true);
   log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
   renderAssessPanel(); updateAssessButtons(); refreshBulkSelects(); requestCompute(false);
@@ -7409,7 +7513,7 @@ function buildReferenceExample(variant) {
   state.sources = REF_PLANT.map(p => Object.assign(makeSource(p.x, p.y, 'custom'), { name: p.name, lw: p.lw, on: p.on, pen: p.pen, mit: 0, h: 2 }));
   Object.assign(state.settings, { period: 'p2night', soft: 0, combine: 'all' });
   state.assess.results = null; state.terrain = null;
-  resetShifts(`Night works – ${variant}`); state.provenance = [{ kind: 'Example', name: `Synthetic inner-city scene (${variant})`, detail: 'Generated in the app – not a real location', loaded: new Date().toISOString(), fileDate: null }];
+  state.example = variant; resetShifts(`Night works – ${variant}`); state.provenance = [{ kind: 'Example', name: `Synthetic inner-city scene (${variant})`, detail: 'Generated in the app – not a real location', loaded: new Date().toISOString(), fileDate: null }];
   geomChanged(); syncSettingsUI(); syncAssessUI(); select(null);
   const desc = { corridor: 'rail corridor behind 2.4 m hoarding, façades 20 m away', street: 'street works, façades 10 m away', setback: 'open works area, façades 37 m away' }[variant];
   log(`Example loaded: inner-city night works (${desc}), ${B.length} buildings, reference-case plant. Synthetic geometry – for comparison only.`);
@@ -7565,7 +7669,7 @@ $('ver').textContent = 'v' + VERSION;
 log(`Noise POC v${VERSION} starting. λ = ${LAMBDA.toFixed(3)} m (${F_BAND} Hz). DecompressionStream: ${typeof DecompressionStream !== 'undefined' ? 'yes' : 'NO'}.`);
 const selftest = selfTest();
 nextId = 1;
-syncSettingsUI(); updateLibInfo(); syncAssessUI(); renderCalPanel(); setMode('select'); loadDemo(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
+syncSettingsUI(); updateLibInfo(); syncAssessUI(); renderCalPanel(); setMode('select'); startScene(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
 if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
 resize();
 requestAnimationFrame(() => zoomExtents());

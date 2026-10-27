@@ -1,5 +1,4 @@
 /* ======================= FREE BUILDING DATA (OSM) ====================== */
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
 const OSM_SKIP = new Set(['roof', 'carport', 'no', 'ruins', 'collapsed', 'demolished', 'proposed', 'canopy']);
 const LEVEL_H = 3.0, ROOF_ALLOW = 1.0;
 const TYPE_H = {
@@ -45,24 +44,6 @@ function assembleRings(segs) {
   return rings;
 }
 function viewBoxLocal() { const a = s2w(0, 0), b = s2w(cssW, cssH); return [a[0], b[1], b[0], a[1]]; }
-async function fetchOverpass(query) {
-  let lastErr = null;
-  for (const url of OVERPASS) {
-    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
-    try {
-      log(`Overpass: querying ${url.split('/')[2]}…`);
-      const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(query), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
-      clearTimeout(timer);
-      if (!r.ok) { lastErr = new Error(`HTTP ${r.status}${r.status === 429 ? ' (rate limited – wait a minute)' : r.status === 504 ? ' (server busy)' : ''}`); log(`Overpass ${url.split('/')[2]}: ${lastErr.message}`, 'warn'); continue; }
-      return await r.json();
-    } catch (err) {
-      clearTimeout(timer);
-      lastErr = err.name === 'AbortError' ? new Error('timed out after 20 s (likely blocked)') : err;
-      log(`Overpass ${url.split('/')[2]}: ${lastErr.message}${err instanceof TypeError ? ' (blocked by network/proxy, or offline)' : ''}`, 'warn');
-    }
-  }
-  throw lastErr || new Error('no Overpass server responded');
-}
 function osmApiUrl(W, S, E, N) { return `https://api.openstreetmap.org/api/0.6/map?bbox=${W.toFixed(6)},${S.toFixed(6)},${E.toFixed(6)},${N.toFixed(6)}`; }
 async function fetchOsmApi(url) {
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 30000);
@@ -116,25 +97,18 @@ async function fetchOsmBuildings() {
   const corners = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]]].map(p => local2ll(p[0], p[1]));
   const S = Math.min(...corners.map(c => c[0])), N = Math.max(...corners.map(c => c[0])), W = Math.min(...corners.map(c => c[1])), E = Math.max(...corners.map(c => c[1]));
   const bbox = [S, W, N, E].map(v => v.toFixed(6)).join(',');
-  const q = `[out:json][timeout:80];(way["building"](${bbox});relation["building"]["type"="multipolygon"](${bbox}););out geom;`;
   osmBusy = true; $('btnOsm').disabled = true; $('busy').textContent = 'Fetching OSM buildings…';
   const t0 = performance.now();
   try {
     log(`Fetching OSM buildings for ${fmt(w, 0)} × ${fmt(h, 0)} m view (bbox ${bbox}).`);
     const apiUrl = osmApiUrl(W, S, E, N);
     state.lastOsmUrl = apiUrl;
-    // Overpass first: the OSM editing API is a fallback (OSMF API usage policy).
-    let data = null;
-    try { data = await fetchOverpass(q); log('Overpass reachable – using it.', 'pass'); }
-    catch (e1) {
-      log(`Overpass: ${e1.message} – trying the OSM API.`, 'warn');
-      data = await fetchOsmApi(apiUrl);
-    }
-    importOsm(data, t0, { name: `Fetched ${new Date().toISOString().slice(0, 10)}, bbox ${bbox}` });
+    const data = await fetchOsmApi(apiUrl);
+    importOsm(data, t0, { name: `OpenStreetMap API, fetched ${new Date().toISOString().slice(0, 10)}, bbox ${bbox}` });
+    log('Next: optionally load terrain (DEM) and LiDAR from ELVIS, then draw or import the noise catchment areas.');
   } catch (err) {
-    log(`OSM fetch FAILED from inside the app – your network blocks these requests. Manual route (works if your browser can open openstreetmap.org): click “Copy OSM download link”, paste it into a new Edge tab, save the file it downloads (“map” → rename to map.osm), then use “Import buildings” and pick that file.`, 'fail');
+    log(`OSM fetch FAILED (${err.message}${err instanceof TypeError ? ' – blocked by the network or proxy, or offline' : ''}). Manual route: click “Copy OSM download link”, paste it into a new Edge tab, save the file it downloads (“map” → rename to map.osm), then use “Import buildings” and pick that file.`, 'fail');
     log(`Download link for this view: ${state.lastOsmUrl}`);
-    console.log('Overpass query (for overpass-turbo.eu):\n' + q);
     $('busy').textContent = 'OSM fetch failed – see log';
   } finally { osmBusy = false; $('btnOsm').disabled = false; }
 }
@@ -227,14 +201,19 @@ function goToSite() {
   const lat = +m[1], lon = +m[2];
   if (!(lat >= -45 && lat <= -9 && lon >= 108 && lon <= 160)) { $('siteLL').classList.add('bad'); log('That location is outside Australia (MGA zones 49–56).', 'warn'); return; }
   $('siteLL').classList.remove('bad');
+  if (state.example) {
+    if (!window.confirm('Start your project at this site? The synthetic example (its buildings, hoarding, NCAs and plant) will be cleared.')) { log('Go to site cancelled – the example is still loaded.'); return; }
+    newProject(); log('Example cleared – new project at the site.');
+  }
   const z = (state.origin && state.origin.zone) || zoneOf(lon), p = ll2mga(lat, lon, z);
   const first = !state.origin;
   ensureOrigin(p[0], p[1], null, z, 'site location');
   const loc = ll2local(lat, lon);
-  if (first && state.sources.length && state.buildings.every(b => !b.osmId)) log('Tip: “Clear buildings” removes the demo blocks before you fetch real ones.', 'warn');
-  state.view.cx = loc[0]; state.view.cy = loc[1]; state.view.scale = Math.max(state.view.scale, 2);
-  log(`Moved to site ${lat.toFixed(5)}, ${lon.toFixed(5)} → E ${fmt(p[0] , 1)}, N ${fmt(p[1], 1)}.`);
-  updateSiteInfo(); requestCompute(false);
+  if (first && state.sources.length && state.buildings.length && state.buildings.every(b => !b.osmId)) log('Tip: Clear → Buildings removes the demo blocks before you fetch real ones.', 'warn');
+  // about 600 m across: inside the OSM download limit, wide enough for the nearby receivers
+  state.view.cx = loc[0]; state.view.cy = loc[1]; state.view.scale = Math.min(60, Math.max(0.5, Math.min(cssW, cssH) / 600));
+  log(`Moved to site ${lat.toFixed(5)}, ${lon.toFixed(5)} → E ${fmt(p[0] , 1)}, N ${fmt(p[1], 1)}. Next: Fetch OSM buildings.`);
+  updateSiteInfo(); updateSiteSteps(); requestCompute(false);
 }
 $('btnSite').addEventListener('click', goToSite);
 $('siteLL').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); goToSite(); } });

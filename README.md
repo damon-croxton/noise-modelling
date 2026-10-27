@@ -9,11 +9,18 @@ A construction noise screening and planning tool for Transport for NSW (TfNSW) p
 Open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is inside that one file.
 
 A typical OOHW assessment:
-1. **Site:** load buildings (OSM), optionally terrain and LiDAR heights, and the NCAs (*Site* tab).
+1. **Site:** the app opens on a synthetic rail-corridor example in the guided layout, at step 1 *Site*.
+   1. In Google Maps, right-click the project location and click the coordinates at the top of the menu to copy them, then paste them into the app.
+   2. Click **Go to site**. The example is cleared and an OSM street map appears under the model for your bearings.
+   3. Click **Fetch OSM buildings**.
+   4. Optional: a 1 m DEM from the [ELVIS portal](https://elevation.fsdf.org.au/) adds the ground profile.
+   5. Optional: LiDAR (.laz) from ELVIS improves building heights.
+
+   Then draw or import the noise catchment areas.
 2. **Shift:** in *Shifts*, set the name, time period and dates, then click **+ Plant** and click the map for each item.
 3. **Run:** click **Run this shift** once. After that, results update automatically when something changes.
 4. **Check:** look at the map and the property table. **Compare & respite** covers several shifts; it runs any shift that is out of date.
-5. **Outputs:** **Report** gives the printable report for the approval pack; **Export CSV** gives the list for the community team.
+5. **Outputs:** **Create report** (Results tab / Report step) gives the printable report for the approval pack; **Export CSV** gives the list for the community team.
 
 *? Guide* in the app explains every button.
 
@@ -22,14 +29,15 @@ A typical OOHW assessment:
   - **Workspace:** shifts and plant on the left, results, site and method in tabs on the right, data sources and log at the bottom;
   - **Guided:** numbered steps;
   - **Single column**.
-- *View* also sets the colours (light, dark, high contrast) and the map layers.
+- *View* also sets the colours (light, dark, high contrast) and the map layers, including the OSM street-map underlay.
+- *File → On start-up show* picks what opens first: an example, the small demo or an empty project.
 - *Clear* tidies the screen or removes things from the project.
 - **F** shows the map only.
 
 The report and CSV list properties and may contain addresses. Keep them on approved storage.
 
 - **Terrain:** DEM as GeoTIFF, ESRI ASCII or XYZ (GDA94 / GDA2020 MGA). Files in another MGA zone are resampled into the scenario zone.
-- **Buildings:** OpenStreetMap footprints, fetched live or imported from `.osm` / GeoJSON files. Heights come from public LiDAR (`.laz` / `.las`) or a DSM.
+- **Buildings:** OpenStreetMap footprints, fetched from the OSM API or imported from `.osm` / GeoJSON files. Heights come from public LiDAR (`.laz` / `.las`) or a DSM.
 - **Sources:** picked from the equipment library (CNVG-PTI Appendix C Table 19 plus the TfNSW estimator plant list), each with % time on, annoyance penalty, mitigation and height.
 - **Two prediction methods:**
   - *TfNSW estimator basis* (default) reconciles with the TfNSW Construction Noise Estimator.
@@ -41,7 +49,7 @@ The report and CSV list properties and may contain addresses. Keep them on appro
 
 ## Status
 
-Version 0.10.0 is a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
+Version 0.11.0 makes the site set-up a numbered procedure, fetches footprints from the OSM API only (Overpass removed), opens on the rail-corridor example in the guided layout, and adds an OSM street-map underlay. Version 0.10.0 was a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
 - shifts within one project, with batch run and comparison;
 - respite tracking against the CNVG-PTI respite-period rule;
 - a printable report with maps, the disclaimer, data sources and height sources.

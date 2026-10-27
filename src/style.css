@@ -196,3 +196,19 @@
     #tools { justify-content: flex-start; }
     #probeBox { width: calc(100% - 16px); top: auto; bottom: 70px; max-height: 45%; }
   }
+
+  /* ---- procedural steps (Site) ---- */
+  ol.proc { margin: 2px 0 4px; padding-left: 0; list-style: none; counter-reset: step; }
+  ol.proc[start="4"] { counter-reset: step 3; }
+  ol.proc > li { counter-increment: step; position: relative; padding: 6px 6px 6px 32px; margin: 3px 0; border: 1px solid var(--line); border-radius: 6px; line-height: 1.4; font-size: var(--fs-s); }
+  ol.proc > li::before { content: counter(step); position: absolute; left: 7px; top: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--panel2); border: 1px solid var(--border); text-align: center; line-height: 17px; font-size: 11px; font-weight: 600; }
+  ol.proc > li.done::before { content: '✓'; background: var(--ok); border-color: var(--ok); color: #fff; }
+  ol.proc > li.next { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  ol.proc > li.next::before { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  ol.proc .row input[type=text] { width: 100%; }
+  ol.proc code { font: 11px Consolas, monospace; background: var(--panel2); padding: 0 3px; border-radius: 3px; }
+  .proc-h { margin: 8px 0 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .note { font-size: var(--fs-s); background: var(--hint-bg); border-left: 3px solid var(--accent); padding: 5px 8px; border-radius: 3px; margin: 0 0 6px; line-height: 1.4; }
+  .help a, ol.proc a { color: var(--accent); }
+  #steps { flex-wrap: nowrap; gap: 0; padding-left: 6px; }
+  #steps button { padding: 5px 7px; white-space: nowrap; font-size: 12px; }

@@ -25,8 +25,9 @@ async function open(browser) {
   page.on('pageerror', e => page._errors.push(e.message));
   // app log lines marked 'fail' are echoed to console.error with a [noise-poc] prefix; tests assert on those explicitly
   page.on('console', m => { const t = m.text(); if (m.type() === 'error' && !t.startsWith('[noise-poc]') && !page._allowed.some(re => re.test(t))) page._errors.push(t); });
-  // UI preferences: default layout, and no automatic re-runs (tests run the assessment explicitly)
-  await page.addInitScript(() => { try { if (!localStorage.getItem('noise-poc-ui')) localStorage.setItem('noise-poc-ui', JSON.stringify({ auto: false })); } catch (e) {} });
+  // UI preferences for tests: the workspace layout and the small demo (the scene the tests were written
+  // against), no automatic re-runs (tests run the assessment explicitly) and no map tiles (no network)
+  await page.addInitScript(() => { try { if (!localStorage.getItem('noise-poc-ui-v2')) localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: false } })); } catch (e) {} });
   // controls live in menus, tabs and folded cards: bring each one into view before using it, as a user would
   for (const m of ['click', 'fill', 'selectOption', 'check', 'uncheck', 'hover']) {
     const orig = page[m].bind(page);
