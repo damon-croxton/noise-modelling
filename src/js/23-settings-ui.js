@@ -7,6 +7,7 @@ $('setTerr').addEventListener('change', e => { state.settings.terrain = e.target
 $('setShade').addEventListener('change', e => { state.settings.shade = e.target.checked; requestRender(); });
 $('setAir').addEventListener('change', e => { state.settings.air = e.target.checked; requestCompute(false); });
 $('setLat').addEventListener('change', e => { state.settings.lateral = e.target.checked; log(`Side diffraction ${e.target.checked ? 'ON' : 'OFF'}.`); requestCompute(false); });
+$('setBands').addEventListener('change', e => { state.settings.bands = e.target.checked; log(`Octave-band calculation ${e.target.checked ? 'ON (ISO 9613-2, 63 Hz – 8 kHz, source spectra)' : 'OFF (A-weighted, 500 Hz)'}.`); requestCompute(false); });
 $('setRefl').addEventListener('change', e => { state.settings.reflect = e.target.value; log(`Façade reflections: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
 bindNum($('setReflLoss'), 0, 10, v => { state.settings.reflLoss = v; });
 const METHOD_NOTES = {
@@ -16,7 +17,7 @@ const METHOD_NOTES = {
 function onMethodChange() {
   const iso = state.settings.method === 'iso';
   $('methodNote').textContent = METHOD_NOTES[state.settings.method];
-  $('rowBarCap').hidden = iso;
+  $('rowBarCap').hidden = iso; $('rowBands').hidden = !iso;
 }
 $('setMethod').addEventListener('change', e => { state.settings.method = e.target.value; onMethodChange(); log(`Method: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
 $('setPeriod').addEventListener('change', e => { state.settings.period = e.target.value; log(`Time period: ${PERIODS[e.target.value]}.`); requestCompute(false); });
@@ -33,7 +34,7 @@ $('setOp').addEventListener('input', e => { state.settings.opacity = parseFloat(
 function syncSettingsUI() {
   const S = state.settings;
   $('setBar').checked = S.barriers; $('setTerr').checked = S.terrain; $('setShade').checked = S.shade; $('setAir').checked = S.air; $('setLat').checked = S.lateral !== false;
-  $('setRefl').value = S.reflect || 'auto'; $('setReflLoss').value = S.reflLoss == null ? 1 : S.reflLoss;
+  $('setBands').checked = !!S.bands; $('setRefl').value = S.reflect || 'auto'; $('setReflLoss').value = S.reflLoss == null ? 1 : S.reflLoss;
   $('setMethod').value = S.method; $('setPeriod').value = S.period; $('setSeason').value = S.season;
   $('setSoft').value = Math.round(S.soft * 100); $('setCombine').value = S.combine; $('setBarCap').value = S.barCap; onMethodChange();
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;

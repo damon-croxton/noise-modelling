@@ -86,6 +86,42 @@ module.exports = [
     }
   },
   {
+    name: 'octave bands: ISO only; source spectrum auto / preset / custom; probe shows bands; round trip',
+    async run({ page, assert }) {
+      await placeSource(page);
+      assert.ok(await page.locator('#rowBands').isHidden(), 'octave option hidden on the TfNSW basis');
+      await page.selectOption('#setMethod', 'iso');
+      assert.ok(await page.locator('#rowBands').isVisible());
+      await page.check('#setBands');
+      await page.selectOption('#sEq', 't19-saw-concrete');
+      assert.ok((await page.textContent('#sSpec')).includes('Auto – Impact'), 'SAC item defaults to the impact spectrum');
+      await page.selectOption('#sSpec', 'engine');
+      await page.selectOption('#sSpec', 'custom');
+      await page.fill('#sSpecC', 'oops');
+      await page.locator('#sSpecC').dispatchEvent('change');
+      assert.ok(await page.locator('#sSpecC.bad').count(), 'invalid spectrum flagged');
+      await page.fill('#sSpecC', '80, 88, 93, 96, 96, 94, 90, 83');
+      await page.locator('#sSpecC').dispatchEvent('change');
+      const s = await page.evaluate(() => { const st = window.__noise.state; return st.sources[st.sources.length - 1]; });
+      assert.deepStrictEqual(s.spec, [80, 88, 93, 96, 96, 94, 90, 83]);
+      const box = await page.locator('#map').boundingBox();
+      await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6);
+      await page.waitForFunction(() => /Octave bands \(Custom/.test(document.getElementById('probe').innerText));
+      const t = await page.textContent('#probe');
+      for (const k of ['63', '8k', 'octave bands 63 Hz – 8 kHz', 'ISO 9613-1 per band']) assert.ok(t.includes(k), `missing ${k}: ${t}`);
+      const d = await saveScenario(page);
+      assert.strictEqual(d.settings.bands, true);
+      assert.deepStrictEqual(d.sources[d.sources.length - 1].spec, [80, 88, 93, 96, 96, 94, 90, 83]);
+      d.sources.push(Object.assign({}, d.sources[0], { name: 'bad spec', spec: [1, 2] }));
+      await page.setInputFiles('#fileLoad', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(d)) });
+      const log = await page.waitForFunction(() => /Loaded b\.json/.test(document.getElementById('log').innerText)).then(() => page.textContent('#log'));
+      const r = await page.evaluate(() => window.__noise.state.sources.map(s => s.spec || null));
+      assert.deepStrictEqual(r[r.length - 2], [80, 88, 93, 96, 96, 94, 90, 83]);
+      assert.strictEqual(r[r.length - 1], null);
+      assert.ok(/bad spec.*spectrum ignored/.test(log), 'bad spectrum reported');
+    }
+  },
+  {
     name: 'v0.4 scenario: ground and numeric equipment index migrate, bad settings ignored',
     async run({ page, assert }) {
       const v04 = {

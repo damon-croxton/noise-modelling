@@ -139,6 +139,30 @@ module.exports = [
     }
   },
   {
+    name: 'pre-screen with reflections and octave bands (ISO) never hides an exceedance',
+    async run({ page, assert }) {
+      const B = [];
+      for (let k = 0; k < 8; k++) { B.push({ pts: rect(-80 + k * 20, 8, -66 + k * 20, 20), h: 6 + (k % 3) * 6 }); B.push({ pts: rect(-80 + k * 20, -20, -66 + k * 20, -8), h: 9 }); }
+      for (let k = 0; k < 10; k++) B.push({ pts: rect(-500 + k * 100, 1500, -480 + k * 100, 1515), h: 12 });
+      await scene(page, { buildings: B, sources: [{ x: 0, y: 0, lw: 95 }, { x: 30, y: 2, lw: 90, on: 50 }], settings: { method: 'iso', reflect: 'on', bands: true, soft: 0.5, period: 'p2night' } });
+      const R = await run(page);
+      const bad = await page.evaluate(() => {
+        const N = window.__noise, st = N.state, T = N._t, out = [];
+        N.prep(st.sources);
+        for (const r of st.assess.results.receivers) {
+          const b = st.buildings.find(x => x.id === r.bId), fp = T.facadePoints(b, st.assess.spacing, st.assess.offset);
+          let best = -Infinity;
+          for (const p of fp.pts) { let e = 0; for (const s of st.sources) e += Math.pow(10, N.contrib(s, p.x, p.y, st.settings, st.buildings, false, null, r.z) / 10); best = Math.max(best, 10 * Math.log10(e)); }
+          if (r.Leq != null ? Math.abs(best - r.Leq) > 1e-6 : best >= r.nml) out.push([r.id, r.Leq, best, r.nml]);
+        }
+        return out;
+      });
+      assert.ok(R.stats.bound > 0, 'expected some points screened out by distance');
+      assert.ok(R.receivers.some(r => r.exc > 0), 'expected exceedances in the canyon');
+      assert.deepStrictEqual(bad, []);
+    }
+  },
+  {
     name: 'NCA drawn on the map sets the NML of buildings inside it',
     async run({ page, assert }) {
       await scene(page, {

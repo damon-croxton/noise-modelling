@@ -84,6 +84,32 @@ function selfTest() {
     check('Reflection: 1.2 m wide column too small (eq. 19), none', contrib(src, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
     state.buildings = []; geomChanged();
 
+    // Octave bands (ISO 9613-2, S.bands). Air: ISO 9613-1 against the
+    // estimator's 250/500/1k values and ISO 9613-2 Table 2 (20 °C, 70 %).
+    for (const [se, pe] of [['warm', 'std'], ['warm', 'p2night'], ['cool', 'std'], ['cool', 'p2night']]) {
+      const a = airBands({ season: se, period: pe });
+      check(`ISO 9613-1 air, mean of 250/500/1k = estimator (${se} ${pe === 'std' ? 'day' : 'night'})`, (a[2] + a[3] + a[4]) / 3, airAlpha({ season: se, period: pe }), 0.01);
+    }
+    [0.1, 0.3, 1.1, 2.8, 5.0, 9.0, 22.9, 76.6].forEach((v, k) => check(`ISO 9613-1 air ${OCT_F[k]} Hz, 20 °C 70 % (ISO 9613-2 Table 2)`, airIso(OCT_FM[k], 20, 70), v, Math.max(0.05, Math.round(v * 10) / 1000)));
+    check('Generic spectra sum to 0 dB', Math.max(...Object.values(SPECTRA).map(v => Math.abs(10 * Math.log10(v.rel.reduce((a, x) => a + Math.pow(10, x / 10), 0))))), 0, 1e-9);
+    const SB = Object.assign({}, S0, { bands: true }), pinkSrc = Object.assign({}, src, { spec: 'pink' }), pk = SPECTRA.pink.rel;
+    prep([pinkSrc]);
+    const bandSum = f => 10 * Math.log10(OCT_F.reduce((a, _, k) => a + Math.pow(10, (105 + pk[k] - f(k)) / 10), 0));
+    check('Octave bands, hard ground: same as single band', contrib(pinkSrc, 200, 0, SB, [], false), contrib(pinkSrc, 200, 0, S0, [], false), 0.01);
+    const agrSoft = [-3.3, 1.4499, 12.146, 8.6002, 1.1413, 0, 0, 0];   // Table 3, G = 1, hs = hr = 1.5 m, dp = 100 m (hand calculation)
+    check('Octave bands, soft ground 100 m (ISO 9613-2 Table 3)', contrib(pinkSrc, 100, 0, Object.assign({}, SB, { soft: 1 }), [], false), bandSum(k => 20 * Math.log10(100) + 11 + agrSoft[k]), 0.01);
+    state.hoardings = [makeHoarding([[5, -50], [5, 50]], 2.4, 'test hoarding')]; prep([pinkSrc]);
+    const zH = Math.hypot(5, 0.9) + Math.hypot(45, 0.9) - 50, kmH = Math.exp(-(1 / 2000) * Math.sqrt(Math.hypot(5, 0.9) * Math.hypot(45, 0.9) * 50 / (2 * zH)));
+    check('Octave bands, 2.4 m hoarding @ 5 m: Dz per band', contrib(pinkSrc, 50, 0, Object.assign({}, SB, { lateral: false }), [], false),
+      bandSum(k => 20 * Math.log10(50) + 11 + Math.min(20, 10 * Math.log10(3 + (20 * OCT_FM[k] / C_AIR) * zH * kmH))), 0.01);
+    state.hoardings = [];
+    state.buildings = [makeBuilding(rect(13.5, 10, 16.5, 10.2), 10, '3 m column')]; geomChanged(); prep([pinkSrc]);
+    const dI = Math.hypot(30, 20, 0);
+    check('Octave bands: 3 m column reflects only at 4 and 8 kHz (eq. 19)', contrib(pinkSrc, 30, 0, Object.assign({}, SB, { reflect: 'on' }), state.buildings, false),
+      10 * Math.log10(OCT_F.reduce((a, _, k) => a + Math.pow(10, (105 + pk[k] - (20 * Math.log10(30) + 11) + 3) / 10) + (k >= 6 ? Math.pow(10, (105 + pk[k] - (20 * Math.log10(dI) + 11) + 3 - 1) / 10) : 0), 0)), 0.01);
+    check('Single band: the same column does not reflect at 500 Hz', contrib(pinkSrc, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
+    state.buildings = []; geomChanged();
+
     const mkT = (fn) => { const w = 121, h = 41, z = new Float32Array(w * h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) z[j * w + i] = fn(i - 10, 20 - j); return { w, h, cx: 1, cy: 1, x0: -10.5, yTop: 20.5, z, zmin: 0, zmax: 0 }; };
     state.terrain = mkT(() => 30); prep([src]);
     check('Flat terrain RL 30 = flat ground', contrib(src, 50, 0, S0, [], false), 105 - (20 * Math.log10(50) + 11) + 3, 0.01);

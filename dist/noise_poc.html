@@ -27,6 +27,7 @@
   .row > label { flex: 1; }
   .row input[type=number], .row input[type=text], .row select { width: 150px; font: inherit; padding: 3px 5px; border: 1px solid #c3c9d3; border-radius: 3px; }
   .row input.bad { border-color: #dc2626; background: #fef2f2; }
+  [hidden] { display: none !important; }
   .chk { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
   .hint { color: #374151; background: #f3f6fb; border-left: 3px solid #1d4ed8; padding: 5px 7px; margin: 6px 0 0; font-size: 12px; }
   .muted { color: #6b7280; margin: 0; }
@@ -38,6 +39,7 @@
   #probe th, #probe td { text-align: right; padding: 2px 3px; border-bottom: 1px solid #eef0f3; }
   #probe th:first-child, #probe td:first-child { text-align: left; }
   #probe .note td { color: #6b7280; text-align: left; font-size: 10.5px; }
+  #probe table.bands { margin-top: 2px; } #probe table.bands td, #probe table.bands th { padding: 0 3px; text-align: right; font-size: 10px; }
   #probe .tot { font-weight: 600; font-size: 13px; margin-top: 4px; }
   #log { font-family: Consolas, monospace; font-size: 10.5px; background: #0f172a; color: #d1e7ff; padding: 6px; height: 200px; overflow: auto; white-space: pre-wrap; margin: 0; border-radius: 4px; }
   #log .pass { color: #86efac; } #log .fail { color: #fca5a5; } #log .warn { color: #fde68a; }
@@ -166,6 +168,7 @@
       <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
       <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
       <label class="chk"><input type="checkbox" id="setLat" checked> Side diffraction around buildings and hoarding ends</label>
+      <label class="chk" id="rowBands"><input type="checkbox" id="setBands"> Octave bands 63 Hz – 8 kHz (source spectra)</label>
       <div class="row"><label for="setRefl">Façade reflections (first order)</label>
         <select id="setRefl"><option value="auto">Auto (ISO only)</option><option value="on">On</option><option value="off">Off</option></select></div>
       <div class="row"><label for="setReflLoss">Reflection loss (dB)</label><input type="number" id="setReflLoss" min="0" max="10" step="0.5" value="1"></div>
@@ -2438,6 +2441,27 @@ const AIR_ATTEN = {
   warm: { day: [1.04, 2.77, 5.15], night: [1.07, 2.4, 4.15] },
   cool: { day: [1.13, 2.36, 4.08], night: [0.897, 1.64, 3.8] }
 };
+/* The same conditions as [°C, % RH], for the ISO 9613-1 formula in octave-band mode. */
+const AIR_COND = { warm: { day: [20, 80], night: [15, 80] }, cool: { day: [15, 70], night: [5, 70] } };
+/* Octave bands 63 Hz – 8 kHz: nominal and exact mid-band frequencies, and the
+   A-weighting at each (IEC 61672-1). */
+const OCT_F = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
+const OCT_FM = OCT_F.map((f, k) => 1000 * Math.pow(10, (3 * k - 12) / 10));
+const A_WEIGHT = [-26.2, -16.1, -8.6, -3.2, 0, 1.2, 1.0, -1.1];
+/* Generic source spectra for octave-band mode, as A-weighted band levels
+   relative to the overall A-weighted Lw (normalised to sum to 0 dB). They are
+   indicative shapes, not measurements: use a measured or manufacturer's
+   spectrum (source panel → Custom) where one exists. */
+const SPECTRA = {
+  engine: { name: 'Diesel plant (engine-dominated)', rel: [-19, -12, -7, -4, -4, -6, -10, -17] },
+  impact: { name: 'Impact / percussive tools', rel: [-27, -19, -12, -7, -4, -3, -5, -10] },
+  pink: { name: 'Pink noise (equal energy per octave)', rel: A_WEIGHT.slice() }
+};
+function normSpectrum(rel) {
+  const t = 10 * Math.log10(rel.reduce((a, x) => a + Math.pow(10, x / 10), 0));
+  return rel.map(x => x - t);
+}
+for (const k in SPECTRA) SPECTRA[k].rel = normSpectrum(SPECTRA[k].rel);
 /* CONCAWE ground attenuation for meteorological category 4 (neutral), cubic
    fits in log10(d) at 250 / 500 / 1000 Hz, each including the +3 dB correction
    the TfNSW estimator applies so they sit on top of hemispherical spreading. */
@@ -2476,7 +2500,7 @@ const state = {
     defNca: { name: 'Outside NCAs', cat: DEFAULT_NCA_CAT, rbl: { day: null, evening: null, night: null } },
     floorH: 3, spacing: 10, offset: 1, display: 'both', results: null, sig: null, running: false
   },
-  settings: { method: 'tfnsw', lateral: true, reflect: 'auto', reflLoss: 1, combine: 'all', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
+  settings: { method: 'tfnsw', lateral: true, reflect: 'auto', reflLoss: 1, bands: false, combine: 'all', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
 };
 let nextId = 1, grid = null;
 
@@ -2635,6 +2659,15 @@ function makeSource(x, y, libId) {
    flat −3 dB for plant running under 7 min in 15 (10·lg(7/15) = −3.3). */
 function onTimeCorr(s) { return 10 * Math.log10(Math.max(1, Math.min(100, s.on == null ? 100 : s.on)) / 100); }
 function effectiveLw(s) { return s.lw + onTimeCorr(s) + (s.pen || 0) - (s.mit || 0); }
+/* Spectrum for octave-band mode: the source's own (a SPECTRA key, or eight
+   A-weighted band levels 63 Hz – 8 kHz, used as a shape), else its library
+   item's, else engine or impact by the item's special audible characteristics. */
+function validSpec(v) { return (Array.isArray(v) && v.length === 8 && v.every(x => typeof x === 'number' && isFinite(x) && Math.abs(x) <= 200)) || (typeof v === 'string' && !!SPECTRA[v]); }
+function sourceSpectrum(s) {
+  const pick = v => (!validSpec(v) ? null : Array.isArray(v) ? { key: 'custom', name: 'Custom', rel: normSpectrum(v) } : Object.assign({ key: v }, SPECTRA[v]));
+  const it = libItem(s.eq), def = it.sac ? 'impact' : 'engine';
+  return pick(s.spec) || pick(it.spec) || Object.assign({ key: def, auto: true }, SPECTRA[def]);
+}
 function lwBreakdown(s) {
   const parts = [`Lw ${fmt(s.lw, 1)}`];
   if (s.on != null && s.on < 100) parts.push(`${fmt(onTimeCorr(s), 1)} (${fmt(s.on, 0)} % on)`);
@@ -2838,6 +2871,10 @@ function screening(src, rx, ry, d2, zs, zr, S, buildings, detail) {
    screening cap on the TfNSW basis) is applied once to the result. Capping each
    path first would make a long wall screen less than a short one. */
 function combineDz(r, lambda) {
+  r.raw = dzRaw(r, lambda);
+  return Math.min(r.raw, r.cap);
+}
+function dzRaw(r, lambda) {
   const t = r.top;
   let raw = dzPath(t.delta, t.n, t.e, t.Kmet, lambda, Infinity);
   if (r.lat && r.lat.length) {
@@ -2845,14 +2882,48 @@ function combineDz(r, lambda) {
     for (const l of r.lat) e += Math.pow(10, -dzPath(l.delta, l.n, l.e, 1, lambda, Infinity) / 10);
     raw = -10 * Math.log10(e);
   }
-  r.raw = raw;
-  return Math.min(raw, r.cap);
+  return raw;
 }
 
 /* Air absorption coefficient (dB/km) for the season and time period. */
 function airAlpha(S) {
   const t = (AIR_ATTEN[S.season] || AIR_ATTEN.warm)[S.period === 'p2night' ? 'night' : 'day'];
   return (t[0] + t[1] + t[2]) / 3;
+}
+/* ISO 9613-1 pure-tone air absorption (dB/km) at frequency f for t °C and
+   rh % relative humidity, standard pressure. At the exact mid-band
+   frequencies it gives the estimator's 250 / 500 / 1000 Hz values above. */
+function airIso(f, t, rh) {
+  const T = t + 273.15, T0 = 293.15, h = rh * Math.pow(10, -6.8346 * Math.pow(273.16 / T, 1.261) + 4.6151);
+  const frO = 24 + 4.04e4 * h * (0.02 + h) / (0.391 + h);
+  const frN = Math.pow(T / T0, -0.5) * (9 + 280 * h * Math.exp(-4.170 * (Math.pow(T / T0, -1 / 3) - 1)));
+  return 8686 * f * f * (1.84e-11 * Math.sqrt(T / T0) + Math.pow(T / T0, -2.5) *
+    (0.01275 * Math.exp(-2239.1 / T) / (frO + f * f / frO) + 0.1068 * Math.exp(-3352 / T) / (frN + f * f / frN)));
+}
+const _airB = new Map();
+function airBands(S) {
+  const key = S.season + (S.period === 'p2night' ? 'n' : 'd');
+  let a = _airB.get(key);
+  if (!a) { const c = (AIR_COND[S.season] || AIR_COND.warm)[S.period === 'p2night' ? 'night' : 'day']; a = OCT_FM.map(f => airIso(f, c[0], c[1])); _airB.set(key, a); }
+  return a;
+}
+/* ISO 9613-2 §7.3.1 general method, per octave band (Table 3): source,
+   receiver and middle regions, all with G = fraction of soft ground. With
+   G = 0 every band gives −3 − 3q, the same as the single-band hard case. */
+function groundBands(S, dp, hs, hr, out) {
+  const G = Math.max(0, Math.min(1, S.soft || 0)), e50 = 1 - Math.exp(-dp / 50);
+  const q = dp <= 30 * (hs + hr) ? 0 : 1 - 30 * (hs + hr) / dp;
+  const region = (h, k) => {
+    if (k === 0) return -1.5;
+    if (k >= 5) return -1.5 * (1 - G);
+    const f = k === 1 ? 1.5 + 3 * Math.exp(-0.12 * (h - 5) * (h - 5)) * e50 + 5.7 * Math.exp(-0.09 * h * h) * (1 - Math.exp(-2.8e-6 * dp * dp))
+      : k === 2 ? 1.5 + 8.6 * Math.exp(-0.09 * h * h) * e50
+        : k === 3 ? 1.5 + 14 * Math.exp(-0.46 * h * h) * e50
+          : 1.5 + 5 * Math.exp(-0.9 * h * h) * e50;
+    return -1.5 + G * f;
+  };
+  for (let k = 0; k < 8; k++) out[k] = region(hs, k) + region(hr, k) + (k === 0 ? -3 * q : -3 * q * (1 - G));
+  return out;
 }
 /* CONCAWE category-4 ground attenuation for fully soft ground, mean of the
    250 / 500 / 1000 Hz fits, each floored at 0 (as in the TfNSW estimator). */
@@ -2915,23 +2986,59 @@ function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
   const hs = src.h, hr = Math.max(0, zr - zg), zs = src._z;
   const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
   const d = Math.max(Math.hypot(d2, zs - zr), 1);
-  let { Adiv, Aatm, Agr, Domega } = pathTerms(S, d2, d, hs, hr);
-  let Abar = 0, bar = null;
-  if ((S.barriers && (buildings.length || state.hoardings.length)) || (S.terrain && state.terrain)) {
+  let bar = null;
+  if ((S.barriers && (buildings.length || state.hoardings.length)) || (S.terrain && state.terrain))
     bar = screening(src, rx, ry, d2, zs, zr, S, buildings, detail);
-    if (bar) {
-      if (iso) Abar = Math.max(0, bar.Dz - Agr);
-      else { Abar = bar.Dz; Agr = groundUnderScreening(Agr, Abar); }
-    }
+  const Lw = src._lw != null ? src._lw : src.lw, bands = iso && S.bands;
+  const refl = reflectionsOn(S) ? reflections(src, rx, ry, zs, zr, bands ? OCT_FM[7] : F_BAND) : null;
+  if (bands) return contribBands(src, d2, d, hs, hr, zr, bar, refl, Lw, S, detail);
+  let { Adiv, Aatm, Agr, Domega } = pathTerms(S, d2, d, hs, hr);
+  let Abar = 0;
+  if (bar) {
+    if (iso) Abar = Math.max(0, bar.Dz - Agr);
+    else { Abar = bar.Dz; Agr = groundUnderScreening(Agr, Abar); }
   }
-  const Lw = src._lw != null ? src._lw : src.lw;
   const Ldir = Lw + Domega - Adiv - Aatm - Agr - Abar;
-  let Lp = Ldir, refl = null;
-  if (reflectionsOn(S)) {
-    refl = reflections(src, rx, ry, zs, zr, hs, hr, Lw, S);
-    if (refl.length) { let e = Math.pow(10, Ldir / 10); for (const f of refl) e += Math.pow(10, f.Lp / 10); Lp = 10 * Math.log10(e); }
+  let Lp = Ldir;
+  if (refl && refl.length) {
+    const loss = S.reflLoss == null ? 1 : S.reflLoss;
+    let e = Math.pow(10, Ldir / 10);
+    for (const f of refl) { const T = pathTerms(S, f.d2, f.d, hs, hr); f.Lp = Lw + T.Domega - T.Adiv - T.Aatm - T.Agr - loss; e += Math.pow(10, f.Lp / 10); }
+    Lp = 10 * Math.log10(e);
   }
   return detail ? { Lp, Ldir, Lw, d, Adiv, Aatm, Agr, Abar, Domega, bar, zr, refl } : Lp;
+}
+
+/* Octave-band evaluation (ISO 9613-2 only, S.bands): the path geometry above
+   is evaluated in each band from 63 Hz to 8 kHz with ISO 9613-1 air absorption,
+   the general ground method (Table 3, no DΩ), Dz at the band's wavelength (same
+   caps), and reflections from walls large enough at that frequency (eq. 19).
+   The source's A-weighted spectrum (src._spec, relative to Lw) spreads Lw over
+   the bands; the A-weighted bands are summed. */
+const _gB = new Array(8), _gR = new Array(8);
+function contribBands(src, d2, d, hs, hr, zr, bar, refl, Lw, S, detail) {
+  const air = airBands(S), spec = src._spec || SPECTRA.engine.rel, loss = S.reflLoss == null ? 1 : S.reflLoss;
+  const Adiv = 20 * Math.log10(d) + 11, gB = groundBands(S, Math.max(d2, 1), hs, hr, _gB);
+  const rows = detail ? [] : null;
+  let eDir = 0, eTot = 0;
+  if (refl) for (const f of refl) { f.gr = groundBands(S, Math.max(f.d2, 1), hs, hr, []); f.Lp = -Infinity; f._e = 0; }
+  for (let k = 0; k < 8; k++) {
+    const Lk = Lw + spec[k], Aatm = S.air ? air[k] * d / 1000 : 0, Agr = gB[k];
+    const Dz = bar ? Math.min(dzRaw(bar, C_AIR / OCT_FM[k]), bar.cap) : 0, Abar = bar ? Math.max(0, Dz - Agr) : 0;
+    const Ld = Lk - Adiv - Aatm - Agr - Abar;
+    let e = Math.pow(10, Ld / 10), er = 0;
+    if (refl) for (const f of refl) {
+      if (f.fmin >= OCT_FM[k]) continue;                                  // wall too small at this frequency
+      const Lr = Lk - (20 * Math.log10(f.d) + 11) - (S.air ? air[k] * f.d / 1000 : 0) - f.gr[k] - loss, x = Math.pow(10, Lr / 10);
+      er += x; f._e += x;
+    }
+    eDir += e; eTot += e + er;
+    if (rows) rows.push({ f: OCT_F[k], Lw: Lk, Aatm, Agr, Dz, Abar, Ldir: Ld, Lp: 10 * Math.log10(e + er) });
+  }
+  const Lp = 10 * Math.log10(eTot);
+  if (!detail) return Lp;
+  if (refl) for (const f of refl) { f.Lp = f._e > 0 ? 10 * Math.log10(f._e) : -Infinity; delete f.gr; delete f._e; }
+  return { Lp, Ldir: 10 * Math.log10(eDir), Lw, d, Adiv, Aatm: null, Agr: null, Abar: null, Domega: 0, bar, zr, refl: refl && refl.filter(f => f.Lp > -Infinity), bands: rows };
 }
 
 /* ---------------- first-order reflections (image sources) ---------------- */
@@ -2960,9 +3067,10 @@ function clearLeg(x0, y0, z0, x1, y1, z1, skip, src) {
    receiver are both in front of it, the reflection point lies on the wall and
    below its top, the wall is large enough for the wavelength (eq. 19), and
    both legs have a clear line of sight. The façade the receiver stands in
-   front of (within OWN_FACADE m) is left out, so levels stay free-field. Each
-   reflection is an image source with the path's own spreading, air and ground
-   terms, less the reflection loss S.reflLoss (dB).
+   front of (within OWN_FACADE m) is left out, so levels stay free-field.
+   Returns the image paths that reflect below fmax; the caller gives each one
+   the path's own spreading, air and ground terms, less the reflection loss
+   S.reflLoss (dB).
    Per source, the walls facing it and their image sources are cached
    (src._walls, rebuilt when the building index changes), and the buildings
    near the receiver are found once for all sources. */
@@ -2986,8 +3094,8 @@ function sourceWalls(src, b) {
   src._walls[b._ix] = W;
   return W;
 }
-function reflections(src, rx, ry, zs, zr, hs, hr, Lw, S) {
-  const out = [], loss = S.reflLoss == null ? 1 : S.reflLoss, mark = ++reflMark;
+function reflections(src, rx, ry, zs, zr, fmax) {
+  const out = [], mark = ++reflMark;
   // the receiver's own building(s): any wall within OWN_FACADE m
   for (const b of buildingsNear(rx, ry, OWN_FACADE, _own)) {
     const P = b.pts;
@@ -3009,10 +3117,12 @@ function reflections(src, rx, ry, zs, zr, hs, hr, Lw, S) {
       if (pz >= top) continue;                                            // passes over the wall
       const h2s = Math.hypot(px - src.x, py - src.y), dso = Math.hypot(h2s, pz - zs), dor = Math.hypot(rx - px, ry - py, zr - pz);
       const cosb = w.ds / h2s, lmin = Math.min(w.L, top - b.base);
-      if (1 / LAMBDA <= (2 / Math.pow(lmin * cosb, 2)) * (dso * dor / (dso + dor))) continue;   // ISO 9613-2 eq. 19
+      // ISO 9613-2 eq. 19: reflects when 1/λ > (2 / (lmin·cos β)²)·(dso·dor / (dso + dor)), i.e. above fmin
+      const fmin = C_AIR * (2 / Math.pow(lmin * cosb, 2)) * (dso * dor / (dso + dor));
+      if (fmin >= fmax) continue;
       if (!clearLeg(src.x, src.y, zs, px, py, pz, b, src) || !clearLeg(px, py, pz, rx, ry, zr, b, src)) continue;
-      const d2 = Math.hypot(rx - w.ix, ry - w.iy), d = Math.max(Math.hypot(d2, zs - zr), 1), T = pathTerms(S, d2, d, hs, hr);
-      out.push({ p: [px, py], z: pz, d, b: b.id, Lp: Lw + T.Domega - T.Adiv - T.Aatm - T.Agr - loss });
+      const d2 = Math.hypot(rx - w.ix, ry - w.iy);
+      out.push({ p: [px, py], z: pz, d2, d: Math.max(Math.hypot(d2, zs - zr), 1), b: b.id, fmin });
     }
   };
   // the same receiver point is usually asked for every source in turn
@@ -3028,6 +3138,7 @@ function prep(sources) {
     if (b) for (const c of state.buildings) if (inBox(s.x, s.y, c.bbox) && pip(s.x, s.y, c.pts)) s._inside.add(c.id);
     s._z = ground(s.x, s.y) + s.h;
     s._lw = effectiveLw(s);
+    s._spec = sourceSpectrum(s).rel;
   }
 }
 
@@ -3230,7 +3341,7 @@ function inputsSignature() {
   let h = 5381;
   const add = v => { const s = String(v); for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; h = ((h * 33) ^ 124) >>> 0; };
   [S.method, S.soft, S.season, S.period, S.barCap, S.air, S.barriers, S.terrain, S.combine, S.lateral, S.reflect, S.reflLoss, S.bands, A.floorH, A.spacing, A.offset, JSON.stringify(A.defNca), RULES.id, state.rulesEdited ? JSON.stringify(RULES).length : 0, state.terrain ? state.terrain.name : ''].forEach(add);
-  for (const s of state.sources) [r2(s.x), r2(s.y), s.h, s.lw, s.on, s.pen, s.mit].forEach(add);
+  for (const s of state.sources) [r2(s.x), r2(s.y), s.h, s.lw, s.on, s.pen, s.mit, s.eq, JSON.stringify(s.spec || null)].forEach(add);
   for (const b of state.buildings) { [b.id, r2(b.h), r2(b.base), b.landUse, b.floors].forEach(add); for (const p of b.pts) { add(r2(p[0])); add(r2(p[1])); } }
   for (const ho of state.hoardings) { add(ho.h); for (const p of ho.pts) { add(r2(p[0])); add(r2(p[1])); } }
   for (const n of state.ncas) { [n.cat, JSON.stringify(n.rbl)].forEach(add); for (const p of n.pts) { add(r2(p[0])); add(r2(p[1])); } }
@@ -3252,7 +3363,9 @@ async function runAssessment() {
   const t0 = performance.now();
   try {
     prep(srcs); idx();
-    const K = S.method === 'iso' ? 5 : 8;   // largest possible gain over 20·lg d (ISO: hard-ground −6 dB Agr)
+    // largest possible gain over 20·lg d (ISO: hard-ground −6 dB Agr); with reflections, room for up to
+    // nine first-order reflections each as strong as the direct path (10 dB) – real ones are weaker
+    const K = (S.method === 'iso' ? 5 : 8) - (reflectionsOn(S) ? 10 : 0);
     const receivers = [], byBuilding = new Map();
     let nPts = 0, nExact = 0, nBound = 0, party = 0, noFacade = 0, skipped = 0, last = performance.now();
     for (let bi = 0; bi < B.length; bi++) {
@@ -4069,26 +4182,33 @@ function updateProbe() {
     const r = contrib(s, wx, wy, S, B, true, gr);
     e += Math.pow(10, r.Lp / 10);
     paths.push({ s, r });
-    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
+    const bt = v => (r.bands ? '<span class="muted">bands</span>' : fmt(v));
+    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${bt(r.Aatm)}</td><td>${bt(r.Agr)}</td><td>${bt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
     let note = `${lwBreakdown(s)} · src RL ${fmt(s._z, 1)} · rcv RL ${fmt(r.zr, 1)}${r.Domega ? ` · DΩ +${fmt(r.Domega)}` : ''}`;
     if (r.bar) {
       const k = r.bar.kinds, parts = [];
       if (k.terrain) parts.push(k.terrain + ' terrain'); if (k.building) parts.push(k.building + ' building'); if (k.hoarding) parts.push(k.hoarding + ' hoarding');
-      note += ` · over the top: ${parts.join(', ')} edge(s), δ ${fmt(r.bar.delta, 2)} m, Dz ${fmt(r.bar.top.Dz)}`;
+      note += ` · over the top: ${parts.join(', ')} edge(s), δ ${fmt(r.bar.delta, 2)} m, Dz ${fmt(r.bar.top.Dz)}${r.bands ? ' at 500 Hz' : ''}`;
       if (r.bar.lat && r.bar.lat.length) note += ` · side paths: ${r.bar.lat.map(l => `${l.n} edge(s), δ ${fmt(l.delta, 1)} m, Dz ${fmt(l.Dz)}`).join('; ')}`;
       else if (S.lateral !== false) note += r.bar.terrainEdge ? ' · no side paths (terrain in the path)' : ' · no side paths (receiver or source enclosed)';
-      note += ` · combined Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ` (capped at ${fmt(r.bar.cap, 0)})` : ''}`;
+      note += ` · combined Dz ${fmt(r.bar.Dz)}${r.bands ? ' at 500 Hz' : ''}${r.bar.capped ? ` (capped at ${fmt(r.bar.cap, 0)})` : ''}`;
     } else note += ' · line of sight';
     if (r.refl) note += r.refl.length
       ? ` · reflections: ${r.refl.map(f => `${esc((state.buildings.find(b => b.id === f.b) || {}).name || 'building')} ${fmt(f.Lp)}`).join(', ')} (loss ${fmt(S.reflLoss == null ? 1 : S.reflLoss)} dB each); direct ${fmt(r.Ldir)} → total ${fmt(r.Lp)} (+${fmt(r.Lp - r.Ldir)})`
       : ' · no reflecting façade';
+    if (r.bands) {
+      const sp = sourceSpectrum(s), hz = f => (f < 1000 ? f : f / 1000 + 'k');
+      note += `<br>Octave bands (${esc(sp.name)}${sp.auto ? ', auto' : ''}; A<sub>div</sub> ${fmt(r.Adiv)} in every band):<table class="bands"><tr><th>Hz</th>${r.bands.map(b => `<th>${hz(b.f)}</th>`).join('')}</tr>` +
+        [['L<sub>w</sub>(A)', 'Lw'], ['A<sub>atm</sub>', 'Aatm'], ['A<sub>gr</sub>', 'Agr'], ['D<sub>z</sub>', 'Dz'], ['A<sub>bar</sub>', 'Abar'], ['L<sub>p</sub>', 'Lp']]
+          .map(([h, k]) => `<tr><td>${h}</td>${r.bands.map(b => `<td>${fmt(b[k])}</td>`).join('')}</tr>`).join('') + '</table>';
+    }
     rows += `<tr class="note"><td colspan="8">${note}</td></tr>`;
   }
   const L = 10 * Math.log10(e);
-  const basis = S.method === 'iso' ? 'ISO 9613-2: A<sub>div</sub> = 20·lg d + 11' : 'TfNSW estimator basis: A<sub>div</sub> = 20·lg d + 8';
+  const basis = S.method === 'iso' ? `ISO 9613-2: A<sub>div</sub> = 20·lg d + 11${S.bands ? ', octave bands 63 Hz – 8 kHz' : ''}` : 'TfNSW estimator basis: A<sub>div</sub> = 20·lg d + 8';
   el.innerHTML = `<table><tr><th>Source</th><th>L<sub>w</sub></th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>atm</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>${rows}</table>
     <div class="tot">Total: ${fmt(L)} dB(A) L<sub>Aeq,15min</sub> <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>
-    <p class="kv muted">${basis} · ${PERIODS[S.period]} · air ${S.air ? fmt(airAlpha(S), 2) + ' dB/km' : 'off'} · ${Math.round(S.soft * 100)} % soft ground</p>`;
+    <p class="kv muted">${basis} · ${PERIODS[S.period]} · air ${!S.air ? 'off' : S.method === 'iso' && S.bands ? 'ISO 9613-1 per band' : fmt(airAlpha(S), 2) + ' dB/km'} · ${Math.round(S.soft * 100)} % soft ground</p>`;
   $('hud').textContent = `${hud} · ${fmt(L)} dB(A)`;
   drawProbePaths(paths, wx, wy);
 }
@@ -4143,6 +4263,9 @@ function renderSelPanel() {
       <div class="row"><label for="sPen">Annoyance penalty (dB)</label><input type="number" id="sPen" min="0" max="10" step="1" value="${o.pen}"></div>
       <div class="row"><label for="sMit">Mitigation reduction (dB)</label><input type="number" id="sMit" min="0" max="30" step="0.5" value="${o.mit}"></div>
       <div class="row"><label for="sH">Height above ground (m)</label><input type="number" id="sH" min="0" max="200" step="0.5" value="${o.h}"></div>
+      <div class="row"><label for="sSpec">Spectrum (octave-band mode)</label><select id="sSpec"></select></div>
+      <div class="row" id="sSpecRow"><label for="sSpecC">A-weighted band levels 63 Hz – 8 kHz (8 values, shape only)</label><input type="text" id="sSpecC" placeholder="e.g. 80, 88, 93, 96, 96, 94, 90, 83"></div>
+      <p class="kv muted" id="sSpecInfo"></p>
       <p class="kv" id="sInfo"></p>
       <p class="kv">${coordText(o.x, o.y)} · ground RL ${fmt(ground(o.x, o.y), 2)}</p>
       <div class="row"><button type="button" id="sToLib">Save as library item</button><button type="button" id="sDel" class="danger">Delete</button></div>`;
@@ -4159,6 +4282,7 @@ function renderSelPanel() {
       const it = libItem(e.target.value); o.eq = it.id; state.lastEq = it.id;
       o.lw = it.lw; o.pen = it.sac ? SAC_PENALTY : 0; $('sLw').value = o.lw; $('sPen').value = o.pen;
       if (it.id !== 'custom') { o.name = it.name.replace(/ \(.*\)$/, ''); $('sName').value = o.name; }
+      specUI();
       log(`Source ${o.id} → ${it.name} (Lw ${o.lw}${o.pen ? ', +' + o.pen + ' dB penalty' : ''}).`); info(); requestCompute(false);
     });
     bindNum($('sLw'), 40, 150, v => { o.lw = v; info(); if (overMax(o) != null) log(`“${o.name}”: Lw ${v} is above the CNVG-PTI Appendix C maximum (${overMax(o)} dB(A)).`, 'warn'); });
@@ -4166,6 +4290,27 @@ function renderSelPanel() {
     bindNum($('sPen'), 0, 10, v => { o.pen = v; info(); });
     bindNum($('sMit'), 0, 30, v => { o.mit = v; info(); });
     bindNum($('sH'), 0, 200, v => { o.h = v; });
+    const specUI = () => {
+      const sp = sourceSpectrum(o), auto = SPECTRA[sourceSpectrum({ eq: o.eq }).key].name, sel = Array.isArray(o.spec) ? 'custom' : o.spec || 'auto';
+      $('sSpec').innerHTML = `<option value="auto">Auto – ${esc(auto)}</option>` + Object.entries(SPECTRA).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join('') + '<option value="custom">Custom (measured / manufacturer)</option>';
+      $('sSpec').value = sel; $('sSpecRow').hidden = sel !== 'custom';
+      if (Array.isArray(o.spec) && document.activeElement !== $('sSpecC')) $('sSpecC').value = o.spec.join(', ');
+      $('sSpecInfo').textContent = `Relative to Lw, dB(A): ${OCT_F.map((f, k) => `${f < 1000 ? f : f / 1000 + 'k'} ${fmt(sp.rel[k], 1)}`).join(' · ')}. ` +
+        (state.settings.method === 'iso' && state.settings.bands ? 'Used by the octave-band calculation.' : 'Only used with ISO 9613-2 and octave bands on (Model).') + (sp.key === 'custom' ? '' : ' Indicative shape – not a measurement.');
+    };
+    specUI();
+    $('sSpec').addEventListener('change', e => {
+      const v = e.target.value;
+      if (v === 'auto') delete o.spec; else if (v !== 'custom') o.spec = v;
+      else { $('sSpecRow').hidden = false; $('sSpecC').focus(); return; }
+      log(`Source ${o.id}: spectrum ${sourceSpectrum(o).name}.`); specUI(); requestCompute(false);
+    });
+    $('sSpecC').addEventListener('change', e => {
+      const v = e.target.value.split(/[\s,;]+/).filter(Boolean).map(Number);
+      const ok = validSpec(v); e.target.classList.toggle('bad', !ok);
+      if (!ok) { log('Spectrum needs 8 numbers (A-weighted dB, 63 Hz to 8 kHz).', 'warn'); return; }
+      o.spec = v; log(`Source ${o.id}: custom spectrum ${v.join(', ')} (shape only; overall level stays Lw).`); specUI(); requestCompute(false);
+    });
     $('sToLib').addEventListener('click', () => saveSourceToLibrary(o));
     $('sDel').addEventListener('click', deleteSel);
   } else if (s.type === 'building') {
@@ -4348,6 +4493,7 @@ $('setTerr').addEventListener('change', e => { state.settings.terrain = e.target
 $('setShade').addEventListener('change', e => { state.settings.shade = e.target.checked; requestRender(); });
 $('setAir').addEventListener('change', e => { state.settings.air = e.target.checked; requestCompute(false); });
 $('setLat').addEventListener('change', e => { state.settings.lateral = e.target.checked; log(`Side diffraction ${e.target.checked ? 'ON' : 'OFF'}.`); requestCompute(false); });
+$('setBands').addEventListener('change', e => { state.settings.bands = e.target.checked; log(`Octave-band calculation ${e.target.checked ? 'ON (ISO 9613-2, 63 Hz – 8 kHz, source spectra)' : 'OFF (A-weighted, 500 Hz)'}.`); requestCompute(false); });
 $('setRefl').addEventListener('change', e => { state.settings.reflect = e.target.value; log(`Façade reflections: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
 bindNum($('setReflLoss'), 0, 10, v => { state.settings.reflLoss = v; });
 const METHOD_NOTES = {
@@ -4357,7 +4503,7 @@ const METHOD_NOTES = {
 function onMethodChange() {
   const iso = state.settings.method === 'iso';
   $('methodNote').textContent = METHOD_NOTES[state.settings.method];
-  $('rowBarCap').hidden = iso;
+  $('rowBarCap').hidden = iso; $('rowBands').hidden = !iso;
 }
 $('setMethod').addEventListener('change', e => { state.settings.method = e.target.value; onMethodChange(); log(`Method: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
 $('setPeriod').addEventListener('change', e => { state.settings.period = e.target.value; log(`Time period: ${PERIODS[e.target.value]}.`); requestCompute(false); });
@@ -4374,7 +4520,7 @@ $('setOp').addEventListener('input', e => { state.settings.opacity = parseFloat(
 function syncSettingsUI() {
   const S = state.settings;
   $('setBar').checked = S.barriers; $('setTerr').checked = S.terrain; $('setShade').checked = S.shade; $('setAir').checked = S.air; $('setLat').checked = S.lateral !== false;
-  $('setRefl').value = S.reflect || 'auto'; $('setReflLoss').value = S.reflLoss == null ? 1 : S.reflLoss;
+  $('setBands').checked = !!S.bands; $('setRefl').value = S.reflect || 'auto'; $('setReflLoss').value = S.reflLoss == null ? 1 : S.reflLoss;
   $('setMethod').value = S.method; $('setPeriod').value = S.period; $('setSeason').value = S.season;
   $('setSoft').value = Math.round(S.soft * 100); $('setCombine').value = S.combine; $('setBarCap').value = S.barCap; onMethodChange();
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
@@ -4404,6 +4550,7 @@ function updateLibInfo() {
 function saveSourceToLibrary(o) {
   const id = 'prj-' + o.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
   const base = libItem(o.eq), item = { id, name: o.name, lw: o.lw, sac: (o.pen || 0) > 0, group: 'Project' };
+  if (o.spec) item.spec = o.spec;
   if (base && base.maxLw != null) item.maxLw = base.maxLw;
   const k = LIBRARY.findIndex(e => e.id === id);
   if (k >= 0) LIBRARY[k] = item; else LIBRARY.push(item);
@@ -4421,6 +4568,7 @@ function cleanLibrary(items) {
     ids.add(e.id);
     const it = { id: e.id.slice(0, 60), name: e.name.slice(0, 60), lw, sac: !!e.sac, group: typeof e.group === 'string' ? e.group.slice(0, 40) : 'Project' };
     const mx = num(e.maxLw, 40, 150); if (mx !== null) it.maxLw = mx;
+    if (e.spec != null && validSpec(e.spec)) it.spec = Array.isArray(e.spec) ? e.spec.slice() : e.spec;
     out.push(it);
   }
   if (!out.some(e => e.id === 'custom')) out.push({ id: 'custom', name: 'Custom', lw: 100, sac: false, group: 'Custom' });
@@ -5855,7 +6003,7 @@ $('btnSave').addEventListener('click', () => {
   const data = {
     app: 'noise-poc', version: VERSION, saved: new Date().toISOString(), origin: state.origin,
     dem: state.terrain ? state.terrain.name : null, settings: state.settings, view: state.view,
-    sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, on: s.on, pen: s.pen, mit: s.mit, h: s.h, x: s.x, y: s.y })),
+    sources: state.sources.map(s => Object.assign({ name: s.name, eq: s.eq, lw: s.lw, on: s.on, pen: s.pen, mit: s.mit, h: s.h, x: s.x, y: s.y }, s.spec ? { spec: s.spec } : {})),
     library: state.libraryEdited ? LIBRARY : undefined,
     buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype,
       tags: b.tags || undefined, landUse: b.landUse || undefined, luSrc: b.landUse ? b.luSrc : undefined, floors: b.floors ?? undefined, address: b.address || undefined, pts: b.pts })),
@@ -5889,7 +6037,7 @@ function sanitizeSettings(raw, cur) {
   const oneOf = (...vals) => v => vals.includes(v);
   const bool = v => typeof v === 'boolean';
   pick('method', oneOf('tfnsw', 'iso')); pick('combine', oneOf('all', 'estimator')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
-  pick('reflect', oneOf('auto', 'on', 'off')); pick('reflLoss', inR(0, 10));
+  pick('reflect', oneOf('auto', 'on', 'off')); pick('bands', bool); pick('reflLoss', inR(0, 10));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
   pick('air', bool); pick('lateral', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
   pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
@@ -5940,6 +6088,7 @@ readJSONFile($('fileLoad'), (d, name) => {
     if (typeof s.eq === 'string' && o.eq !== s.eq) log(`Source “${s.name}”: library item “${s.eq}” not found – kept its saved level as Custom.`, 'warn');
     o.name = String(s.name || o.name).slice(0, 40); o.lw = num(s.lw, 40, 150) ?? o.lw; o.h = num(s.h, 0, 200) ?? 1.5;
     o.on = num(s.on, 1, 100) ?? 100; o.pen = num(s.pen, 0, 10) ?? (typeof s.eq === 'string' ? o.pen : 0); o.mit = num(s.mit, 0, 30) ?? 0;
+    if (s.spec != null) { if (validSpec(s.spec)) o.spec = Array.isArray(s.spec) ? s.spec.slice() : s.spec; else log(`Source “${o.name}”: spectrum ignored (expected a preset name or 8 band levels).`, 'warn'); }
     return o;
   });
   state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null,
@@ -6208,6 +6357,32 @@ function selfTest() {
     check('Reflection: wall lower than the path, none', contrib(src, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
     state.buildings = [makeBuilding(rect(14.4, 10, 15.6, 10.2), 10, 'column')]; geomChanged(); prep([src]);
     check('Reflection: 1.2 m wide column too small (eq. 19), none', contrib(src, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
+    state.buildings = []; geomChanged();
+
+    // Octave bands (ISO 9613-2, S.bands). Air: ISO 9613-1 against the
+    // estimator's 250/500/1k values and ISO 9613-2 Table 2 (20 °C, 70 %).
+    for (const [se, pe] of [['warm', 'std'], ['warm', 'p2night'], ['cool', 'std'], ['cool', 'p2night']]) {
+      const a = airBands({ season: se, period: pe });
+      check(`ISO 9613-1 air, mean of 250/500/1k = estimator (${se} ${pe === 'std' ? 'day' : 'night'})`, (a[2] + a[3] + a[4]) / 3, airAlpha({ season: se, period: pe }), 0.01);
+    }
+    [0.1, 0.3, 1.1, 2.8, 5.0, 9.0, 22.9, 76.6].forEach((v, k) => check(`ISO 9613-1 air ${OCT_F[k]} Hz, 20 °C 70 % (ISO 9613-2 Table 2)`, airIso(OCT_FM[k], 20, 70), v, Math.max(0.05, Math.round(v * 10) / 1000)));
+    check('Generic spectra sum to 0 dB', Math.max(...Object.values(SPECTRA).map(v => Math.abs(10 * Math.log10(v.rel.reduce((a, x) => a + Math.pow(10, x / 10), 0))))), 0, 1e-9);
+    const SB = Object.assign({}, S0, { bands: true }), pinkSrc = Object.assign({}, src, { spec: 'pink' }), pk = SPECTRA.pink.rel;
+    prep([pinkSrc]);
+    const bandSum = f => 10 * Math.log10(OCT_F.reduce((a, _, k) => a + Math.pow(10, (105 + pk[k] - f(k)) / 10), 0));
+    check('Octave bands, hard ground: same as single band', contrib(pinkSrc, 200, 0, SB, [], false), contrib(pinkSrc, 200, 0, S0, [], false), 0.01);
+    const agrSoft = [-3.3, 1.4499, 12.146, 8.6002, 1.1413, 0, 0, 0];   // Table 3, G = 1, hs = hr = 1.5 m, dp = 100 m (hand calculation)
+    check('Octave bands, soft ground 100 m (ISO 9613-2 Table 3)', contrib(pinkSrc, 100, 0, Object.assign({}, SB, { soft: 1 }), [], false), bandSum(k => 20 * Math.log10(100) + 11 + agrSoft[k]), 0.01);
+    state.hoardings = [makeHoarding([[5, -50], [5, 50]], 2.4, 'test hoarding')]; prep([pinkSrc]);
+    const zH = Math.hypot(5, 0.9) + Math.hypot(45, 0.9) - 50, kmH = Math.exp(-(1 / 2000) * Math.sqrt(Math.hypot(5, 0.9) * Math.hypot(45, 0.9) * 50 / (2 * zH)));
+    check('Octave bands, 2.4 m hoarding @ 5 m: Dz per band', contrib(pinkSrc, 50, 0, Object.assign({}, SB, { lateral: false }), [], false),
+      bandSum(k => 20 * Math.log10(50) + 11 + Math.min(20, 10 * Math.log10(3 + (20 * OCT_FM[k] / C_AIR) * zH * kmH))), 0.01);
+    state.hoardings = [];
+    state.buildings = [makeBuilding(rect(13.5, 10, 16.5, 10.2), 10, '3 m column')]; geomChanged(); prep([pinkSrc]);
+    const dI = Math.hypot(30, 20, 0);
+    check('Octave bands: 3 m column reflects only at 4 and 8 kHz (eq. 19)', contrib(pinkSrc, 30, 0, Object.assign({}, SB, { reflect: 'on' }), state.buildings, false),
+      10 * Math.log10(OCT_F.reduce((a, _, k) => a + Math.pow(10, (105 + pk[k] - (20 * Math.log10(30) + 11) + 3) / 10) + (k >= 6 ? Math.pow(10, (105 + pk[k] - (20 * Math.log10(dI) + 11) + 3 - 1) / 10) : 0), 0)), 0.01);
+    check('Single band: the same column does not reflect at 500 Hz', contrib(pinkSrc, 30, 0, SR, state.buildings, false), isoHard(30), 0.01);
     state.buildings = []; geomChanged();
 
     const mkT = (fn) => { const w = 121, h = 41, z = new Float32Array(w * h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) z[j * w + i] = fn(i - 10, 20 - j); return { w, h, cx: 1, cy: 1, x0: -10.5, yTop: 20.5, z, zmin: 0, zmax: 0 }; };

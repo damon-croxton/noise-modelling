@@ -9,6 +9,27 @@ const AIR_ATTEN = {
   warm: { day: [1.04, 2.77, 5.15], night: [1.07, 2.4, 4.15] },
   cool: { day: [1.13, 2.36, 4.08], night: [0.897, 1.64, 3.8] }
 };
+/* The same conditions as [°C, % RH], for the ISO 9613-1 formula in octave-band mode. */
+const AIR_COND = { warm: { day: [20, 80], night: [15, 80] }, cool: { day: [15, 70], night: [5, 70] } };
+/* Octave bands 63 Hz – 8 kHz: nominal and exact mid-band frequencies, and the
+   A-weighting at each (IEC 61672-1). */
+const OCT_F = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
+const OCT_FM = OCT_F.map((f, k) => 1000 * Math.pow(10, (3 * k - 12) / 10));
+const A_WEIGHT = [-26.2, -16.1, -8.6, -3.2, 0, 1.2, 1.0, -1.1];
+/* Generic source spectra for octave-band mode, as A-weighted band levels
+   relative to the overall A-weighted Lw (normalised to sum to 0 dB). They are
+   indicative shapes, not measurements: use a measured or manufacturer's
+   spectrum (source panel → Custom) where one exists. */
+const SPECTRA = {
+  engine: { name: 'Diesel plant (engine-dominated)', rel: [-19, -12, -7, -4, -4, -6, -10, -17] },
+  impact: { name: 'Impact / percussive tools', rel: [-27, -19, -12, -7, -4, -3, -5, -10] },
+  pink: { name: 'Pink noise (equal energy per octave)', rel: A_WEIGHT.slice() }
+};
+function normSpectrum(rel) {
+  const t = 10 * Math.log10(rel.reduce((a, x) => a + Math.pow(10, x / 10), 0));
+  return rel.map(x => x - t);
+}
+for (const k in SPECTRA) SPECTRA[k].rel = normSpectrum(SPECTRA[k].rel);
 /* CONCAWE ground attenuation for meteorological category 4 (neutral), cubic
    fits in log10(d) at 250 / 500 / 1000 Hz, each including the +3 dB correction
    the TfNSW estimator applies so they sit on top of hemispherical spreading. */

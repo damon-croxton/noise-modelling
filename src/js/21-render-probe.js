@@ -135,26 +135,33 @@ function updateProbe() {
     const r = contrib(s, wx, wy, S, B, true, gr);
     e += Math.pow(10, r.Lp / 10);
     paths.push({ s, r });
-    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
+    const bt = v => (r.bands ? '<span class="muted">bands</span>' : fmt(v));
+    rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${bt(r.Aatm)}</td><td>${bt(r.Agr)}</td><td>${bt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
     let note = `${lwBreakdown(s)} · src RL ${fmt(s._z, 1)} · rcv RL ${fmt(r.zr, 1)}${r.Domega ? ` · DΩ +${fmt(r.Domega)}` : ''}`;
     if (r.bar) {
       const k = r.bar.kinds, parts = [];
       if (k.terrain) parts.push(k.terrain + ' terrain'); if (k.building) parts.push(k.building + ' building'); if (k.hoarding) parts.push(k.hoarding + ' hoarding');
-      note += ` · over the top: ${parts.join(', ')} edge(s), δ ${fmt(r.bar.delta, 2)} m, Dz ${fmt(r.bar.top.Dz)}`;
+      note += ` · over the top: ${parts.join(', ')} edge(s), δ ${fmt(r.bar.delta, 2)} m, Dz ${fmt(r.bar.top.Dz)}${r.bands ? ' at 500 Hz' : ''}`;
       if (r.bar.lat && r.bar.lat.length) note += ` · side paths: ${r.bar.lat.map(l => `${l.n} edge(s), δ ${fmt(l.delta, 1)} m, Dz ${fmt(l.Dz)}`).join('; ')}`;
       else if (S.lateral !== false) note += r.bar.terrainEdge ? ' · no side paths (terrain in the path)' : ' · no side paths (receiver or source enclosed)';
-      note += ` · combined Dz ${fmt(r.bar.Dz)}${r.bar.capped ? ` (capped at ${fmt(r.bar.cap, 0)})` : ''}`;
+      note += ` · combined Dz ${fmt(r.bar.Dz)}${r.bands ? ' at 500 Hz' : ''}${r.bar.capped ? ` (capped at ${fmt(r.bar.cap, 0)})` : ''}`;
     } else note += ' · line of sight';
     if (r.refl) note += r.refl.length
       ? ` · reflections: ${r.refl.map(f => `${esc((state.buildings.find(b => b.id === f.b) || {}).name || 'building')} ${fmt(f.Lp)}`).join(', ')} (loss ${fmt(S.reflLoss == null ? 1 : S.reflLoss)} dB each); direct ${fmt(r.Ldir)} → total ${fmt(r.Lp)} (+${fmt(r.Lp - r.Ldir)})`
       : ' · no reflecting façade';
+    if (r.bands) {
+      const sp = sourceSpectrum(s), hz = f => (f < 1000 ? f : f / 1000 + 'k');
+      note += `<br>Octave bands (${esc(sp.name)}${sp.auto ? ', auto' : ''}; A<sub>div</sub> ${fmt(r.Adiv)} in every band):<table class="bands"><tr><th>Hz</th>${r.bands.map(b => `<th>${hz(b.f)}</th>`).join('')}</tr>` +
+        [['L<sub>w</sub>(A)', 'Lw'], ['A<sub>atm</sub>', 'Aatm'], ['A<sub>gr</sub>', 'Agr'], ['D<sub>z</sub>', 'Dz'], ['A<sub>bar</sub>', 'Abar'], ['L<sub>p</sub>', 'Lp']]
+          .map(([h, k]) => `<tr><td>${h}</td>${r.bands.map(b => `<td>${fmt(b[k])}</td>`).join('')}</tr>`).join('') + '</table>';
+    }
     rows += `<tr class="note"><td colspan="8">${note}</td></tr>`;
   }
   const L = 10 * Math.log10(e);
-  const basis = S.method === 'iso' ? 'ISO 9613-2: A<sub>div</sub> = 20·lg d + 11' : 'TfNSW estimator basis: A<sub>div</sub> = 20·lg d + 8';
+  const basis = S.method === 'iso' ? `ISO 9613-2: A<sub>div</sub> = 20·lg d + 11${S.bands ? ', octave bands 63 Hz – 8 kHz' : ''}` : 'TfNSW estimator basis: A<sub>div</sub> = 20·lg d + 8';
   el.innerHTML = `<table><tr><th>Source</th><th>L<sub>w</sub></th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>atm</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>${rows}</table>
     <div class="tot">Total: ${fmt(L)} dB(A) L<sub>Aeq,15min</sub> <span class="muted" style="font-weight:400;font-size:11px">(at ${fmt(S.hr)} m above ground)</span></div>
-    <p class="kv muted">${basis} · ${PERIODS[S.period]} · air ${S.air ? fmt(airAlpha(S), 2) + ' dB/km' : 'off'} · ${Math.round(S.soft * 100)} % soft ground</p>`;
+    <p class="kv muted">${basis} · ${PERIODS[S.period]} · air ${!S.air ? 'off' : S.method === 'iso' && S.bands ? 'ISO 9613-1 per band' : fmt(airAlpha(S), 2) + ' dB/km'} · ${Math.round(S.soft * 100)} % soft ground</p>`;
   $('hud').textContent = `${hud} · ${fmt(L)} dB(A)`;
   drawProbePaths(paths, wx, wy);
 }

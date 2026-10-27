@@ -31,7 +31,7 @@ $('btnSave').addEventListener('click', () => {
   const data = {
     app: 'noise-poc', version: VERSION, saved: new Date().toISOString(), origin: state.origin,
     dem: state.terrain ? state.terrain.name : null, settings: state.settings, view: state.view,
-    sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, on: s.on, pen: s.pen, mit: s.mit, h: s.h, x: s.x, y: s.y })),
+    sources: state.sources.map(s => Object.assign({ name: s.name, eq: s.eq, lw: s.lw, on: s.on, pen: s.pen, mit: s.mit, h: s.h, x: s.x, y: s.y }, s.spec ? { spec: s.spec } : {})),
     library: state.libraryEdited ? LIBRARY : undefined,
     buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype,
       tags: b.tags || undefined, landUse: b.landUse || undefined, luSrc: b.landUse ? b.luSrc : undefined, floors: b.floors ?? undefined, address: b.address || undefined, pts: b.pts })),
@@ -65,7 +65,7 @@ function sanitizeSettings(raw, cur) {
   const oneOf = (...vals) => v => vals.includes(v);
   const bool = v => typeof v === 'boolean';
   pick('method', oneOf('tfnsw', 'iso')); pick('combine', oneOf('all', 'estimator')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
-  pick('reflect', oneOf('auto', 'on', 'off')); pick('reflLoss', inR(0, 10));
+  pick('reflect', oneOf('auto', 'on', 'off')); pick('bands', bool); pick('reflLoss', inR(0, 10));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
   pick('air', bool); pick('lateral', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
   pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
@@ -116,6 +116,7 @@ readJSONFile($('fileLoad'), (d, name) => {
     if (typeof s.eq === 'string' && o.eq !== s.eq) log(`Source “${s.name}”: library item “${s.eq}” not found – kept its saved level as Custom.`, 'warn');
     o.name = String(s.name || o.name).slice(0, 40); o.lw = num(s.lw, 40, 150) ?? o.lw; o.h = num(s.h, 0, 200) ?? 1.5;
     o.on = num(s.on, 1, 100) ?? 100; o.pen = num(s.pen, 0, 10) ?? (typeof s.eq === 'string' ? o.pen : 0); o.mit = num(s.mit, 0, 30) ?? 0;
+    if (s.spec != null) { if (validSpec(s.spec)) o.spec = Array.isArray(s.spec) ? s.spec.slice() : s.spec; else log(`Source “${o.name}”: spectrum ignored (expected a preset name or 8 band levels).`, 'warn'); }
     return o;
   });
   state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null,

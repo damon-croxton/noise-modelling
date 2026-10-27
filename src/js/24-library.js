@@ -17,6 +17,7 @@ function updateLibInfo() {
 function saveSourceToLibrary(o) {
   const id = 'prj-' + o.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
   const base = libItem(o.eq), item = { id, name: o.name, lw: o.lw, sac: (o.pen || 0) > 0, group: 'Project' };
+  if (o.spec) item.spec = o.spec;
   if (base && base.maxLw != null) item.maxLw = base.maxLw;
   const k = LIBRARY.findIndex(e => e.id === id);
   if (k >= 0) LIBRARY[k] = item; else LIBRARY.push(item);
@@ -34,6 +35,7 @@ function cleanLibrary(items) {
     ids.add(e.id);
     const it = { id: e.id.slice(0, 60), name: e.name.slice(0, 60), lw, sac: !!e.sac, group: typeof e.group === 'string' ? e.group.slice(0, 40) : 'Project' };
     const mx = num(e.maxLw, 40, 150); if (mx !== null) it.maxLw = mx;
+    if (e.spec != null && validSpec(e.spec)) it.spec = Array.isArray(e.spec) ? e.spec.slice() : e.spec;
     out.push(it);
   }
   if (!out.some(e => e.id === 'custom')) out.push({ id: 'custom', name: 'Custom', lw: 100, sac: false, group: 'Custom' });

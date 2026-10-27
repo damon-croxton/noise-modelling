@@ -37,6 +37,15 @@ function makeSource(x, y, libId) {
    flat −3 dB for plant running under 7 min in 15 (10·lg(7/15) = −3.3). */
 function onTimeCorr(s) { return 10 * Math.log10(Math.max(1, Math.min(100, s.on == null ? 100 : s.on)) / 100); }
 function effectiveLw(s) { return s.lw + onTimeCorr(s) + (s.pen || 0) - (s.mit || 0); }
+/* Spectrum for octave-band mode: the source's own (a SPECTRA key, or eight
+   A-weighted band levels 63 Hz – 8 kHz, used as a shape), else its library
+   item's, else engine or impact by the item's special audible characteristics. */
+function validSpec(v) { return (Array.isArray(v) && v.length === 8 && v.every(x => typeof x === 'number' && isFinite(x) && Math.abs(x) <= 200)) || (typeof v === 'string' && !!SPECTRA[v]); }
+function sourceSpectrum(s) {
+  const pick = v => (!validSpec(v) ? null : Array.isArray(v) ? { key: 'custom', name: 'Custom', rel: normSpectrum(v) } : Object.assign({ key: v }, SPECTRA[v]));
+  const it = libItem(s.eq), def = it.sac ? 'impact' : 'engine';
+  return pick(s.spec) || pick(it.spec) || Object.assign({ key: def, auto: true }, SPECTRA[def]);
+}
 function lwBreakdown(s) {
   const parts = [`Lw ${fmt(s.lw, 1)}`];
   if (s.on != null && s.on < 100) parts.push(`${fmt(onTimeCorr(s), 1)} (${fmt(s.on, 0)} % on)`);

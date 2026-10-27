@@ -31,6 +31,9 @@ function renderSelPanel() {
       <div class="row"><label for="sPen">Annoyance penalty (dB)</label><input type="number" id="sPen" min="0" max="10" step="1" value="${o.pen}"></div>
       <div class="row"><label for="sMit">Mitigation reduction (dB)</label><input type="number" id="sMit" min="0" max="30" step="0.5" value="${o.mit}"></div>
       <div class="row"><label for="sH">Height above ground (m)</label><input type="number" id="sH" min="0" max="200" step="0.5" value="${o.h}"></div>
+      <div class="row"><label for="sSpec">Spectrum (octave-band mode)</label><select id="sSpec"></select></div>
+      <div class="row" id="sSpecRow"><label for="sSpecC">A-weighted band levels 63 Hz – 8 kHz (8 values, shape only)</label><input type="text" id="sSpecC" placeholder="e.g. 80, 88, 93, 96, 96, 94, 90, 83"></div>
+      <p class="kv muted" id="sSpecInfo"></p>
       <p class="kv" id="sInfo"></p>
       <p class="kv">${coordText(o.x, o.y)} · ground RL ${fmt(ground(o.x, o.y), 2)}</p>
       <div class="row"><button type="button" id="sToLib">Save as library item</button><button type="button" id="sDel" class="danger">Delete</button></div>`;
@@ -47,6 +50,7 @@ function renderSelPanel() {
       const it = libItem(e.target.value); o.eq = it.id; state.lastEq = it.id;
       o.lw = it.lw; o.pen = it.sac ? SAC_PENALTY : 0; $('sLw').value = o.lw; $('sPen').value = o.pen;
       if (it.id !== 'custom') { o.name = it.name.replace(/ \(.*\)$/, ''); $('sName').value = o.name; }
+      specUI();
       log(`Source ${o.id} → ${it.name} (Lw ${o.lw}${o.pen ? ', +' + o.pen + ' dB penalty' : ''}).`); info(); requestCompute(false);
     });
     bindNum($('sLw'), 40, 150, v => { o.lw = v; info(); if (overMax(o) != null) log(`“${o.name}”: Lw ${v} is above the CNVG-PTI Appendix C maximum (${overMax(o)} dB(A)).`, 'warn'); });
@@ -54,6 +58,27 @@ function renderSelPanel() {
     bindNum($('sPen'), 0, 10, v => { o.pen = v; info(); });
     bindNum($('sMit'), 0, 30, v => { o.mit = v; info(); });
     bindNum($('sH'), 0, 200, v => { o.h = v; });
+    const specUI = () => {
+      const sp = sourceSpectrum(o), auto = SPECTRA[sourceSpectrum({ eq: o.eq }).key].name, sel = Array.isArray(o.spec) ? 'custom' : o.spec || 'auto';
+      $('sSpec').innerHTML = `<option value="auto">Auto – ${esc(auto)}</option>` + Object.entries(SPECTRA).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join('') + '<option value="custom">Custom (measured / manufacturer)</option>';
+      $('sSpec').value = sel; $('sSpecRow').hidden = sel !== 'custom';
+      if (Array.isArray(o.spec) && document.activeElement !== $('sSpecC')) $('sSpecC').value = o.spec.join(', ');
+      $('sSpecInfo').textContent = `Relative to Lw, dB(A): ${OCT_F.map((f, k) => `${f < 1000 ? f : f / 1000 + 'k'} ${fmt(sp.rel[k], 1)}`).join(' · ')}. ` +
+        (state.settings.method === 'iso' && state.settings.bands ? 'Used by the octave-band calculation.' : 'Only used with ISO 9613-2 and octave bands on (Model).') + (sp.key === 'custom' ? '' : ' Indicative shape – not a measurement.');
+    };
+    specUI();
+    $('sSpec').addEventListener('change', e => {
+      const v = e.target.value;
+      if (v === 'auto') delete o.spec; else if (v !== 'custom') o.spec = v;
+      else { $('sSpecRow').hidden = false; $('sSpecC').focus(); return; }
+      log(`Source ${o.id}: spectrum ${sourceSpectrum(o).name}.`); specUI(); requestCompute(false);
+    });
+    $('sSpecC').addEventListener('change', e => {
+      const v = e.target.value.split(/[\s,;]+/).filter(Boolean).map(Number);
+      const ok = validSpec(v); e.target.classList.toggle('bad', !ok);
+      if (!ok) { log('Spectrum needs 8 numbers (A-weighted dB, 63 Hz to 8 kHz).', 'warn'); return; }
+      o.spec = v; log(`Source ${o.id}: custom spectrum ${v.join(', ')} (shape only; overall level stays Lw).`); specUI(); requestCompute(false);
+    });
     $('sToLib').addEventListener('click', () => saveSourceToLibrary(o));
     $('sDel').addEventListener('click', deleteSel);
   } else if (s.type === 'building') {
