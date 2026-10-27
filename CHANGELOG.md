@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.7.0 – Stage 2: calibration
+
+Full results are in `docs/CALIBRATION.md`.
+
+### Added
+- **Exact reconciliation with the TfNSW estimator.**
+  - `tools/estimator_golden.py` fills in the estimator spreadsheet, recalculates it in LibreOffice and writes 24 golden cases.
+  - The app matches every output: realistic-worst-case SWL, levels, LAmax, sleep check, NMLs, exceedances, and measures for all five periods.
+- **Selectable rule sets:**
+  - *CNVG-PTI v4.6 Table 9* (default);
+  - *TfNSW estimator Step 4*, which reproduces the spreadsheet as it actually calculates: lower-inclusive bands, P1 evening RP/DR from 10 dB, P2 SN/RP/DR from 5 dB, RO on Sunday evenings, no PN below 5 dB at night.
+
+  The two disagree in 54 of 120 tested case-periods. The rule set is saved with the scenario, and `classify()` now supports either boundary convention.
+- **Plant combination option:** *Loudest 1–3 rows (TfNSW estimator)* reproduces the spreadsheet's realistic-worst-case rule. Excluded plant is drawn faded and logged. *All plant* stays the default.
+- **Calibration import.** Takes a CSV of measured levels or another tool's receiver results, matched by receiver ID or placed by coordinates with height, RL or floor.
+  - Reports bias, SD, RMS, range, the share within ±1 and ±3 dB, and category agreement.
+  - Draws the points on the map, coloured by difference, and exports the comparison.
+- **Example scenes** (*Scenario → Example*): synthetic inner-city night works with the reference-case plant, in three variants: street, rail corridor behind hoarding, and a 37 m set-back.
+
+### Findings (summary – see docs/CALIBRATION.md)
+- **±3 dB at receivers can't be tested.** The reference geometry is unknown. The import is ready for the commercial tool's receiver export, or for measurements.
+- **Plant total:** the reference plant is 96.4 dBA after time-on and penalty, so its 46–57 dBA implies receivers 37–131 m away if unscreened.
+- **Category shape is similar** (mostly Low, some Medium, no High) in the corridor and set-back scenes.
+- **The reference's codes match neither rule set** (RO at night, AA with nothing above Medium), so it used project-specific rules.
+- **The upper-floor pattern (+2–4 dB on line-of-sight façades) isn't reproduced on the TfNSW basis.** It appears with ISO 9613-2 and partly soft ground. Screened ground floors are too quiet without side diffraction, which supports Stage 3.
+
+### Tests
+58 tests, all passing (see `docs/test-evidence/v0.7.0.txt`), including:
+- estimator reconciliation (24 cases);
+- the rule-set comparison;
+- calibration import (bias recovery, coordinates, height/RL/floor, façade snapping, CSV export, rejected files);
+- the reference-scene report.
+
 ## 0.6.0 – Stage 1: the assessment
 
 ### Added

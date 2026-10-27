@@ -21,9 +21,10 @@ const filter = process.argv[2] || '';
 async function open(browser) {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
   page._errors = [];
+  page._allowed = [];   // patterns of console errors a test expects (e.g. a deliberately rejected file)
   page.on('pageerror', e => page._errors.push(e.message));
   // app log lines marked 'fail' are echoed to console.error with a [noise-poc] prefix; tests assert on those explicitly
-  page.on('console', m => { if (m.type() === 'error' && !m.text().startsWith('[noise-poc]')) page._errors.push(m.text()); });
+  page.on('console', m => { const t = m.text(); if (m.type() === 'error' && !t.startsWith('[noise-poc]') && !page._allowed.some(re => re.test(t))) page._errors.push(t); });
   await page.goto(PAGE);
   await page.waitForFunction(() => window.__noise && window.__noise.selftest, null, { timeout: 30000 });
   return page;
@@ -64,7 +65,7 @@ async function waitLog(page, re, timeout = 60000) {
       if (filter && !name.includes(filter)) continue;
       const page = await open(browser);
       try {
-        await t.run({ page, assert, fixtures, waitLog: (re, ms) => waitLog(page, re, ms) });
+        await t.run({ page, assert, fixtures, waitLog: (re, ms) => waitLog(page, re, ms), expectError: re => page._allowed.push(re) });
         if (page._errors.length) throw new Error('page error: ' + page._errors.join(' | '));
         report(true, name);
       } catch (err) {

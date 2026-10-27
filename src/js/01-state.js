@@ -1,6 +1,6 @@
 /* ================================ STATE ================================ */
 const state = {
-  sources: [], buildings: [], hoardings: [], ncas: [], rulesSet: 'cnvg',
+  sources: [], buildings: [], hoardings: [], ncas: [], rulesSet: 'cnvg', calib: null,
   sel: null, mode: 'select', draft: [],
   view: { cx: 0, cy: 0, scale: 3 }, mouse: null, lastEq: DEFAULT_EQ,
   origin: null,            // {type:'projected', x0, y0, zone, epsg}  (MGA / GDA)

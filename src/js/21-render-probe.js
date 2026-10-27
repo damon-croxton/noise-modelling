@@ -85,6 +85,7 @@ function render() {
     state.draft.forEach((p, i) => { const [sx, sy] = w2s(p[0], p[1]); ctx.beginPath(); ctx.arc(sx, sy, i ? 3.5 : 6, 0, 7); ctx.fillStyle = i ? '#1d4ed8' : '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2; ctx.stroke(); });
   }
 
+  drawCalibration();
   for (const s of state.sources) {
     const [sx, sy] = w2s(s.x, s.y), excl = isExcluded(s);
     const sel = state.sel && state.sel.type === 'source' && state.sel.id === s.id;

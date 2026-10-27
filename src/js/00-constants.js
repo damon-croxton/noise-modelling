@@ -1,5 +1,5 @@
 /* ============================== CONSTANTS ============================== */
-const VERSION = '0.6.0';
+const VERSION = '0.7.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
 /* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
    the three bands – the same values and conditions as the TfNSW Construction

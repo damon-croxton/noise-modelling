@@ -19,9 +19,12 @@ Open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is insid
 
 ## Status
 
-Version 0.6.0 completes Stage 1: the assessment. Set the time period, place the plant and draw or import noise catchment areas. **Run assessment** then gives, for each building and floor, the NML, predicted level, exceedance, impact category and additional mitigation measures (TfNSW CNVG-PTI defaults, editable). Results come as a coloured map, a summary, a property table and a CSV for the community team.
+Version 0.7.0 completes Stage 2, calibration:
+- The app reproduces the TfNSW Construction Noise Estimator exactly, with the estimator's Step 4 rule set and its plant-combination rule.
+- It reports where the estimator and the CNVG-PTI guideline disagree.
+- It imports measured levels or another tool's results for comparison.
 
-Next is Stage 2, calibration: comparing against the TfNSW estimator case by case and against the reference case. See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
+Results and limits are in [`docs/CALIBRATION.md`](docs/CALIBRATION.md). Next is Stage 3, acoustics: side diffraction, façade reflections and an octave-band option. See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
 
 ## Development
 
@@ -35,6 +38,8 @@ src/js/NN-*.js        scripts, joined in file-name order into one scope
 build.js              zero-dependency build → dist/noise_poc.html
 tests/run.js          headless runner: in-app self-tests + tests/*.test.js
 tests/fixtures.js     synthetic GeoTIFF / ASC generators (no real-world data)
+tests/golden/         golden cases from the TfNSW estimator (tools/estimator_golden.py)
+tools/                developer scripts (golden-case generator: needs LibreOffice + openpyxl)
 ```
 
 ```
