@@ -113,6 +113,7 @@ async function runAssessment() {
       period, method: S.method, at: new Date().toISOString(), receivers, byBuilding, sig: inputsSignature(),
       stats: { buildings: B.length, assessed: B.length - skipped - noFacade, skipped, noFacade, receivers: receivers.length, points: nPts, exact: nExact, bound: nBound, party, above: above.length, ms }
     };
+    const sh = curShift(); sh.results = A.results; A.results.shift = sh.name;
     $('busy').textContent = `Assessment: ${receivers.length.toLocaleString()} building-floors, ${above.length} above NML · ${(ms / 1000).toFixed(1)} s`;
     log(`Assessment (${PERIODS[period]}, ${S.method === 'iso' ? 'ISO 9613-2' : 'TfNSW estimator basis'}): ${B.length - skipped - noFacade} of ${B.length} buildings, ${receivers.length.toLocaleString()} building-floors, ` +
       `${nPts.toLocaleString()} façade points (${nExact.toLocaleString()} calculated, ${nBound.toLocaleString()} below NML on distance alone, ${party.toLocaleString()} on party walls skipped). ` +
@@ -126,6 +127,6 @@ async function runAssessment() {
     log(`Assessment FAILED: ${err.message}`, 'fail'); console.error(err);
     return null;
   } finally {
-    A.running = false; updateAssessButtons(); renderAssessPanel(); renderSelPanel(); requestRender();
+    A.running = false; updateAssessButtons(); renderAssessPanel(); renderSelPanel(); renderShiftPanel(); requestRender();
   }
 }

@@ -1,6 +1,6 @@
 # Gap register
 
-This register lists what the tool can't yet do, measured against TfNSW CNVG-PTI (EMF-NV-GD-0060 v4.6) and against commercial out-of-hours-work (OOHW) assessment platforms. For each gap it records what closing it would take. It is updated at every stage. The build-versus-buy recommendation is due now that Stages 1–3 are done; it is the next documentation item.
+This register lists what the tool can't yet do, measured against TfNSW CNVG-PTI (EMF-NV-GD-0060 v4.6) and against commercial out-of-hours-work (OOHW) assessment platforms. For each gap it records what closing it would take. It is updated at every stage. The build-versus-buy recommendation is due now that Stages 1–4 are done; it is the next documentation item.
 
 Status: **open**, **interim** (partly handled, with a stated limit) or **closed**. Calibration results: `docs/CALIBRATION.md`.
 
@@ -10,7 +10,7 @@ Status: **open**, **interim** (partly handled, with a stated limit) or **closed*
 |---|---|---|---|
 | Lateral diffraction around building ends | interim (v0.8.0) | Two side paths around the convex hull of the blocking obstacles, summed by energy with the path over the top, then capped. Further buildings that a side path runs through are ignored, which is conservative. No side paths when terrain is the screening edge. | Obstacles in the side paths (iterated hull) if over-prediction behind dense blocks matters; needs a faster index to stay interactive. |
 | Façade reflections | interim (v0.8.0) | First order only, off building walls (not hoarding or terrain), within 60 m of source or receiver, with one reflection loss for all walls (default 1 dB). The receiver's own façade is excluded, so façade levels are free-field. *Auto* = on for ISO, off on the TfNSW basis. Street canyons under-predict a little without higher orders. | Second-order reflections; a loss per building (e.g. glazed vs absorptive); hoarding as a reflector. |
-| Single frequency band | interim (v0.8.0) | Optional octave bands for ISO 9613-2 (63 Hz – 8 kHz). The built-in spectra are generic indicative shapes, not measurements; the default stays single band at 500 Hz. The TfNSW basis stays single band, as in the estimator. | Measured plant spectra for the library (from manufacturers or project measurements; BS 5228-1 Annex C data would need a licence). |
+| Single frequency band | closed for screening (v0.8.0) | Optional octave bands for ISO 9613-2 (63 Hz – 8 kHz) with generic indicative spectra. Decision (v0.9.0): generic shapes are acceptable. TfNSW's own method uses no spectra (single A-weighted values), and mobile plant that moves and turns makes measured spectra of limited extra value. The TfNSW basis stays single band. | Only if a detailed assessment needs it: measured or manufacturer spectra per item (BS 5228-1 Annex C data would need a licence). |
 | Mixed ground in ISO mode | interim | Single band: Agr is blended linearly between hard (G = 0) and the alternative method (eq. 10, with DΩ). Octave bands: the general method (Table 3). The two give different upper-floor gains over soft ground (+2.8 vs +1.0 dB in the set-back scene). One G is used for the whole path. | Ground regions (G per area, e.g. from land cover), so source, middle and receiver regions can differ. |
 | Distance definition | interim | Slant distance is used throughout; the estimator uses horizontal distance. Negligible except close to tall receivers. | Documented. Could be made switchable if reconciliation needs it. |
 | Realistic worst-case plant combination | closed | Optional *Loudest 1–3 rows (TfNSW estimator)*, matching the spreadsheet exactly. The default sums all plant (conservative). | – |
@@ -32,9 +32,16 @@ Status: **open**, **interim** (partly handled, with a stated limit) or **closed*
 | Addresses | interim | From OSM `addr:*` tags, from a GeoJSON `address` property, or typed in per building. No unit or apartment level. Matching to a public address dataset (NSW address points or G-NAF) isn't built yet. |
 | Roads projects (EMF-NV-GD-0056) | open | Different guideline and mitigation codes. Needs that guideline and the roads estimator; the rules file can hold it once available. |
 
-## Outputs (Stage 4)
+## Outputs (Stage 4, v0.9.0)
 
-Still to come: the printable report in the standard section structure, saved shift scenarios with duplicate, compare and batch run, respite tracking across scenarios, and a calibration import.
+| Gap | Status | Limit / what it takes |
+|---|---|---|
+| Impact map, summary and property table | closed | Since v0.6.0: buildings by worst category, land use × category counts, sortable and filterable property list with CSV. |
+| Printable report | closed | One HTML file per shift, printed to PDF from Edge, in the generic section order (introduction, method, works, results, appendices). It includes the disclaimer, data sources with dates, and height source per building. Above 300 buildings, Appendix A lists only buildings with a floor above NML (the CSV has every building-floor). The layout is generic, not a copy of any commercial template. It doesn't yet match a specific client template; that needs the template, and the content would then be mapped onto it. |
+| Shift scenarios | closed | Save, duplicate, compare and batch-run shifts within one project file. Shifts share buildings, NCAs and model settings; a shift with different model settings (e.g. ISO vs TfNSW) needs its own file. |
+| Respite tracking | interim | Counts per receiver across shifts and planned dates, and the CNVG-PTI Table 8 RP check (consecutive evenings / nights and minimum breaks). Limits: the check runs per receiver, not per NCA; "in any one week" is covered by the run and break limits, not by calendar weeks; dates are entered by hand (no import from a works programme). Respite offers (RO) and alternative accommodation (AA) are listed as measures but not scheduled. |
+| Works programme import | open | Dates are typed per shift. Importing a programme (CSV of activity, date, period) would remove that step. |
+| Report per receiver for notifications | open | The property CSV is the hand-over to the community team. A mail-merge layout (one letter per address) isn't built. |
 
 ## Data and validation
 
@@ -42,7 +49,7 @@ Still to come: the printable report in the standard section structure, saved shi
 |---|---|---|
 | Calibration against the reference case | interim | Synthetic scenes (docs/CALIBRATION.md) check the category shape and the floor pattern. ±3 dB at receivers can't be tested without the reference geometry or its receiver list. The calibration import is ready for either, or for attended measurements. |
 | Validation against the TfNSW estimator | closed | 24 golden cases recalculated from the spreadsheet match on every output (SWL combination, levels, LAmax, sleep, NMLs, exceedances, measures). |
-| Estimator vs guideline measures | open – decision needed | The two TfNSW sources disagree in 54 of 120 case-periods. Both are built-in rule sets (guideline is the default). The team needs to confirm which one the client accepts. |
+| Estimator vs guideline measures | closed – decision (v0.9.0) | The two TfNSW sources disagree in 54 of 120 case-periods. Decision: use the client guideline (CNVG-PTI v4.6 Table 9), the default rule set. The estimator rule set stays available for reconciling with spreadsheet assessments. Revisit if the client says otherwise. |
 | Coordinate systems | interim | Supports GDA94/GDA2020 MGA zones 48–58. Rasters in degrees are placed approximately. Other projections are not supported. |
 
 ## Licences

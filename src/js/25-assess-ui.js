@@ -75,7 +75,11 @@ $('asDefCat').addEventListener('change', e => { state.assess.defNca.cat = e.targ
 bindNum($('asFloorH'), 2, 6, v => { state.assess.floorH = v; });
 bindNum($('asSpacing'), 2, 50, v => { state.assess.spacing = v; });
 bindNum($('asOffset'), 0.1, 5, v => { state.assess.offset = v; });
-$('asDisplay').addEventListener('change', e => { state.assess.display = e.target.value; requestRender(); });
+$('asDisplay').addEventListener('change', e => {
+  state.assess.display = e.target.value;
+  if (e.target.value === 'respite') { const rs = computeRespite(); log(`Respite map: ${rs.shifts.length} shift(s) with results; colour = dates above NML at the worst floor (shifts without dates count once), red outline = respite issue.`); }
+  requestRender();
+});
 $('btnBulk').addEventListener('click', () => {
   const from = $('bulkFrom').value, within = $('bulkIn').value, to = $('bulkTo').value, vb = viewBoxLocal();
   let n = 0;
@@ -136,6 +140,7 @@ readJSONFile($('fileNca'), (gj, name) => {
     nc.rbl = { day: optNum(val(pr, ['rbl_day', 'day', 'rbl_d'])), evening: optNum(val(pr, ['rbl_evening', 'rbl_eve', 'evening', 'rbl_e'])), night: optNum(val(pr, ['rbl_night', 'night', 'rbl_n'])) };
     state.ncas.push(nc); n++;
   }
+  if (n) noteSource('Noise catchment areas', name, `${n} NCA(s)`, null);
   log(`Imported ${n} NCA(s) from ${name}.`, n ? 'pass' : 'warn');
   refreshBulkSelects(); requestCompute(false);
 });

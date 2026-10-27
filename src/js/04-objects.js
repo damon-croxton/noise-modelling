@@ -46,6 +46,11 @@ function sourceSpectrum(s) {
   const it = libItem(s.eq), def = it.sac ? 'impact' : 'engine';
   return pick(s.spec) || pick(it.spec) || Object.assign({ key: def, auto: true }, SPECTRA[def]);
 }
+/* Where a building's height came from, in words. */
+function heightSource(b) {
+  return ({ manual: 'entered by hand', 'osm-height': 'OSM height tag', 'osm-levels': 'OSM levels × 3 m + 1 m', 'type-default': `ESTIMATE – typical “${b.btype || 'yes'}” height, check it`,
+    dsm: 'DSM (90th percentile roof) − DEM', lidar: `LiDAR – 90th percentile of ${b.lidarN || '?'} roof cells (class 6) − ground`, file: 'imported file' })[b.hsrc] || b.hsrc || 'unknown';
+}
 function lwBreakdown(s) {
   const parts = [`Lw ${fmt(s.lw, 1)}`];
   if (s.on != null && s.on < 100) parts.push(`${fmt(onTimeCorr(s), 1)} (${fmt(s.on, 0)} % on)`);

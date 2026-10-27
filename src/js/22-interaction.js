@@ -31,6 +31,7 @@ function renderSelPanel() {
       <div class="row"><label for="sPen">Annoyance penalty (dB)</label><input type="number" id="sPen" min="0" max="10" step="1" value="${o.pen}"></div>
       <div class="row"><label for="sMit">Mitigation reduction (dB)</label><input type="number" id="sMit" min="0" max="30" step="0.5" value="${o.mit}"></div>
       <div class="row"><label for="sH">Height above ground (m)</label><input type="number" id="sH" min="0" max="200" step="0.5" value="${o.h}"></div>
+      <div class="row"><label for="sNotes">Notes (report)</label><input type="text" id="sNotes" maxlength="200" value="${esc(o.notes || '')}"></div>
       <div class="row"><label for="sSpec">Spectrum (octave-band mode)</label><select id="sSpec"></select></div>
       <div class="row" id="sSpecRow"><label for="sSpecC">A-weighted band levels 63 Hz – 8 kHz (8 values, shape only)</label><input type="text" id="sSpecC" placeholder="e.g. 80, 88, 93, 96, 96, 94, 90, 83"></div>
       <p class="kv muted" id="sSpecInfo"></p>
@@ -58,6 +59,7 @@ function renderSelPanel() {
     bindNum($('sPen'), 0, 10, v => { o.pen = v; info(); });
     bindNum($('sMit'), 0, 30, v => { o.mit = v; info(); });
     bindNum($('sH'), 0, 200, v => { o.h = v; });
+    $('sNotes').addEventListener('input', e => { o.notes = e.target.value.slice(0, 200) || undefined; });
     const specUI = () => {
       const sp = sourceSpectrum(o), auto = SPECTRA[sourceSpectrum({ eq: o.eq }).key].name, sel = Array.isArray(o.spec) ? 'custom' : o.spec || 'auto';
       $('sSpec').innerHTML = `<option value="auto">Auto – ${esc(auto)}</option>` + Object.entries(SPECTRA).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join('') + '<option value="custom">Custom (measured / manufacturer)</option>';
@@ -88,8 +90,7 @@ function renderSelPanel() {
       <p class="kv" id="bInfo"></p>
       ${buildingAssessHtml(o)}
       <div class="row"><span class="muted">${o.pts.length} vertices</span><button type="button" id="bDel" class="danger">Delete</button></div>`;
-    const SRC = { manual: 'entered by hand', 'osm-height': 'OSM height tag', 'osm-levels': 'OSM levels × 3 m + 1 m', 'type-default': `ESTIMATE – typical “${o.btype || 'yes'}” height, check it`, dsm: 'DSM (90th percentile roof) − DEM', lidar: `LiDAR – 90th percentile of ${o.lidarN || '?'} roof cells (class 6) − ground`, file: 'imported file' };
-    const info = () => { $('bInfo').textContent = `Height source: ${SRC[o.hsrc] || o.hsrc}${o.osmId ? ' · ' + o.osmId : ''}. Base RL ${fmt(o.base, 2)}${o.baseFixed != null ? ' (from file)' : state.terrain ? ' (lowest DEM point)' : ''} · Roof RL ${fmt(topOf(o), 2)}`; };
+    const info = () => { $('bInfo').textContent = `Height source: ${heightSource(o)}${o.osmId ? ' · ' + o.osmId : ''}. Base RL ${fmt(o.base, 2)}${o.baseFixed != null ? ' (from file)' : state.terrain ? ' (lowest DEM point)' : ''} · Roof RL ${fmt(topOf(o), 2)}`; };
     info();
     $('bName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'Building'; });
     bindNum($('bH'), 0.5, 300, v => { o.h = v; o.roofRL = null; o.hsrc = 'manual'; info(); requestRender(); });

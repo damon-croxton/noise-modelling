@@ -435,5 +435,29 @@
   ],
   "unknown": "residential",
   "_note": "Applied in order: amenity, then building value, then any shop/office tag → commercial. building=yes or unmapped values fall back to 'unknown' (residential, the conservative choice) and are flagged as assumed."
+ },
+ "respite": {
+  "source": "CNVG-PTI v4.6 Table 8, Respite period (RP)",
+  "_note": "OOHW in the evening and at night is restricted so that receivers are impacted for no more than three consecutive evenings and two consecutive nights in the same NCA in any one week, with at least 4 evenings / 5 nights of respite between runs. Does not apply to OOHW Period 1 days. A receiver counts on a date when a shift planned for that date triggers the measure below ('above' = any exceedance of the NML). Checked per receiver, which is at least as strict as per NCA.",
+  "trigger": "RP",
+  "kinds": {
+   "evening": {
+    "label": "Evenings",
+    "periods": [
+     "p1eve",
+     "p2eve"
+    ],
+    "maxConsecutive": 3,
+    "minBreak": 4
+   },
+   "night": {
+    "label": "Nights",
+    "periods": [
+     "p2night"
+    ],
+    "maxConsecutive": 2,
+    "minBreak": 5
+   }
+  }
  }
 }

@@ -22,8 +22,8 @@ function render() {
   for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) { const sy = Math.round(w2s(0, y)[1]) + 0.5; ctx.moveTo(0, sy); ctx.lineTo(cssW, sy); }
   ctx.stroke();
 
-  const AR = state.assess.results, showCat = AR && state.assess.display !== 'heat';
-  if (grid && state.sources.length && !(AR && state.assess.display === 'cat')) {
+  const AR = state.assess.results, showRes = state.assess.display === 'respite' && state.respite, showCat = AR && !showRes && state.assess.display !== 'heat';
+  if (grid && state.sources.length && !(AR && state.assess.display === 'cat') && !showRes) {
     ctx.save(); ctx.globalAlpha = S.opacity; ctx.imageSmoothingEnabled = false;
     ctx.drawImage(off, 0, 0, grid.gw * grid.cellPx, grid.gh * grid.cellPx);
     ctx.restore();
@@ -57,15 +57,18 @@ function render() {
     if (bb[2] < x0 || bb[0] > x1 || bb[3] < y0 || bb[1] > y1) continue;
     const sel = state.sel && state.sel.type === 'building' && state.sel.id === b.id;
     polyPath(b.pts, true);
-    const cat = showCat ? AR.byBuilding.get(b.id) : null, catFill = cat ? categoryColor(cat.worst) : null;
+    const cat = showCat ? AR.byBuilding.get(b.id) : null, rsp = showRes ? state.respite.byBuilding.get(b.id) : null;
+    const catFill = cat ? categoryColor(cat.worst) : rsp ? respiteColor(rsp.occ) : showRes ? '#d6dbe3' : null;
     ctx.fillStyle = sel ? 'rgba(37,99,235,0.55)' : catFill || 'rgba(55,60,72,0.78)'; ctx.fill();
-    if (isEstimated(b) && !sel) { ctx.lineWidth = 1.5; ctx.strokeStyle = '#f59e0b'; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]); }
+    if (rsp && rsp.issues && !sel) { ctx.lineWidth = 3; ctx.strokeStyle = '#b91c1c'; ctx.stroke(); }
+    else if (isEstimated(b) && !sel) { ctx.lineWidth = 1.5; ctx.strokeStyle = '#f59e0b'; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]); }
     else { ctx.lineWidth = sel ? 2.5 : 1; ctx.strokeStyle = sel ? '#1d4ed8' : '#1f2937'; ctx.stroke(); }
     if (showLabels && (bb[2] - bb[0]) * v.scale > 34) {
       let cx = b.pts.reduce((a, p) => a + p[0], 0) / b.pts.length, cy = b.pts.reduce((a, p) => a + p[1], 0) / b.pts.length;
       if (!pip(cx, cy, b.pts)) { const p = b.pts; cx = (p[0][0] + p[1][0] + p[2][0]) / 3; cy = (p[0][1] + p[1][1] + p[2][1]) / 3; }
       const [lx, ly] = w2s(cx, cy);
       ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      if (showRes) { if (rsp && rsp.occ) { ctx.fillStyle = rsp.occ >= 4 && !sel ? '#fff' : '#111827'; ctx.fillText(`${rsp.occ}×${rsp.issues ? ' !' : ''}`, lx, ly); } continue; }
       ctx.fillStyle = catFill && !sel && cat.worst !== 'Moderately intrusive' && cat.worst !== 'Highly intrusive' ? '#111827' : '#fff';
       ctx.fillText(cat ? `${cat.floors}F · ${cat.worst === 'Not assessed' ? 'n/a' : cat.maxLeq != null ? fmt(cat.maxLeq, 0) + ' dB' : '< NML'}` : `${fmt(b.h, 1)} m${isEstimated(b) ? '?' : ''}`, lx, ly);
     }
@@ -108,6 +111,10 @@ function render() {
   ctx.textAlign = 'center'; ctx.font = '600 12px Segoe UI, sans-serif';
   ctx.fillText('N ↑', cssW - 24, 40);
 }
+
+/* Respite map: dates (or shifts without dates) above NML, worst floor. */
+const RESPITE_RAMP = [[1, '#fde68a'], [2, '#fbbf24'], [4, '#f97316'], [7, '#dc2626'], [11, '#7e22ce']];
+function respiteColor(n) { let c = '#d6dbe3'; for (const [k, v] of RESPITE_RAMP) if (n >= k) c = v; return c; }
 
 /* ================================ PROBE ================================ */
 function coordText(wx, wy) {

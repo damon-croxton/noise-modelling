@@ -20,7 +20,7 @@ function onMethodChange() {
   $('rowBarCap').hidden = iso; $('rowBands').hidden = !iso;
 }
 $('setMethod').addEventListener('change', e => { state.settings.method = e.target.value; onMethodChange(); log(`Method: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
-$('setPeriod').addEventListener('change', e => { state.settings.period = e.target.value; log(`Time period: ${PERIODS[e.target.value]}.`); requestCompute(false); });
+$('setPeriod').addEventListener('change', e => { state.settings.period = e.target.value; log(`Time period: ${PERIODS[e.target.value]}.`); renderShiftPanel(); requestCompute(false); });
 $('setSeason').addEventListener('change', e => { state.settings.season = e.target.value; log(`Season: ${e.target.value === 'warm' ? 'Oct–Apr' : 'May–Sep'} (air ${fmt(airAlpha(state.settings), 2)} dB/km).`); requestCompute(false); });
 bindNum($('setSoft'), 0, 100, v => { state.settings.soft = v / 100; });
 $('setCombine').addEventListener('change', e => { state.settings.combine = e.target.value; activeCache.sig = ''; log(`Plant combination: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
@@ -38,7 +38,7 @@ function syncSettingsUI() {
   $('setMethod').value = S.method; $('setPeriod').value = S.period; $('setSeason').value = S.season;
   $('setSoft').value = Math.round(S.soft * 100); $('setCombine').value = S.combine; $('setBarCap').value = S.barCap; onMethodChange();
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
-  $('setCell').value = String(S.cellPx); $('setMin').value = String(S.minDb); $('setOp').value = S.opacity; buildLegend();
+  $('setCell').value = String(S.cellPx); $('setMin').value = String(S.minDb); $('setOp').value = S.opacity; buildLegend(); renderShiftPanel();
 }
 function buildLegend() {
   const min = state.settings.minDb;

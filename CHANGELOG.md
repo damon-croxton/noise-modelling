@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.9.0 – Stage 4: outputs
+
+### Added
+- **Shifts.** A project now holds several shifts. Each has its own activity name, plant, time period, dates and notes. Buildings, NCAs, terrain, model settings and rules are shared.
+  - *Shift* panel: New, Duplicate (copies the plant), Delete, and switching between shifts. Switching restores that shift's plant, period, season and last results.
+  - Dates are entered as `YYYY-MM-DD` with ranges (`2026-11-03..2026-11-05`). A night counts on its start date. The panel warns when the season under *Model* doesn't match the dates.
+  - Shifts, dates, notes and project details are saved in the scenario. Older scenarios load as one shift.
+- **Run all shifts and compare.**
+  - Assesses every shift in turn.
+  - The comparison shows one row per shift: building-floors and buildings above NML, the impact counts, highly affected receivers, maximum level and measures.
+  - It also shows one row per receiver above NML in any shift, with each shift's exceedance coloured by category.
+  - It exports to CSV, with a privacy prompt.
+- **Respite tracking.**
+  - Per receiver: the number of shifts and of planned dates above NML.
+  - The CNVG-PTI v4.6 Table 8 respite-period (RP) check:
+    - at most 3 consecutive evenings and 2 consecutive nights;
+    - at least 4 evenings / 5 nights free between runs;
+    - not applied to OOHW Period 1 days.
+
+    A receiver counts on a date when a shift planned for it triggers RP there. The check runs per receiver, which is at least as strict as per NCA.
+  - The limits are editable data in the rules file (`respite`).
+  - New map mode *Respite: dates above NML (all shifts)*, with breaches outlined in red.
+- **Printable report** (*Shift → Report (print / PDF)*). One self-contained HTML file for the current shift: open it in Edge and print to PDF. It contains:
+  1. **Introduction:** project, activity, period, dates and assessment basis.
+  2. **Method:** prediction method, assumptions and the NCA table.
+  3. **Works description:** a plant-location map and the plant table (% time on, equipment, sound power, penalty, mitigation, effective Lw, height, notes).
+  4. **Results:** properties per land use and category, an overall statement, an impact map, and the list of receivers above NML with measures and notes.
+  5. **All shifts and respite:** only when several shifts have results.
+  - **Appendices:**
+    - A: buildings with land use, floors, height and height source;
+    - B: the rules applied for the period and the measure codes;
+    - C: data sources with file and load dates.
+
+  The screening disclaimer is at the top and in every page footer, with page numbers. The report runs the assessment first if results are missing or out of date, and asks before creating the file because it lists properties.
+- **Data-source record.** Every DEM, LiDAR, DSM, OSM fetch or file, GeoJSON building import and NCA import is logged with its file date and load time, kept in the scenario, and listed in the report.
+- **Source notes** field, shown in the report's works table.
+
+### Changed
+- The CNVG-PTI guideline stays the default rule set, now as a recorded decision (see GAP_REGISTER).
+- Numbers that aren't available show as "–" everywhere instead of failing. A shift whose points were all screened out by distance used to stop the comparison view opening.
+- Failures in the new buttons are logged instead of being lost.
+
+### Tests
+95 tests, all passing (see `docs/test-evidence/v0.9.0.txt`). New ones cover:
+- date parsing;
+- the respite rule: limits, minimum breaks, evenings and nights;
+- shift new / duplicate / rename / switch / delete;
+- batch results matching single runs;
+- the comparison table and its CSV;
+- the respite map mode;
+- the report's sections, rows, maps, data sources and privacy prompt;
+- the report re-running stale results;
+- the scenario round trip with shifts and data sources;
+- loading an older scenario.
+
 ## 0.8.0 – Stage 3: acoustics
 
 Results against the reference case are in `docs/CALIBRATION.md` (Part D).

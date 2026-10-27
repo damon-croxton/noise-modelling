@@ -85,6 +85,7 @@ async function loadLidar(file) {
     const RD = toScenarioZone({ W: gw, H: gh, z: roof, ox: gx0, oy: gyTop, sx: cs, sy: cs, epsg }, 'LiDAR roofs');
     state.dsm = { w: RD.W, h: RD.H, z: RD.z, x0: RD.ox - o.x0, yTop: RD.oy - o.y0, cx: cs, cy: cs, name: file.name, kind: 'lidar', cells: nRoof };
     buildLazOverlay();
+    noteSource('Building heights (LiDAR)', file.name, `${total.toLocaleString()} points; ${nRoof.toLocaleString()} roof cells at ${cs} m; CRS ${epsg ? 'EPSG ' + epsg : 'not recorded'}`, file);
     $('lazInfo').innerHTML = `<b>${esc(file.name)}</b><br>${total.toLocaleString()} points · format ${H.fmt} · ${(nRoof * cs * cs / 1e4).toFixed(1)} ha of building roof at ${cs} m<br>${secs.toFixed(1)} s · CRS ${epsg ? 'EPSG ' + epsg : 'not recorded (assumed MGA 56)'}`;
     if (hist[6]) applyDsmHeights();
     if (!state.buildings.some(b => b.osmId || b.hsrc !== 'manual')) log('Tip: fetch or import OSM footprints – LiDAR heights are applied to them automatically.');

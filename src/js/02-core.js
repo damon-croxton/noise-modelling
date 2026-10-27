@@ -19,7 +19,7 @@ function log(msg, cls) {
 function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function num(v, min, max) { const n = parseFloat(v); if (!isFinite(n) || n < min || n > max) return null; return n; }
-function fmt(n, d = 1) { return isFinite(n) ? n.toFixed(d) : '–'; }
+function fmt(n, d = 1) { return typeof n === 'number' && isFinite(n) ? n.toFixed(d) : '–'; }
 function bboxOf(pts) {
   let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
   for (const p of pts) { if (p[0] < a) a = p[0]; if (p[1] < b) b = p[1]; if (p[0] > c) c = p[0]; if (p[1] > d) d = p[1]; }

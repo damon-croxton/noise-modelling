@@ -112,7 +112,7 @@ module.exports = [
       const d = await saveScenario(page);
       assert.strictEqual(d.settings.bands, true);
       assert.deepStrictEqual(d.sources[d.sources.length - 1].spec, [80, 88, 93, 96, 96, 94, 90, 83]);
-      d.sources.push(Object.assign({}, d.sources[0], { name: 'bad spec', spec: [1, 2] }));
+      d.shifts[d.shift].sources.push(Object.assign({}, d.sources[0], { name: 'bad spec', spec: [1, 2] }));   // shifts take priority over the top-level sources
       await page.setInputFiles('#fileLoad', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(d)) });
       const log = await page.waitForFunction(() => /Loaded b\.json/.test(document.getElementById('log').innerText)).then(() => page.textContent('#log'));
       const r = await page.evaluate(() => window.__noise.state.sources.map(s => s.spec || null));

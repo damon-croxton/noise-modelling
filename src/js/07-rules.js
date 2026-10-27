@@ -97,6 +97,11 @@ function validateRules(R) {
   need(R.landUses && Object.keys(R.landUses).length, 'landUses missing');
   need(R.noiseAreaCategories && R.noiseAreaCategories[DEFAULT_NCA_CAT], `noiseAreaCategories must include ${DEFAULT_NCA_CAT}`);
   need(R.osmLandUse && R.landUses[R.osmLandUse.unknown], 'osmLandUse.unknown must name a land use');
+  if (R.respite != null) {
+    need(typeof R.respite.trigger === 'string' && R.respite.kinds && typeof R.respite.kinds === 'object', 'respite needs a trigger and kinds');
+    for (const [k, K] of Object.entries(R.respite.kinds))
+      need(Array.isArray(K.periods) && K.periods.every(p => PERIODS[p]) && Number.isInteger(K.maxConsecutive) && K.maxConsecutive >= 1 && Number.isInteger(K.minBreak) && K.minBreak >= 0, `respite.kinds.${k} invalid`);
+  }
   return R;
 }
 function categoryColor(label) { return (RULES.categoryStyle || {})[label] || '#9ca3af'; }

@@ -130,7 +130,7 @@ async function fetchOsmBuildings() {
       log(`Overpass: ${e1.message} – trying the OSM API.`, 'warn');
       data = await fetchOsmApi(apiUrl);
     }
-    importOsm(data, t0);
+    importOsm(data, t0, { name: `Fetched ${new Date().toISOString().slice(0, 10)}, bbox ${bbox}` });
   } catch (err) {
     log(`OSM fetch FAILED from inside the app – your network blocks these requests. Manual route (works if your browser can open openstreetmap.org): click “Copy OSM download link”, paste it into a new Edge tab, save the file it downloads (“map” → rename to map.osm), then use “Import buildings” and pick that file.`, 'fail');
     log(`Download link for this view: ${state.lastOsmUrl}`);
@@ -138,7 +138,7 @@ async function fetchOsmBuildings() {
     $('busy').textContent = 'OSM fetch failed – see log';
   } finally { osmBusy = false; $('btnOsm').disabled = false; }
 }
-function importOsm(data, t0) {
+function importOsm(data, t0, from) {
   const els = (data && data.elements) || [];
   const byId = new Map(state.buildings.filter(b => b.osmId).map(b => [b.osmId, b]));
   const replace = $('osmReplace').checked;
@@ -167,6 +167,7 @@ function importOsm(data, t0) {
   if (state.dsm) applyDsmHeights(true);
   $('attrib').hidden = !state.buildings.some(b => b.osmId);
   const ms = performance.now() - (t0 || performance.now());
+  if (cnt.added || cnt.replaced) noteSource('Buildings (OpenStreetMap, ODbL)', from ? from.name : 'Fetched from ' + (data.generator || 'OSM'), `${cnt.added} building(s) added; heights: ${cnt['osm-height']} tagged, ${cnt['osm-levels']} from levels, ${cnt['type-default']} type estimates`, from && from.file);
   log(`OSM: ${els.length} elements → ${cnt.added} buildings added${cnt.replaced ? ` (${cnt.replaced} replaced)` : ''}${cnt.dup ? `, ${cnt.dup} already loaded` : ''}${cnt.skipped ? `, ${cnt.skipped} roofs/carports/etc skipped` : ''}. Heights: ${cnt['osm-height']} tagged, ${cnt['osm-levels']} from levels, ${cnt['type-default']} estimated by type. ${ms.toFixed(0)} ms.`, cnt.added ? 'pass' : 'warn');
   const nEst = state.buildings.filter(isEstimated).length;
   if (cnt.added && nEst / Math.max(1, state.buildings.length) > 0.5) log(`${nEst} building heights are type estimates (dashed). Load LiDAR (.laz) or edit key buildings near the works.`, 'warn');
@@ -183,6 +184,7 @@ function installDsm(R, name) {
   const P = rasterPlacement(R, 1);
   state.dsm = { w: R.W, h: R.H, z: R.z, x0: P.x0, yTop: P.yTop, cx: P.cx, cy: P.cy, name };
   log(`DSM loaded: ${name}, ${R.W}×${R.H} @ ${fmt(P.cx, 2)} m, ${bad.toLocaleString()} NoData cells.`, 'pass');
+  noteSource('Roof heights (DSM)', name, `${R.W}×${R.H} cells @ ${fmt(P.cx, 2)} m`, state.dsmFile || null);
   applyDsmHeights();
 }
 function applyDsmHeights(quiet) {
@@ -259,7 +261,7 @@ $('fileDsm').addEventListener('change', async () => {
     if (ext === 'tif' || ext === 'tiff') R = await parseGeoTIFF(await f.arrayBuffer());
     else { const txt = await f.text(); R = /^\s*ncols/i.test(txt) ? parseASC(txt) : parseXYZ(txt); }
     if (R.W * R.H > 16e6) throw new Error(`${R.W}×${R.H} is too large for a DSM – clip it to the site`);
-    installDsm(R, f.name);
+    state.dsmFile = f; installDsm(R, f.name); state.dsmFile = null;
   } catch (err) { log(`DSM load FAILED: ${err.message}`, 'fail'); console.error(err); }
 });
 

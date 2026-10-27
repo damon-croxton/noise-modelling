@@ -8,6 +8,15 @@ A construction noise screening and planning tool for Transport for NSW (TfNSW) p
 
 Open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is inside that one file.
 
+A typical OOHW assessment:
+1. Load the site: buildings (OSM), optionally terrain and LiDAR heights, and the NCAs.
+2. Set up the shift: *Shift* panel → name, time period, dates. Add the plant on the map.
+3. *Run assessment*, or *Run all shifts* when there are several.
+4. Check the results on the map and in the property table. *Compare & respite* covers several shifts.
+5. *Report (print / PDF)* for the approval pack, and *Export CSV* for the community team.
+
+The report and CSV list properties and may contain addresses. Keep them on approved storage.
+
 - **Terrain:** DEM as GeoTIFF, ESRI ASCII or XYZ (GDA94 / GDA2020 MGA). Files in another MGA zone are resampled into the scenario zone.
 - **Buildings:** OpenStreetMap footprints, fetched live or imported from `.osm` / GeoJSON files. Heights come from public LiDAR (`.laz` / `.las`) or a DSM.
 - **Sources:** picked from the equipment library (CNVG-PTI Appendix C Table 19 plus the TfNSW estimator plant list), each with % time on, annoyance penalty, mitigation and height.
@@ -21,16 +30,17 @@ Open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is insid
 
 ## Status
 
-Version 0.8.0 completes Stage 3, acoustics:
-- side diffraction around buildings and hoarding ends;
-- first-order façade reflections;
-- an octave-band option for ISO 9613-2.
+Version 0.9.0 completes Stage 4, outputs:
+- shifts within one project, with batch run and comparison;
+- respite tracking against the CNVG-PTI respite-period rule;
+- a printable report with maps, the disclaimer, data sources and height sources.
 
 Earlier stages:
 - **Stage 1:** façade receivers per floor, NCAs, NML rules and the property list.
 - **Stage 2:** exact reconciliation with the TfNSW Construction Noise Estimator, a comparison of its measures with the CNVG-PTI guideline, and a calibration import.
+- **Stage 3:** side diffraction, façade reflections and an octave-band option.
 
-Results and limits are in [`docs/CALIBRATION.md`](docs/CALIBRATION.md). Next is Stage 4, outputs: the printable report, shift scenarios and respite tracking. See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
+Results and limits are in [`docs/CALIBRATION.md`](docs/CALIBRATION.md). Next is the build-versus-buy recommendation, then the Stage 5 extras (vibration buffers, below-ground sources, 3D review). See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
 
 ## Development
 

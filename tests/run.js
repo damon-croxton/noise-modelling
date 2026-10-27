@@ -69,7 +69,7 @@ async function waitLog(page, re, timeout = 60000) {
         if (page._errors.length) throw new Error('page error: ' + page._errors.join(' | '));
         report(true, name);
       } catch (err) {
-        report(false, name, err.message.split('\n')[0]);
+        report(false, name, process.env.FULL_ERR ? err.message : err.message.split("\n")[0]);
       }
       await page.close();
     }

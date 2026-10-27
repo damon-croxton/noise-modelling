@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Construction Noise POC v0.4</title>
+<title>Construction Noise POC</title>
 <style>
 /*@@CSS@@*/
 </style>
@@ -28,6 +28,23 @@
         <button type="button" id="finishPoly" hidden>Finish (Enter)</button>
         <button type="button" id="cancelPoly" hidden>Cancel (Esc)</button>
       </div>
+    </section>
+
+    <section>
+      <h2>Shift</h2>
+      <p class="kv muted">Each shift has its own plant, time period and dates; buildings, NCAs and model settings are shared.</p>
+      <div class="row"><label for="shSel">Current shift</label><select id="shSel"></select></div>
+      <div class="btns"><button type="button" id="shNew">New</button><button type="button" id="shDup">Duplicate</button><button type="button" id="shDel" class="danger">Delete</button></div>
+      <div class="row"><label for="shName">Activity / shift name</label><input type="text" id="shName" maxlength="60"></div>
+      <div class="row"><label for="shPeriod">Time period</label><select id="shPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
+      <div class="row"><label for="shDates">Dates (YYYY-MM-DD, ranges a..b; night = start date)</label><input type="text" id="shDates" placeholder="2026-11-03..2026-11-05, 2026-11-10"></div>
+      <div class="row"><label for="shNotes">Notes</label><input type="text" id="shNotes" maxlength="500"></div>
+      <p class="kv muted" id="shInfo"></p>
+      <div class="btns"><button type="button" id="shRunAll" class="primary">Run all shifts</button><button type="button" id="shCompare">Compare &amp; respite</button><button type="button" id="btnReport">Report (print / PDF)</button></div>
+      <details class="sub2"><summary>Project details (for the report)</summary>
+        <div class="row"><label for="prjName">Project</label><input type="text" id="prjName" maxlength="120"></div>
+        <div class="row"><label for="prjBy">Prepared by</label><input type="text" id="prjBy" maxlength="120"></div>
+      </details>
     </section>
 
     <section>
@@ -125,7 +142,7 @@
       </div>
       <input type="file" id="fileNca" accept=".json,.geojson,application/json" hidden>
       <div class="row"><label for="asDisplay">Map shows</label>
-        <select id="asDisplay"><option value="both">Impact categories + heat map</option><option value="cat">Impact categories only</option><option value="heat">Heat map only</option></select></div>
+        <select id="asDisplay"><option value="both">Impact categories + heat map</option><option value="cat">Impact categories only</option><option value="heat">Heat map only</option><option value="respite">Respite: dates above NML (all shifts)</option></select></div>
       <div id="asStatus" class="kv"></div>
       <div id="asSummary"></div>
       <details class="sub2"><summary>Change land use in bulk</summary>
