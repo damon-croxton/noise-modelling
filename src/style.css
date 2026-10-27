@@ -199,7 +199,7 @@
 
   /* ---- procedural steps (Site) ---- */
   ol.proc { margin: 2px 0 4px; padding-left: 0; list-style: none; counter-reset: step; }
-  ol.proc[start="4"] { counter-reset: step 3; }
+  ol.proc[start="5"] { counter-reset: step 4; }
   ol.proc > li { counter-increment: step; position: relative; padding: 6px 6px 6px 32px; margin: 3px 0; border: 1px solid var(--line); border-radius: 6px; line-height: 1.4; font-size: var(--fs-s); }
   ol.proc > li::before { content: counter(step); position: absolute; left: 7px; top: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--panel2); border: 1px solid var(--border); text-align: center; line-height: 17px; font-size: 11px; font-weight: 600; }
   ol.proc > li.done::before { content: '✓'; background: var(--ok); border-color: var(--ok); color: #fff; }

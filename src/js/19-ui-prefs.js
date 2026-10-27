@@ -2,9 +2,9 @@
 /* Per-viewer display choices (layout, colours, panels, map layers), kept in
    this browser's localStorage. They are conveniences only: the app works the
    same without them, and they are never saved in the project file. */
-const UI_KEY = 'noise-poc-ui-v2';   // v2: guided layout and the corridor example became the defaults
+const UI_KEY = 'noise-poc-ui-v3';   // v3: opens on the map only (v2: guided layout and corridor example)
 const UI = {
-  layout: 'guided', theme: 'light', compact: false, help: true, auto: true, start: 'corridor', basemap: 'auto',
+  layout: 'guided', theme: 'light', compact: false, help: true, auto: true, start: 'map', basemap: 'auto',
   left: true, right: true, bottom: true, focus: false, rtab: 'Results', btab: 'Data sources', step: 0, probeMin: false, collapsed: [],
   layers: { osm: true, heat: true, impact: true, blabels: true, slabels: true, ncas: true, hoard: true, paths: true, legend: true, probe: true, banner: true }
 };
@@ -25,6 +25,8 @@ const MAPTHEME = {
   contrast: { bg: '#ffffff', grid: '#c8c8c8', gridShade: 'rgba(0,0,0,0.12)', bfill: 'rgba(60,60,60,0.85)', bstroke: '#000000', bw: 1.6, blabel: '#ffffff', boxBg: '#ffffff', boxText: '#000000' }
 };
 let MT = MAPTHEME[UI.theme] || MAPTHEME.light;
+/* Where the map opens (map-only start), fully zoomed out. */
+const DEFAULT_SITE = [-33.85276318512677, 151.19989931580375], MIN_SCALE = 0.02;
 /* Period colours for shift chips and the map banner. */
 const PERIOD_COLOR = { std: '#16a34a', p1day: '#ca8a04', p1eve: '#c026d3', p2eve: '#7c3aed', p2night: '#1e40af' };
 const PERIOD_SHORT = { std: 'Standard hours', p1day: 'P1 day', p1eve: 'P1 evening', p2eve: 'P2 evening', p2night: 'P2 night' };

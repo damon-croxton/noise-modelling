@@ -208,7 +208,7 @@
 
   /* ---- procedural steps (Site) ---- */
   ol.proc { margin: 2px 0 4px; padding-left: 0; list-style: none; counter-reset: step; }
-  ol.proc[start="4"] { counter-reset: step 3; }
+  ol.proc[start="5"] { counter-reset: step 4; }
   ol.proc > li { counter-increment: step; position: relative; padding: 6px 6px 6px 32px; margin: 3px 0; border: 1px solid var(--line); border-radius: 6px; line-height: 1.4; font-size: var(--fs-s); }
   ol.proc > li::before { content: counter(step); position: absolute; left: 7px; top: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--panel2); border: 1px solid var(--border); text-align: center; line-height: 17px; font-size: 11px; font-weight: 600; }
   ol.proc > li.done::before { content: '✓'; background: var(--ok); border-color: var(--ok); color: #fff; }
@@ -249,7 +249,7 @@
           <button type="button" id="btnExample" title="Replace the project with the chosen synthetic example">Load example</button>
           <button type="button" id="btnDemo" title="Replace the project with the small starting demo">Load small demo</button>
           <hr>
-          <label class="poprow" title="What the app shows when it opens">On start-up show <select id="uiStart"><option value="corridor">Rail corridor example</option><option value="street">Street example</option><option value="setback">Set-back example</option><option value="demo">Small demo</option><option value="empty">Empty project</option></select></label>
+          <label class="poprow" title="What the app shows when it opens">On start-up show <select id="uiStart"><option value="map">Map only (empty project)</option><option value="corridor">Rail corridor example</option><option value="street">Street example</option><option value="setback">Set-back example</option><option value="demo">Small demo</option><option value="empty">Empty project</option></select></label>
         </div>
       </div>
       <div class="menu">
@@ -400,15 +400,17 @@
 
   <section class="card" id="card-mapdisplay" data-title="Heat map">
     <div class="row"><label for="setCell">Map detail</label>
-      <select id="setCell"><option value="3">Fine (3 px)</option><option value="5" selected>Normal (5 px)</option><option value="8">Coarse (8 px)</option></select></div>
+      <select id="setCell" title="Size of each heat-map cell on screen. Coarser is much faster – the property assessment is not affected, it always uses the façade points"><option value="3">Fine (3 px) – slow</option><option value="5">Normal (5 px)</option><option value="8">Coarse (8 px)</option><option value="12">Very coarse (12 px)</option><option value="16" selected>Draft (16 px) – fastest</option></select></div>
     <div class="row"><label for="setMin">Hide below (dB(A))</label>
       <select id="setMin"><option>30</option><option selected>35</option><option>40</option><option>45</option><option>50</option></select></div>
     <div class="row"><label for="setOp">Opacity</label><input type="range" id="setOp" min="0.2" max="1" step="0.05" value="0.7"></div>
   </section>
 
   <section class="card" id="card-site" data-title="Site and buildings">
-    <div id="exampleNote" class="note" hidden>You are looking at a <b>synthetic example</b> (no real location). Follow steps 1–3 to start your own project at your site – the example is cleared when you go to the site.</div>
+    <div id="exampleNote" class="note" hidden>You are looking at a <b>synthetic example</b>. It has no real location, so there is no background map under it. Clear it (step 1) to start your own project.</div>
     <ol class="proc" id="siteSteps">
+      <li data-step="clear"><b>Clear the sample.</b> If an example is loaded, clear it to start an empty project on the map.
+        <div class="btns"><button type="button" id="btnClearSample" title="Remove the example and show the empty map">Clear sample</button></div></li>
       <li data-step="site"><b>Copy the site location.</b> In Google Maps, right-click the project location, then click the coordinates at the top of the menu (for example <code>-33.88901, 151.23702</code>) – that copies them. Paste them here:
         <div class="row"><input type="text" id="siteLL" placeholder="Paste here, e.g. -33.88901, 151.23702" title="Latitude, longitude in decimal degrees, as Google Maps copies them"></div></li>
       <li data-step="go"><b>Click Go to site.</b> The map moves there and shows a background map for your bearings (OpenStreetMap in the online copy; the NSW base map when the app is opened from disk – change it under View).
@@ -422,7 +424,7 @@
         </details></li>
     </ol>
     <p class="proc-h">Optional – improves accuracy</p>
-    <ol class="proc" start="4">
+    <ol class="proc" start="5">
       <li data-step="dem"><b>Terrain:</b> download a 1 m DEM for the site from the <a href="https://elevation.fsdf.org.au/" target="_blank" rel="noopener">ELVIS portal</a> and load it in <i>Terrain (DEM)</i> below. Improves accuracy with the ground surface profile (cuttings, embankments, hills).</li>
       <li data-step="lidar"><b>Building heights:</b> download LiDAR point cloud tiles (.laz) for the site from <a href="https://elevation.fsdf.org.au/" target="_blank" rel="noopener">ELVIS</a> and load them in <i>Building heights from LiDAR</i>. Improves accuracy of building heights – estimated heights are shown with dashed outlines.</li>
     </ol>
@@ -2748,7 +2750,7 @@ const DATA = {
  }
 };
 /* ============================== CONSTANTS ============================== */
-const VERSION = '0.12.0';
+const VERSION = '0.13.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
 /* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
    the three bands – the same values and conditions as the TfNSW Construction
@@ -2818,7 +2820,7 @@ const state = {
     defNca: { name: 'Outside NCAs', cat: DEFAULT_NCA_CAT, rbl: { day: null, evening: null, night: null } },
     floorH: 3, spacing: 10, offset: 1, display: 'both', results: null, sig: null, running: false
   },
-  settings: { method: 'tfnsw', lateral: true, reflect: 'auto', reflLoss: 1, bands: false, combine: 'all', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
+  settings: { method: 'tfnsw', lateral: true, reflect: 'auto', reflLoss: 1, bands: false, combine: 'all', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 16, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
 };
 let nextId = 1, grid = null;
 
@@ -4428,9 +4430,9 @@ function updateAttribution() {
 /* Per-viewer display choices (layout, colours, panels, map layers), kept in
    this browser's localStorage. They are conveniences only: the app works the
    same without them, and they are never saved in the project file. */
-const UI_KEY = 'noise-poc-ui-v2';   // v2: guided layout and the corridor example became the defaults
+const UI_KEY = 'noise-poc-ui-v3';   // v3: opens on the map only (v2: guided layout and corridor example)
 const UI = {
-  layout: 'guided', theme: 'light', compact: false, help: true, auto: true, start: 'corridor', basemap: 'auto',
+  layout: 'guided', theme: 'light', compact: false, help: true, auto: true, start: 'map', basemap: 'auto',
   left: true, right: true, bottom: true, focus: false, rtab: 'Results', btab: 'Data sources', step: 0, probeMin: false, collapsed: [],
   layers: { osm: true, heat: true, impact: true, blabels: true, slabels: true, ncas: true, hoard: true, paths: true, legend: true, probe: true, banner: true }
 };
@@ -4451,6 +4453,8 @@ const MAPTHEME = {
   contrast: { bg: '#ffffff', grid: '#c8c8c8', gridShade: 'rgba(0,0,0,0.12)', bfill: 'rgba(60,60,60,0.85)', bstroke: '#000000', bw: 1.6, blabel: '#ffffff', boxBg: '#ffffff', boxText: '#000000' }
 };
 let MT = MAPTHEME[UI.theme] || MAPTHEME.light;
+/* Where the map opens (map-only start), fully zoomed out. */
+const DEFAULT_SITE = [-33.85276318512677, 151.19989931580375], MIN_SCALE = 0.02;
 /* Period colours for shift chips and the map banner. */
 const PERIOD_COLOR = { std: '#16a34a', p1day: '#ca8a04', p1eve: '#c026d3', p2eve: '#7c3aed', p2night: '#1e40af' };
 const PERIOD_SHORT = { std: 'Standard hours', p1day: 'P1 day', p1eve: 'P1 evening', p2eve: 'P2 evening', p2night: 'P2 night' };
@@ -4466,58 +4470,93 @@ function resize() {
 }
 
 /* ============================ GRID COMPUTE ============================= */
-function computeGrid(cellPx, quiet) {
-  const t0 = performance.now();
-  // fast redraws while dragging skip reflections (the full pass follows)
-  const S = quiet ? Object.assign({}, state.settings, { _fast: true }) : state.settings, B = state.buildings, srcs = activeSources();
+/* The heat map is computed a few rows at a time across animation frames, so
+   the page stays responsive on slow laptops. The last finished map stays on
+   screen – moved and scaled with the view – until the new one is ready.
+   Panning and zooming reuse it and recompute only once the view stops. */
+let gridJob = null;
+function startGrid(cellPx, quiet) {
+  // fast redraws while dragging plant skip reflections (the full pass follows)
+  const S = quiet ? Object.assign({}, state.settings, { _fast: true }) : state.settings, srcs = activeSources();
   prep(srcs);
   const gw = Math.ceil(cssW / cellPx), gh = Math.ceil(cssH / cellPx);
-  off.width = gw; off.height = gh;
-  const img = offctx.createImageData(gw, gh), data = img.data;
-  const v = state.view, inv = 1 / v.scale;
-  let maxL = -Infinity, masked = 0;
-  if (srcs.length) {
-    for (let j = 0; j < gh; j++) {
-      const wy = v.cy - ((j + 0.5) * cellPx - cssH / 2) * inv;
-      for (let i = 0; i < gw; i++) {
-        const wx = v.cx + ((i + 0.5) * cellPx - cssW / 2) * inv;
-        if (B.length && buildingAt(wx, wy)) { masked++; continue; }
-        const gr = ground(wx, wy);
-        let e = 0;
-        for (let s = 0; s < srcs.length; s++) e += Math.pow(10, contrib(srcs[s], wx, wy, S, B, false, gr) / 10);
-        const L = 10 * Math.log10(e);
-        if (L > maxL) maxL = L;
-        if (!(L >= S.minDb) || L < BANDS[0][0]) continue;
-        const c = BAND_RGB[Math.min(BANDS.length - 1, Math.floor((L - BANDS[0][0]) / 5))], k = (j * gw + i) * 4;
-        data[k] = c[0]; data[k + 1] = c[1]; data[k + 2] = c[2]; data[k + 3] = 255;
-      }
+  gridJob = { cellPx, quiet, S, srcs, gw, gh, j: 0, i: 0, img: offctx.createImageData(gw, gh), view: Object.assign({}, state.view), W: cssW, H: cssH, t0: performance.now(), busy: 0, maxL: -Infinity, masked: 0 };
+}
+/* Works on the current job for up to `budget` ms; true when it is finished. */
+function stepGrid(budget) {
+  const J = gridJob; if (!J) return true;
+  const t1 = performance.now(), tEnd = t1 + budget, B = state.buildings, S = J.S, srcs = J.srcs, data = J.img.data, v = J.view, inv = 1 / v.scale;
+  let out = false;
+  while (J.j < J.gh && srcs.length && !out) {
+    const j = J.j, wy = v.cy - ((j + 0.5) * J.cellPx - J.H / 2) * inv;
+    for (let i = J.i; i < J.gw; i++) {
+      if ((i & 7) === 0 && i > J.i && performance.now() > tEnd) { J.i = i; out = true; break; }   // stop mid-row, carry on next frame
+      const wx = v.cx + ((i + 0.5) * J.cellPx - J.W / 2) * inv;
+      if (B.length && buildingAt(wx, wy)) { J.masked++; continue; }
+      const gr = ground(wx, wy);
+      let e = 0;
+      for (let s = 0; s < srcs.length; s++) e += Math.pow(10, contrib(srcs[s], wx, wy, S, B, false, gr) / 10);
+      const L = 10 * Math.log10(e);
+      if (L > J.maxL) J.maxL = L;
+      if (!(L >= S.minDb) || L < BANDS[0][0]) continue;
+      const c = BAND_RGB[Math.min(BANDS.length - 1, Math.floor((L - BANDS[0][0]) / 5))], k = (j * J.gw + i) * 4;
+      data[k] = c[0]; data[k + 1] = c[1]; data[k + 2] = c[2]; data[k + 3] = 255;
     }
+    if (out) break;
+    J.j++; J.i = 0;
+    if (performance.now() > tEnd) break;
   }
-  offctx.putImageData(img, 0, 0);
-  grid = { cellPx, gw, gh };
-  const ms = performance.now() - t0;
-  $('busy').textContent = `${gw}×${gh} receivers · ${srcs.length} src · ${B.length} bldg · ${ms.toFixed(0)} ms · cell ≈ ${fmt(cellPx / v.scale, 2)} m`;
-  if (!quiet) log(`Grid ${gw}×${gh} (${(gw * gh).toLocaleString()} rcv, ${masked} masked) × ${srcs.length} src, ${B.length} bldg, ${state.hoardings.length} hoarding${state.terrain ? ', terrain' : ''}: ${ms.toFixed(0)} ms. Max ${fmt(maxL)} dB(A).`);
+  J.busy += performance.now() - t1;
+  if (J.j < J.gh && srcs.length) { $('busy').textContent = `Updating heat map… ${Math.round(100 * J.j / J.gh)} %`; return false; }
+  off.width = J.gw; off.height = J.gh; offctx.putImageData(J.img, 0, 0);
+  grid = { cellPx: J.cellPx, gw: J.gw, gh: J.gh, view: J.view, W: J.W, H: J.H };
+  gridJob = null;
+  const ms = J.busy, B2 = state.buildings;
+  $('busy').textContent = `${J.gw}×${J.gh} receivers · ${srcs.length} src · ${B2.length} bldg · ${ms.toFixed(0)} ms · cell ≈ ${fmt(J.cellPx / v.scale, 2)} m`;
+  if (!J.quiet && srcs.length) log(`Grid ${J.gw}×${J.gh} (${(J.gw * J.gh).toLocaleString()} rcv, ${J.masked} masked) × ${srcs.length} src, ${B2.length} bldg, ${state.hoardings.length} hoarding${state.terrain ? ', terrain' : ''}: ${ms.toFixed(0)} ms. Max ${fmt(J.maxL)} dB(A).`);
+  return true;
+}
+/* Draws the last finished heat map where it belongs in the current view. */
+function drawGrid() {
+  const G = grid, v = state.view; if (!G || !G.view) return;
+  const k = v.scale / G.view.scale;
+  const dx = (G.view.cx - v.cx) * v.scale - G.W / 2 * k + cssW / 2, dy = cssH / 2 - (G.view.cy - v.cy) * v.scale - G.H / 2 * k;
+  ctx.drawImage(off, dx, dy, G.gw * G.cellPx * k, G.gh * G.cellPx * k);
 }
 
 /* ============================== SCHEDULER ============================== */
 let rafId = 0, needCompute = false, computeFast = false, fullTimer = 0;
+/* fast: a coarse quick pass now (dragging plant), then the full pass. */
 function requestCompute(fast) {
   needCompute = true; computeFast = fast;
   clearTimeout(fullTimer);
   if (fast) fullTimer = setTimeout(() => requestCompute(false), 250);
   schedule();
 }
+/* The view moved (pan / zoom): redraw now with the current heat map, recompute once it settles. */
+function requestViewChange() {
+  clearTimeout(fullTimer);
+  fullTimer = setTimeout(() => requestCompute(false), 300);
+  schedule();
+}
 function requestRender() { schedule(); }
 function schedule() { if (!rafId) rafId = requestAnimationFrame(frame); }
+/* Time spent in the last frame (ms), for the performance read-out. */
+const PERF = { grid: 0, render: 0, probe: 0, frames: 0 };
 function frame() {
   rafId = 0;
   try {
-    if (needCompute) { needCompute = false; const cp = state.settings.cellPx; computeGrid(computeFast ? Math.max(cp * 2, 10) : cp, computeFast); if (!computeFast) assessStatusTick(); }
-    render(); updateProbe();
+    let t = performance.now();
+    if (needCompute) { needCompute = false; const cp = state.settings.cellPx; startGrid(computeFast ? Math.max(cp * 2, 16) : cp, computeFast); }
+    if (gridJob) {
+      const quiet = gridJob.quiet, done = stepGrid(quiet ? 40 : 25);
+      PERF.grid = performance.now() - t;
+      if (!done) schedule(); else if (!quiet) assessStatusTick();
+    }
+    t = performance.now(); render(); PERF.render = performance.now() - t;
+    t = performance.now(); updateProbe(); PERF.probe = performance.now() - t; PERF.frames++;
   } catch (err) { log('Frame error: ' + err.message, 'fail'); console.error(err); }
 }
-
 /* ================================ RENDER =============================== */
 function niceStep(target) { for (const s of [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000]) if (s >= target) return s; return 10000; }
 function polyPath(pts, close) {
@@ -4546,7 +4585,7 @@ function render() {
   const AR = state.assess.results, showRes = L.impact && state.assess.display === 'respite' && state.respite, showCat = L.impact && AR && !showRes && state.assess.display !== 'heat';
   if (L.heat && grid && state.sources.length && !(showCat && state.assess.display === 'cat') && !showRes) {
     ctx.save(); ctx.globalAlpha = S.opacity; ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(off, 0, 0, grid.gw * grid.cellPx, grid.gh * grid.cellPx);
+    drawGrid();
     ctx.restore();
   }
 
@@ -4926,7 +4965,7 @@ canvas.addEventListener('pointermove', e => {
   state.mouse = { x: mx, y: my };
   if (drag) {
     const v = state.view;
-    if (drag.kind === 'pan') { v.cx -= (mx - drag.lx) / v.scale; v.cy += (my - drag.ly) / v.scale; drag.lx = mx; drag.ly = my; requestCompute(true); return; }
+    if (drag.kind === 'pan') { v.cx -= (mx - drag.lx) / v.scale; v.cy += (my - drag.ly) / v.scale; drag.lx = mx; drag.ly = my; requestViewChange(); return; }
     if (drag.kind === 'source') { drag.obj.x = wx - drag.ox; drag.obj.y = wy - drag.oy; drag.moved = true; requestCompute(true); return; }
     if (drag.kind === 'poly') {
       const dx = wx - drag.lx, dy = wy - drag.ly;
@@ -4945,7 +4984,9 @@ function endDrag() {
     if (drag.type === 'building') { updateBase(drag.obj); geomChanged(); }
     log(`Moved “${drag.obj.name}”.`); renderSelPanel();
   }
-  drag = null; requestCompute(false);
+  // a pan already schedules its own recompute; a plain click needs none
+  const changed = drag.moved; drag = null;
+  if (changed) requestCompute(false); else requestRender();
 }
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
@@ -4960,7 +5001,7 @@ canvas.addEventListener('wheel', e => {
   const [mx, my] = mousePos(e), before = s2w(mx, my), v = state.view;
   v.scale = Math.min(60, Math.max(0.02, v.scale * Math.exp(-e.deltaY * 0.0015)));
   v.cx = before[0] - (mx - cssW / 2) / v.scale; v.cy = before[1] + (my - cssH / 2) / v.scale;
-  requestCompute(true);
+  requestViewChange();
 }, { passive: false });
 document.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
@@ -6210,11 +6251,29 @@ function newProject(keepOrigin) {
   updateDemInfo(); renderCalPanel(); syncAssessUI(); syncSettingsUI(); renderShiftPanel(true); updateSiteInfo();
 }
 /* What the app shows when it opens (File menu). */
+/* Returns true when the view should then be fitted to the content. */
 function startScene() {
-  if (['corridor', 'street', 'setback'].includes(UI.start)) buildReferenceExample(UI.start);
-  else if (UI.start === 'empty') { newProject(); log('Empty project.'); }
-  else loadDemo();
+  if (['corridor', 'street', 'setback'].includes(UI.start)) { buildReferenceExample(UI.start); return true; }
+  if (UI.start === 'empty') { newProject(); log('Empty project.'); return true; }
+  if (UI.start === 'demo') { loadDemo(); return true; }
+  startMapOnly(); return false;
 }
+/* Empty project on the background map at the default location, fully zoomed out. The
+   location is only a starting view: Go to site replaces it. */
+function startMapOnly() {
+  newProject();
+  const [lat, lon] = DEFAULT_SITE, z = zoneOf(lon), p = ll2mga(lat, lon, z);
+  state.origin = { type: 'projected', x0: Math.round(p[0]), y0: Math.round(p[1]), zone: z, epsg: null, isDefault: true };
+  const c = ll2local(lat, lon);
+  state.view = { cx: c[0], cy: c[1], scale: MIN_SCALE };
+  updateSiteInfo(); updateSiteSteps();
+  log('Map only – follow the Site steps: paste the site location, Go to site, Fetch OSM buildings.');
+  requestCompute(false);
+}
+$('btnClearSample').addEventListener('click', () => {
+  if (!state.example) { log('No sample is loaded.'); return; }
+  startMapOnly(); log('Sample cleared.');
+});
 $('uiStart').value = UI.start;
 $('uiBasemap').value = UI.basemap;
 $('uiBasemap').addEventListener('change', e => { UI.basemap = e.target.value; UI.layers.osm = true; savePrefs(); applyPanels(); log(`Background map: ${BASEMAPS[basemapKey()].label}${UI.basemap === 'auto' ? ' (automatic)' : ''}.`); });
@@ -6288,9 +6347,11 @@ function syncPlantList() {
 /* ---- site steps: tick off what has been done ---- */
 function updateSiteSteps() {
   const real = !!(state.origin && state.origin.zone), osm = state.buildings.some(b => b.osmId), P = state.provenance;
-  const done = { site: real || $('siteLL').value.trim() !== '', go: real, osm, dem: !!state.terrain, lidar: P.some(p => /LiDAR|DSM/.test(p.kind)) };
+  const atSite = real && !state.origin.isDefault;
+  const done = { clear: !state.example, site: atSite || $('siteLL').value.trim() !== '', go: atSite, osm, dem: !!state.terrain, lidar: P.some(p => /LiDAR|DSM/.test(p.kind)) };
   document.querySelectorAll('#card-site li[data-step]').forEach(li => li.classList.toggle('done', !!done[li.dataset.step]));
-  const next = ['site', 'go', 'osm'].find(k => !done[k]);
+  const next = ['clear', 'site', 'go', 'osm'].find(k => !done[k]);
+  $('btnClearSample').disabled = !state.example;
   document.querySelectorAll('#card-site li[data-step]').forEach(li => li.classList.toggle('next', li.dataset.step === next));
   $('exampleNote').hidden = !state.example;
 }
@@ -7190,6 +7251,10 @@ function goToSite() {
     if (!window.confirm('Start your project at this site? The synthetic example (its buildings, hoarding, NCAs and plant) will be cleared.')) { log('Go to site cancelled – the example is still loaded.'); return; }
     newProject(); log('Example cleared – new project at the site.');
   }
+  if (state.origin && state.origin.isDefault) {   // the opening view's location is just a view: move the origin to the site
+    const empty = !state.sources.length && !state.buildings.length && !state.hoardings.length && !state.ncas.length && !state.terrain;
+    if (empty) state.origin = null; else delete state.origin.isDefault;
+  }
   const z = (state.origin && state.origin.zone) || zoneOf(lon), p = ll2mga(lat, lon, z);
   const first = !state.origin;
   ensureOrigin(p[0], p[1], null, z, 'site location');
@@ -7321,7 +7386,7 @@ function sanitizeSettings(raw, cur) {
   pick('reflect', oneOf('auto', 'on', 'off')); pick('bands', bool); pick('reflLoss', inR(0, 10));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
   pick('air', bool); pick('lateral', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
-  pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
+  pick('cellPx', oneOf(3, 5, 8, 12, 16)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
   pick('newH', inR(0.5, 300)); pick('newHo', inR(0.3, 20));
   if (!('soft' in raw) && (raw.ground === 'soft' || raw.ground === 'hard')) {
     out.soft = raw.ground === 'soft' ? 1 : 0;
@@ -7503,6 +7568,8 @@ function loadDemo() {
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
   state.sources = [makeSource(0, 0, DEFAULT_EQ)]; state.ncas = []; state.assess.results = null;
   resetShifts('Demo shift'); state.provenance = []; state.example = null;
+  state.origin = null;   // synthetic: no real location
+  updateSiteInfo();
   geomChanged(); select(null); renderShiftPanel(true);
   log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
   renderAssessPanel(); updateAssessButtons(); refreshBulkSelects(); requestCompute(false);
@@ -7555,6 +7622,7 @@ function buildReferenceExample(variant) {
   state.sources = REF_PLANT.map(p => Object.assign(makeSource(p.x, p.y, 'custom'), { name: p.name, lw: p.lw, on: p.on, pen: p.pen, mit: 0, h: 2 }));
   Object.assign(state.settings, { period: 'p2night', soft: 0, combine: 'all' });
   state.assess.results = null; state.terrain = null;
+  state.origin = null;   // synthetic: no real location, so no background map under it
   state.example = variant; resetShifts(`Night works – ${variant}`); state.provenance = [{ kind: 'Example', name: `Synthetic inner-city scene (${variant})`, detail: 'Generated in the app – not a real location', loaded: new Date().toISOString(), fileDate: null }];
   geomChanged(); syncSettingsUI(); syncAssessUI(); select(null);
   const desc = { corridor: 'rail corridor behind 2.4 m hoarding, façades 20 m away', street: 'street works, façades 10 m away', setback: 'open works area, façades 37 m away' }[variant];
@@ -7711,11 +7779,11 @@ $('ver').textContent = 'v' + VERSION;
 log(`Noise POC v${VERSION} starting. λ = ${LAMBDA.toFixed(3)} m (${F_BAND} Hz). DecompressionStream: ${typeof DecompressionStream !== 'undefined' ? 'yes' : 'NO'}.`);
 const selftest = selfTest();
 nextId = 1;
-syncSettingsUI(); updateLibInfo(); syncAssessUI(); renderCalPanel(); setMode('select'); startScene(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
+syncSettingsUI(); updateLibInfo(); syncAssessUI(); renderCalPanel(); setMode('select'); const fitView = startScene(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
 if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
 resize();
-requestAnimationFrame(() => zoomExtents());
-window.__noise = { _reveal: revealEl, buildReferenceExample, runCalibration, runAllShifts, buildReport, _t: { openShiftCompare, parseDates, datesText, dateRuns, respiteCheck, computeRespite, switchShift, curShift, makeShift, parseCsv, levelAt, estimatorRowLevel, estimatorCombine, estimatorLevel, activeSources, setRuleSet, crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings, nmlFor, classify, sleepCheck, landUseFromTags, luOf, floorsOf, addressOf, facadePoints, makeBuilding, makeNca, geomChanged, rules: () => RULES }, runAssessment, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
+if (fitView) requestAnimationFrame(() => zoomExtents());
+window.__noise = { _reveal: revealEl, buildReferenceExample, runCalibration, runAllShifts, buildReport, _t: { perf: () => Object.assign({}, PERF), openShiftCompare, parseDates, datesText, dateRuns, respiteCheck, computeRespite, switchShift, curShift, makeShift, parseCsv, levelAt, estimatorRowLevel, estimatorCombine, estimatorLevel, activeSources, setRuleSet, crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings, nmlFor, classify, sleepCheck, landUseFromTags, luOf, floorsOf, addressOf, facadePoints, makeBuilding, makeNca, geomChanged, rules: () => RULES }, runAssessment, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
 })();
 </script>
 </body>

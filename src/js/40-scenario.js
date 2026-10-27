@@ -90,7 +90,7 @@ function sanitizeSettings(raw, cur) {
   pick('reflect', oneOf('auto', 'on', 'off')); pick('bands', bool); pick('reflLoss', inR(0, 10));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
   pick('air', bool); pick('lateral', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
-  pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
+  pick('cellPx', oneOf(3, 5, 8, 12, 16)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
   pick('newH', inR(0.5, 300)); pick('newHo', inR(0.3, 20));
   if (!('soft' in raw) && (raw.ground === 'soft' || raw.ground === 'hard')) {
     out.soft = raw.ground === 'soft' ? 1 : 0;
@@ -272,6 +272,8 @@ function loadDemo() {
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
   state.sources = [makeSource(0, 0, DEFAULT_EQ)]; state.ncas = []; state.assess.results = null;
   resetShifts('Demo shift'); state.provenance = []; state.example = null;
+  state.origin = null;   // synthetic: no real location
+  updateSiteInfo();
   geomChanged(); select(null); renderShiftPanel(true);
   log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
   renderAssessPanel(); updateAssessButtons(); refreshBulkSelects(); requestCompute(false);

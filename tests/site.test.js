@@ -11,46 +11,75 @@ const OSM_XML = `<?xml version="1.0"?><osm version="0.6">
 /* Fresh start with the app's own defaults (layout, start-up scene, underlay), auto-update off. */
 async function defaults(page) {
   // set before the app reads it (a write followed by an immediate reload can be lost)
-  await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false })));
+  await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v3', JSON.stringify({ auto: false })));
   await page.reload(); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
 }
 
 module.exports = [
   {
-    name: 'opens on the rail corridor example in the guided layout, at step 1 Site; Report is in Results, not the top bar',
+    name: 'opens on the empty map in the guided layout at the default location, fully zoomed out; Report is in Results; very coarse heat map',
     async run({ page, assert }) {
-      await page.route('https://tile.openstreetmap.org/**', r => r.fulfill({ body: PNG1, contentType: 'image/png' }));
+      await page.route('https://maps.six.nsw.gov.au/**', r => r.fulfill({ body: PNG1, contentType: 'image/png' }));
       await defaults(page);
-      const r = await page.evaluate(() => ({ cls: document.getElementById('app').className, ex: window.__noise.state.example, n: window.__noise.state.buildings.length, shift: window.__noise.state.shifts[0].name }));
+      const r = await page.evaluate(() => { const N = window.__noise, st = N.state, c = N.local2ll(st.view.cx, st.view.cy);
+        return { cls: document.getElementById('app').className, ex: st.example, n: st.buildings.length + st.sources.length, o: st.origin, c, scale: st.view.scale, cell: st.settings.cellPx }; });
       assert.ok(r.cls.includes('layout-guided'), r.cls);
-      assert.strictEqual(r.ex, 'corridor'); assert.ok(r.n > 50);
+      assert.strictEqual(r.ex, null); assert.strictEqual(r.n, 0, 'nothing in the project');
+      assert.ok(r.o && r.o.isDefault && r.o.zone === 56);
+      assert.ok(Math.abs(r.c[0] - -33.85276318512677) < 1e-5 && Math.abs(r.c[1] - 151.19989931580375) < 1e-5, 'view centred on the default location: ' + r.c);
+      assert.strictEqual(r.scale, 0.02, 'fully zoomed out');
+      assert.strictEqual(r.cell, 16, 'very coarse heat map by default');
       assert.strictEqual(await page.textContent('#steps button.on'), '1 Site');
-      assert.ok(await page.isVisible('#exampleNote'), 'example notice shown');
-      assert.ok(await page.isVisible('#siteLL') && await page.isVisible('#btnSite') && await page.isVisible('#btnOsm'));
+      const steps = await page.$$eval('#card-site li[data-step]', l => l.map(x => x.dataset.step + (x.classList.contains('done') ? ':done' : '') + (x.classList.contains('next') ? ':next' : '')));
+      assert.deepStrictEqual(steps, ['clear:done', 'site:next', 'go', 'osm', 'dem', 'lidar']);
+      assert.ok(await page.isDisabled('#btnClearSample'), 'nothing to clear');
+      assert.ok(!(await page.isVisible('#exampleNote')));
+      await page.waitForFunction(() => /Spatial Services/.test(document.getElementById('attrib').textContent), null, { timeout: 5000 });   // background map (from disk: NSW base map)
       assert.ok((await page.textContent('#card-site')).includes('right-click the project location'));
       assert.ok((await page.textContent('#card-dem')).includes('1 m DEM') && (await page.getAttribute('#card-dem a', 'href')).includes('elevation.fsdf.org.au'));
       assert.ok((await page.textContent('#card-lidar')).includes('.laz'));
       assert.strictEqual(await page.locator('#topbar #btnReport').count(), 0, 'no Report in the top bar');
       assert.ok(await page.evaluate(() => !!document.getElementById('btnReport').closest('#card-report')));
-      // the guided layout's Results step shows the report card next to it in workspace; in guided it is step 5
       assert.strictEqual(await page.$$eval('#steps button', b => b[4].textContent), '5 Report');
     }
   },
   {
-    name: 'Go to site from the example: asks, clears the example, moves there; steps tick off; cancel keeps the example',
+    name: 'a loaded sample has no background map; step 1 Clear sample goes back to the empty map; Go to site from a sample asks first',
     async run({ page, assert }) {
-      await page.route('https://tile.openstreetmap.org/**', r => r.fulfill({ body: PNG1, contentType: 'image/png' }));
+      const tiles = [];
+      await page.route('https://maps.six.nsw.gov.au/**', r => { tiles.push(r.request().url()); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
       await defaults(page);
+      await page.selectOption('#exampleSel', 'corridor'); await page.click('#btnExample');
+      await page.waitForTimeout(300); tiles.length = 0; await page.waitForTimeout(500);
+      let r = await page.evaluate(() => ({ ex: window.__noise.state.example, o: window.__noise.state.origin }));
+      assert.deepStrictEqual(r, { ex: 'corridor', o: null }, 'sample has no location');
+      assert.strictEqual(tiles.length, 0, 'no background tiles under a sample');
+      assert.ok(await page.isVisible('#exampleNote'));
+      assert.ok((await page.getAttribute('#card-site li[data-step=clear]', 'class')).includes('next'));
+      await page.click('#btnClearSample');
+      r = await page.evaluate(() => ({ ex: window.__noise.state.example, n: window.__noise.state.buildings.length, d: window.__noise.state.origin && window.__noise.state.origin.isDefault, s: window.__noise.state.view.scale }));
+      assert.deepStrictEqual(r, { ex: null, n: 0, d: true, s: 0.02 });
+      // Go to site straight from a sample: asks, cancel keeps it
+      await page.click('#btnExample');
       await page.fill('#siteLL', SITE.join(', '));
       page.once('dialog', d => d.dismiss()); await page.click('#btnSite');
       assert.strictEqual(await page.evaluate(() => window.__noise.state.example), 'corridor', 'cancel keeps the example');
       page.once('dialog', d => d.accept()); await page.click('#btnSite');
-      const r = await page.evaluate(() => { const st = window.__noise.state; return { ex: st.example, b: st.buildings.length, s: st.sources.length, zone: st.origin && st.origin.zone, w: window.innerWidth }; });
-      assert.deepStrictEqual([r.ex, r.b, r.s, r.zone], [null, 0, 0, 56]);
+      r = await page.evaluate(() => { const st = window.__noise.state; return { ex: st.example, b: st.buildings.length, s: st.sources.length, zone: st.origin && st.origin.zone, d: !!(st.origin && st.origin.isDefault) }; });
+      assert.deepStrictEqual(r, { ex: null, b: 0, s: 0, zone: 56, d: false });
       const steps = await page.$$eval('#card-site li[data-step]', l => l.map(x => x.dataset.step + (x.classList.contains('done') ? ':done' : '') + (x.classList.contains('next') ? ':next' : '')));
-      assert.deepStrictEqual(steps.slice(0, 3), ['site:done', 'go:done', 'osm:next']);
-      assert.ok(!(await page.isVisible('#exampleNote')));
+      assert.deepStrictEqual(steps.slice(0, 4), ['clear:done', 'site:done', 'go:done', 'osm:next']);
       assert.ok(/Next: Fetch OSM buildings/.test(await page.textContent('#log')));
+    }
+  },
+  {
+    name: 'Go to site from the opening map moves the origin to the site (no example to clear, no question)',
+    async run({ page, assert }) {
+      await defaults(page);
+      await page.fill('#siteLL', SITE.join(', ')); await page.click('#btnSite');
+      const r = await page.evaluate(() => { const N = window.__noise, st = N.state, c = N.local2ll(0, 0); return { d: !!st.origin.isDefault, c, scale: st.view.scale }; });
+      assert.ok(!r.d && Math.abs(r.c[0] - -33.88901) < 1e-4 && Math.abs(r.c[1] - 151.23702) < 1e-4, 'origin at the site: ' + r.c);
+      assert.ok(r.scale > 0.5, 'zoomed in to the site');
     }
   },
   {
@@ -76,7 +105,7 @@ module.exports = [
       const nsw = [], osm = [];
       await page.route('https://maps.six.nsw.gov.au/**', r => { nsw.push(r.request().url()); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
       await page.route('https://tile.openstreetmap.org/**', r => { osm.push(r.request().url()); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
-      await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: true } })));
+      await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v3', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: true } })));
       await page.reload(); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
       await page.waitForTimeout(300);
       assert.strictEqual(nsw.length + osm.length, 0, 'no location yet: no tiles');
@@ -113,7 +142,7 @@ module.exports = [
       try {
         const url = `http://127.0.0.1:${server.address().port}/noise-modelling/`, osm = [];
         await page.route('https://tile.openstreetmap.org/**', r => { osm.push(r.request().headers().referer || ''); return r.fulfill({ body: PNG1, contentType: 'image/png' }); });
-        await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: true } })));
+        await page.addInitScript(() => localStorage.setItem('noise-poc-ui-v3', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: true } })));
         await page.goto(url); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
         await page.fill('#siteLL', SITE.join(', ')); await page.click('#btnSite');
         await page.waitForFunction(() => /OpenStreetMap/.test(document.getElementById('attrib').textContent) && /^Map ©/.test(document.getElementById('attrib').textContent));

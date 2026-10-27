@@ -27,7 +27,7 @@ async function open(browser) {
   page.on('console', m => { const t = m.text(); if (m.type() === 'error' && !t.startsWith('[noise-poc]') && !page._allowed.some(re => re.test(t))) page._errors.push(t); });
   // UI preferences for tests: the workspace layout and the small demo (the scene the tests were written
   // against), no automatic re-runs (tests run the assessment explicitly) and no map tiles (no network)
-  await page.addInitScript(() => { try { if (!localStorage.getItem('noise-poc-ui-v2')) localStorage.setItem('noise-poc-ui-v2', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: false } })); } catch (e) {} });
+  await page.addInitScript(() => { try { if (!localStorage.getItem('noise-poc-ui-v3')) localStorage.setItem('noise-poc-ui-v3', JSON.stringify({ auto: false, layout: 'workspace', start: 'demo', layers: { osm: false } })); } catch (e) {} });
   // controls live in menus, tabs and folded cards: bring each one into view before using it, as a user would
   for (const m of ['click', 'fill', 'selectOption', 'check', 'uncheck', 'hover']) {
     const orig = page[m].bind(page);
@@ -36,6 +36,9 @@ async function open(browser) {
       return orig(sel, ...a);
     };
   }
+  // map tiles never come from the real network in tests: a 1 px image (tests that check tile requests add their own routes, which take priority)
+  const PNG1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/C/HgAGgwJ/lK3Q6wAAAABJRU5ErkJggg==', 'base64');
+  await page.route(/^https:\/\/(tile\.openstreetmap\.org|maps\.six\.nsw\.gov\.au)\//, r => r.fulfill({ body: PNG1, contentType: 'image/png' }));
   // THROTTLE=4 node tests/run.js … slows the CPU 4×, to shake out timing assumptions (CI machines are slower)
   if (process.env.THROTTLE) { const cdp = await page.context().newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: +process.env.THROTTLE }); }
   await page.goto(PAGE);

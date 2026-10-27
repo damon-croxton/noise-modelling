@@ -26,7 +26,7 @@ function render() {
   const AR = state.assess.results, showRes = L.impact && state.assess.display === 'respite' && state.respite, showCat = L.impact && AR && !showRes && state.assess.display !== 'heat';
   if (L.heat && grid && state.sources.length && !(showCat && state.assess.display === 'cat') && !showRes) {
     ctx.save(); ctx.globalAlpha = S.opacity; ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(off, 0, 0, grid.gw * grid.cellPx, grid.gh * grid.cellPx);
+    drawGrid();
     ctx.restore();
   }
 

@@ -1,0 +1,161 @@
+noise_poc v0.13.0 – node tests/run.js – 2026-10-27T06:44Z – Chromium (Playwright 1.63.0)
+
+PASS  self-test: ISO hard ground 50 m (q = 0)  got 63.021, expected 63.021 ± 0.01
+PASS  self-test: ISO hard ground 200 m (q = 0.55)  got 52.629, expected 52.629 ± 0.01
+PASS  self-test: ISO soft ground 100 m + DΩ  got 52.808, expected 52.808 ± 0.01
+PASS  self-test: 10 m wall @ 25 m (Dz)  got 19.153, expected 19.127 ± 0.15
+PASS  self-test: Line of sight over wall  got 0.000, expected 0.000 ± 0.001
+PASS  self-test: 2.4 m hoarding @ 5 m (Dz)  got 7.239, expected 7.239 ± 0.05
+PASS  self-test: Side diffraction: 20 m hoarding, 4 m high @ 25 m  got 9.080, expected 9.080 ± 0.05
+PASS  self-test: Side diffraction off: same hoarding, top path only  got 9.736, expected 9.736 ± 0.05
+PASS  self-test: Side diffraction: 10 × 20 m block, 10 m high (two edges each way)  got 20.054, expected 20.054 ± 0.05
+PASS  self-test: Reflection: 10 m wall 10 m beside a 30 m path (ISO, hard)  got 69.361, expected 69.361 ± 0.01
+PASS  self-test: Reflection: TfNSW basis with reflections on  got 69.361, expected 69.361 ± 0.01
+PASS  self-test: Reflection off: same wall, direct only  got 67.458, expected 67.458 ± 0.01
+PASS  self-test: Reflection: receiver's own façade (1 m away) left out  got 67.083, expected 67.083 ± 0.01
+PASS  self-test: Reflection: wall lower than the path, none  got 67.458, expected 67.458 ± 0.01
+PASS  self-test: Reflection: 1.2 m wide column too small (eq. 19), none  got 67.458, expected 67.458 ± 0.01
+PASS  self-test: ISO 9613-1 air, mean of 250/500/1k = estimator (warm day)  got 2.987, expected 2.987 ± 0.01
+PASS  self-test: ISO 9613-1 air, mean of 250/500/1k = estimator (warm night)  got 2.542, expected 2.540 ± 0.01
+PASS  self-test: ISO 9613-1 air, mean of 250/500/1k = estimator (cool day)  got 2.525, expected 2.523 ± 0.01
+PASS  self-test: ISO 9613-1 air, mean of 250/500/1k = estimator (cool night)  got 2.115, expected 2.112 ± 0.01
+PASS  self-test: ISO 9613-1 air 63 Hz, 20 °C 70 % (ISO 9613-2 Table 2)  got 0.090, expected 0.100 ± 0.05
+PASS  self-test: ISO 9613-1 air 125 Hz, 20 °C 70 % (ISO 9613-2 Table 2)  got 0.339, expected 0.300 ± 0.05
+PASS  self-test: ISO 9613-1 air 250 Hz, 20 °C 70 % (ISO 9613-2 Table 2)  got 1.132, expected 1.100 ± 0.05
+PASS  self-test: ISO 9613-1 air 500 Hz, 20 °C 70 % (ISO 9613-2 Table 2)  got 2.798, expected 2.800 ± 0.05
+PASS  self-test: ISO 9613-1 air 1000 Hz, 20 °C 70 % (ISO 9613-2 Table 2)  got 4.978, expected 5.000 ± 0.05
+PASS  self-test: ISO 9613-1 air 2000 Hz, 20 °C 70 % (ISO 9613-2 Table 2)  got 9.016, expected 9.000 ± 0.09
+PASS  self-test: ISO 9613-1 air 4000 Hz, 20 °C 70 % (ISO 9613-2 Table 2)  got 22.911, expected 22.900 ± 0.229
+PASS  self-test: ISO 9613-1 air 8000 Hz, 20 °C 70 % (ISO 9613-2 Table 2)  got 76.621, expected 76.600 ± 0.766
+PASS  self-test: Generic spectra sum to 0 dB  got 0.000, expected 0.000 ± 1e-9
+PASS  self-test: Octave bands, hard ground: same as single band  got 52.629, expected 52.629 ± 0.01
+PASS  self-test: Octave bands, soft ground 100 m (ISO 9613-2 Table 3)  got 53.266, expected 53.266 ± 0.01
+PASS  self-test: Octave bands, 2.4 m hoarding @ 5 m: Dz per band  got 49.566, expected 49.566 ± 0.01
+PASS  self-test: Octave bands: 3 m column reflects only at 4 and 8 kHz (eq. 19)  got 68.335, expected 68.335 ± 0.01
+PASS  self-test: Single band: the same column does not reflect at 500 Hz  got 67.458, expected 67.458 ± 0.01
+PASS  self-test: Flat terrain RL 30 = flat ground  got 63.021, expected 63.021 ± 0.01
+PASS  self-test: Terrain ridge 6 m @ 25 m (Dz)  got 13.949, expected 13.949 ± 0.15
+PASS  self-test: Source in 4 m cut, edge @ 10 m (Dz)  got 7.857, expected 7.857 ± 0.3
+PASS  self-test: Air: Oct–Apr day (dB/km)  got 2.987, expected 2.987 ± 1e-9
+PASS  self-test: Air: May–Sep night (dB/km)  got 2.112, expected 2.112 ± 1e-9
+PASS  self-test: CONCAWE ground 100 m × 50 %  got 2.529, expected 2.529 ± 0.000001
+PASS  self-test: CONCAWE ground 250 m  got 9.009, expected 9.009 ± 0.000001
+PASS  self-test: Ground kept with 5 dB screening  got 10.059, expected 10.059 ± 0.000001
+PASS  self-test: Ground dropped with 10 dB screening  got 10.000, expected 10.000 ± 1e-9
+PASS  self-test: TfNSW estimator Oct–Apr std 40 m, 20 % soft  got 69.655, expected 69.655 ± 0.01
+PASS  self-test: TfNSW estimator Oct–Apr std 100 m, 50 % soft  got 59.172, expected 59.172 ± 0.01
+PASS  self-test: TfNSW estimator Oct–Apr p2night 250 m, 100 % soft  got 44.397, expected 44.397 ± 0.01
+PASS  self-test: TfNSW estimator May–Sep std 10 m, 0 % soft  got 81.975, expected 81.975 ± 0.01
+PASS  self-test: TfNSW estimator May–Sep p2night 1000 m, 80 % soft  got 30.572, expected 30.572 ± 0.01
+PASS  self-test: TfNSW estimator Oct–Apr std 500 m, 50 % soft, 15 dB screening  got 31.527, expected 31.527 ± 0.01
+PASS  page loads without errors
+PASS  assessment: NMLs: residential by period and NCA, measured RBL floor, non-residential
+PASS  assessment: Table 9 bands and measures at the boundaries, highly noise affected
+PASS  assessment: sleep disturbance screening (LAmax ≈ LAeq + 5) and awakening
+PASS  assessment: land use, floors and address from OSM tags
+PASS  assessment: façade points: outside each wall, spaced, party walls skipped
+PASS  assessment: street canyon: upper floors behind a terrace row are louder than the ground floor
+PASS  assessment: distance pre-screen never hides an exceedance (brute-force check)
+PASS  assessment: pre-screen with reflections and octave bands (ISO) never hides an exceedance
+PASS  assessment: NCA drawn on the map sets the NML of buildings inside it
+PASS  assessment: NCAs import from GeoJSON with category and measured RBLs
+PASS  assessment: OSM import keeps tags: land use, floors and address
+PASS  assessment: building panel override and bulk land-use change
+PASS  assessment: property table filters and sorts; CSV export asks first and has every row
+PASS  assessment: results are flagged as out of date when a source moves
+PASS  assessment: scenario round trip keeps NCAs, land use, floors, addresses and edited rules
+PASS  assessment: rules import: project-specific bands apply; invalid rules are rejected
+      performance (tfnsw): 8000 building-floors, 48000 façade points (48000 calculated) in 5.5 s
+      performance (iso, reflections): 8000 building-floors, 48000 façade points (48000 calculated) in 8.0 s
+PASS  assessment: performance: 2,000 buildings, 3 sources (TfNSW basis; ISO with reflections)
+PASS  assessment: reflections: street canyon façades gain from the opposite façade, not their own; probe lists them
+PASS  calibration: receiver IDs: a known bias and spread are recovered
+PASS  calibration: coordinates: height, RL and floor; a point inside a building moves to its façade
+PASS  calibration: comparison CSV export, and a file without a level column is rejected
+PASS  data-loading: GeoKeys: projected code wins over geographic code listed first
+PASS  data-loading: GeoTIFF with both keys is placed in the projected zone
+PASS  data-loading: NoData fill is linear time and fills every hole
+PASS  data-loading: fillHoles: interior hole takes the mean of its neighbours
+PASS  data-loading: DEM in another MGA zone is resampled into the scenario zone
+PASS  equipment-scenario: effective Lw = Lw + 10·lg(% on) + penalty − mitigation (reference-case plant)
+PASS  equipment-scenario: library: Table 19 maxima, SAC items default to +5 dB, over-maximum flagged
+PASS  equipment-scenario: placing a source uses the default plant at 2 m, and the panel edits every field
+PASS  equipment-scenario: probe shows every attenuation term and the method
+PASS  equipment-scenario: scenario round trip keeps source fields, settings and project library items
+PASS  equipment-scenario: octave bands: ISO only; source spectrum auto / preset / custom; probe shows bands; round trip
+PASS  equipment-scenario: v0.4 scenario: ground and numeric equipment index migrate, bad settings ignored
+PASS  equipment-scenario: library export / import round trip
+PASS  estimator: plant combination, levels, NMLs, exceedances and measures match the spreadsheet (24 cases)
+      54 of 120 case-periods give different measures under the guideline's Table 9:
+        2 × p1day: guideline [PN] vs estimator [PN RO SN V]
+        2 × p1day: guideline [] vs estimator [PN]
+        7 × p1eve: guideline [PN RO SN V] vs estimator [DR PN RO RP SN V]
+        4 × p1eve: guideline [PN] vs estimator [DR PN RO RP SN V]
+        6 × p1eve: guideline [PN] vs estimator [DR PN RP]
+        4 × p2eve: guideline [AA DR PN RP SN V] vs estimator [AA DR PN RO RP SN V]
+        1 × p2eve: guideline [DR PN RP SN V] vs estimator [AA DR PN RO RP SN V]
+        6 × p2eve: guideline [DR PN RP SN V] vs estimator [DR PN RO RP SN V]
+        12 × p2eve: guideline [PN V] vs estimator [DR PN RO RP SN V]
+        1 × p2eve: guideline [PN] vs estimator []
+        2 × p2night: guideline [DR PN RP SN V] vs estimator [AA DR PN RP SN V]
+        5 × p2night: guideline [PN V] vs estimator [DR PN RP SN V]
+        2 × std: guideline [] vs estimator [PN V]
+PASS  estimator: CNVG-PTI v4.6 Table 9 vs the spreadsheet: differences reported
+PASS  layout: layouts: workspace, guided and single column each place every card; the choice is remembered
+PASS  layout: themes and density: light, dark, high contrast and compact change the page and the map
+PASS  layout: shift chips: one per shift, click to switch; banner and plant list follow; counts update when plant is added
+PASS  layout: Clear menu: tidy the screen without deleting; remove plant, hoarding, NCAs, buildings; new project
+PASS  layout: focus mode (F / Esc), panel hide buttons and the quick guide
+PASS  layout: every fixed button explains itself (tooltip)
+PASS  layout: update automatically: results follow a moved plant item; off leaves them out of date
+PASS  layout: Compare & respite runs out-of-date shifts itself
+PASS  outputs: dates: lists and ranges, bad parts reported; runs of consecutive dates
+PASS  outputs: respite rule (CNVG-PTI RP): consecutive limit and minimum break, evenings and nights
+PASS  outputs: shifts: new, duplicate, rename and switch keep plant, period and dates apart
+PASS  outputs: run all shifts: per-shift results match single runs; comparison, respite issues and CSV
+PASS  outputs: report: sections, disclaimer, works table, property list, height source, data sources; asks first
+PASS  outputs: report runs the assessment first when results are missing or out of date
+PASS  outputs: scenario round trip keeps shifts, dates, notes, project details and data sources
+      reference: 59 above NML, 46–57 dBA, exceedance 5–17 dB, mostly Low, two Medium, upper floors +2–4 dB
+      street   tfnsw   cnvg      above 193 (66 bldg) · 40.6–69.2 dBA · exc 1–29 · Negligible 74, Low 84, Medium 29, High 6 · measures AA 6 DR 35 PN 193 RP 35 SN 35 V 119
+               top − ground: 6-storey 1st row -0.5 (-5.6 to 0.6, n 10); 8-storey 2nd row 9.8 (-1 to 14.2, n 6); terraces 1st 0 (-0.3 to 0, n 45), 2nd 0.1 (0 to 0.2, n 5) · NMLs 40/44 · 320 floors in 171 ms
+      street   tfnsw   estimator above 193 (66 bldg) · 40.6–69.2 dBA · exc 1–29 · Negligible 57, Low 98, Medium 30, High 8 · measures AA 8 DR 136 PN 136 RP 136 SN 136 V 136
+      street   iso     cnvg      above 193 (69 bldg) · 40.5–69.5 dBA · exc 1–29 · Negligible 61, Low 97, Medium 28, High 7 · measures AA 7 DR 35 PN 193 RP 35 SN 35 V 132
+               top − ground: 6-storey 1st row -0.7 (-5.9 to 0.6, n 10); 8-storey 2nd row 15 (-0.4 to 19, n 6); terraces 1st -0.3 (-1.1 to 0, n 49), 2nd 0.1 (0 to 0.4, n 4) · NMLs 40/44 · 320 floors in 314 ms
+      street   iso     estimator above 193 (69 bldg) · 40.5–69.5 dBA · exc 1–29 · Negligible 46, Low 108, Medium 29, High 10 · measures AA 10 DR 147 PN 147 RP 147 SN 147 V 147
+      street   iso-oct cnvg      above 194 (68 bldg) · 40.8–69.5 dBA · exc 1–29 · Negligible 66, Low 93, Medium 29, High 6 · measures AA 6 DR 35 PN 194 RP 35 SN 35 V 128
+               top − ground: 6-storey 1st row -0.4 (-5.9 to 1.4, n 10); 8-storey 2nd row 15.2 (-0.4 to 19.3, n 7); terraces 1st -0.3 (-1 to 0, n 47), 2nd 0.1 (0 to 0.5, n 4) · NMLs 40/44 · 320 floors in 232 ms
+      street   iso-oct estimator above 194 (68 bldg) · 40.8–69.5 dBA · exc 1–29 · Negligible 45, Low 106, Medium 33, High 10 · measures AA 10 DR 149 PN 149 RP 149 SN 149 V 149
+      corridor tfnsw   cnvg      above 181 (69 bldg) · 40.5–62.8 dBA · exc 1–22 · Negligible 68, Low 92, Medium 21 · measures DR 21 PN 181 RP 21 SN 21 V 113
+               top − ground: 6-storey 1st row 5.3 (4.9 to 5.7, n 10); 8-storey 2nd row 13.1 (5.5 to 14.7, n 7); terraces 1st 5.6 (4.8 to 7.5, n 45), 2nd 5 (2.2 to 8.3, n 7) · NMLs 40/44 · 320 floors in 80 ms
+      corridor tfnsw   estimator above 181 (69 bldg) · 40.5–62.8 dBA · exc 1–22 · Negligible 53, Low 102, Medium 26 · measures DR 128 PN 128 RP 128 SN 128 V 128
+      corridor iso     cnvg      above 166 (70 bldg) · 40.8–63.1 dBA · exc 1–23 · Negligible 52, Low 91, Medium 23 · measures DR 23 PN 166 RP 23 SN 23 V 114
+               top − ground: 6-storey 1st row 8.8 (8.3 to 10.4, n 10); 8-storey 2nd row 21.2 (11.1 to 24.3, n 7); terraces 1st 9.2 (7.8 to 10.9, n 45), 2nd 18.1 (10.4 to 23.9, n 8) · NMLs 40/44 · 320 floors in 175 ms
+      corridor iso     estimator above 166 (70 bldg) · 40.8–63.1 dBA · exc 1–23 · Negligible 41, Low 99, Medium 26 · measures DR 125 PN 125 RP 125 SN 125 V 125
+      corridor iso-oct cnvg      above 165 (71 bldg) · 40.8–63 dBA · exc 1–23 · Negligible 53, Low 89, Medium 23 · measures DR 23 PN 165 RP 23 SN 23 V 112
+               top − ground: 6-storey 1st row 9.3 (8.4 to 10, n 10); 8-storey 2nd row 20.7 (11 to 23.2, n 7); terraces 1st 9.8 (7.8 to 11.7, n 46), 2nd 16.9 (10.3 to 22.1, n 8) · NMLs 40/44 · 320 floors in 180 ms
+      corridor iso-oct estimator above 165 (71 bldg) · 40.8–63 dBA · exc 1–23 · Negligible 37, Low 102, Medium 26 · measures DR 128 PN 128 RP 128 SN 128 V 128
+      setback  tfnsw   cnvg      above 215 (70 bldg) · 40.9–57.2 dBA · exc 1–17 · Negligible 78, Low 122, Medium 15 · measures DR 15 PN 215 RP 15 SN 15 V 137
+               top − ground: 6-storey 1st row 0 (-0.7 to 0.3, n 10); 8-storey 2nd row 9.6 (-0.3 to 14.7, n 8); terraces 1st 0 (0 to 0, n 45), 2nd 0.4 (0 to 1, n 7) · NMLs 40/44 · 320 floors in 92 ms
+      setback  tfnsw   estimator above 215 (70 bldg) · 40.9–57.2 dBA · exc 1–17 · Negligible 59, Low 140, Medium 16 · measures DR 156 PN 156 RP 156 SN 156 V 156
+      setback  iso     cnvg      above 218 (75 bldg) · 42.6–57.6 dBA · exc 1–17 · Negligible 62, Low 140, Medium 16 · measures DR 16 PN 218 RP 16 SN 16 V 156
+               top − ground: 6-storey 1st row -0.2 (-1.2 to 1, n 10); 8-storey 2nd row 11.8 (-0.2 to 18.4, n 9); terraces 1st -0.3 (-1.1 to 0, n 48), 2nd 0.1 (0 to 0.2, n 8) · NMLs 40/44 · 320 floors in 181 ms
+      setback  iso     estimator above 218 (75 bldg) · 42.6–57.6 dBA · exc 1–17 · Negligible 41, Low 161, Medium 16 · measures DR 177 PN 177 RP 177 SN 177 V 177
+      setback  iso-oct cnvg      above 221 (77 bldg) · 40.6–57.4 dBA · exc 1–17 · Negligible 69, Low 136, Medium 16 · measures DR 16 PN 221 RP 16 SN 16 V 152
+               top − ground: 6-storey 1st row -0.2 (-1.2 to 0.9, n 10); 8-storey 2nd row 11.6 (-0.5 to 18.2, n 9); terraces 1st -0.4 (-1.2 to 0, n 49), 2nd 0 (-0.6 to 0.2, n 9) · NMLs 40/44 · 320 floors in 184 ms
+      setback  iso-oct estimator above 221 (77 bldg) · 40.6–57.4 dBA · exc 1–17 · Negligible 42, Low 163, Medium 16 · measures DR 179 PN 179 RP 179 SN 179 V 179
+      setback  iso     50 % soft: above 211 · 40.8–57.3 dBA · top − ground: 6-storey 1st row 1.3 (0.2 to 2.3, n 10); terraces 1st 0.3 (-0.4 to 1, n 45)
+      setback  iso     100 % soft: above 189 · 40.6–57.2 dBA · top − ground: 6-storey 1st row 2.8 (1.5 to 4.1, n 9); terraces 1st 1 (0.4 to 1.9, n 38)
+      setback  iso-oct 50 % soft: above 200 · 40.5–55.4 dBA · top − ground: 6-storey 1st row 0.7 (-0.1 to 2.1, n 9); terraces 1st 0.5 (0.1 to 0.7, n 45)
+      setback  iso-oct 100 % soft: above 167 · 40.5–53.6 dBA · top − ground: 6-storey 1st row 1 (0.3 to 1.7, n 8); terraces 1st 0.9 (0.8 to 1.1, n 38)
+PASS  reference: synthetic inner-city scenes vs the reference case (printed report)
+PASS  site: opens on the empty map in the guided layout at the default location, fully zoomed out; Report is in Results; very coarse heat map
+PASS  site: a loaded sample has no background map; step 1 Clear sample goes back to the empty map; Go to site from a sample asks first
+PASS  site: Go to site from the opening map moves the origin to the site (no example to clear, no question)
+PASS  site: Fetch OSM buildings uses the OpenStreetMap API only (no Overpass) and records the source
+PASS  site: background map from disk: Automatic uses the NSW base map (right tiles, attribution); OSM is not requested and points to the online copy
+PASS  site: background map online (http): OSM street map tiles are requested with a Referer and attributed
+PASS  ui: Ctrl+S / Ctrl+B do not switch modes; plain S does
+PASS  ui: version, disclaimer and licence notes are shown
+
+109 passed, 0 failed

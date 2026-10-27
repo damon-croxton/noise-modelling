@@ -132,7 +132,7 @@ module.exports = [
       await page.setInputFiles('#fileLoad', { name: 'old.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(v04)) });
       const log = await page.waitForFunction(() => /Loaded old\.json/.test(document.getElementById('log').innerText)).then(() => page.textContent('#log'));
       const r = await page.evaluate(() => ({ S: window.__noise.state.settings, s: window.__noise.state.sources[0] }));
-      assert.strictEqual(r.S.soft, 1); assert.strictEqual(r.S.cellPx, 5); assert.strictEqual(r.S.opacity, 0.7);
+      assert.strictEqual(r.S.soft, 1); assert.strictEqual(r.S.cellPx, 16); assert.strictEqual(r.S.opacity, 0.7);
       assert.deepStrictEqual([r.s.eq, r.s.lw, r.s.pen, r.s.on, r.s.h], ['custom', 117, 0, 100, 1.5]);
       assert.ok(log.includes('“cellPx” ignored') && log.includes('older version'), 'warnings logged');
     }

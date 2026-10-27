@@ -204,6 +204,10 @@ function goToSite() {
     if (!window.confirm('Start your project at this site? The synthetic example (its buildings, hoarding, NCAs and plant) will be cleared.')) { log('Go to site cancelled – the example is still loaded.'); return; }
     newProject(); log('Example cleared – new project at the site.');
   }
+  if (state.origin && state.origin.isDefault) {   // the opening view's location is just a view: move the origin to the site
+    const empty = !state.sources.length && !state.buildings.length && !state.hoardings.length && !state.ncas.length && !state.terrain;
+    if (empty) state.origin = null; else delete state.origin.isDefault;
+  }
   const z = (state.origin && state.origin.zone) || zoneOf(lon), p = ll2mga(lat, lon, z);
   const first = !state.origin;
   ensureOrigin(p[0], p[1], null, z, 'site location');

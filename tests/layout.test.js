@@ -30,9 +30,9 @@ module.exports = [
       await page.click('[data-menu=mView]'); await pick(page, 'input[name=uiLayout][value=single]');
       w = await where(page);
       assert.ok(w.slice(0, 17).every(p => p === 'left'), 'single column: all in one panel');
-      assert.strictEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('noise-poc-ui-v2')).layout), 'single', 'choice saved');
+      assert.strictEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('noise-poc-ui-v3')).layout), 'single', 'choice saved');
       // stored preferences are applied on opening (written before the app starts: an immediate reload can lose a fresh write)
-      await page.addInitScript(() => { const p = JSON.parse(localStorage.getItem('noise-poc-ui-v2') || '{}'); p.layout = 'single'; localStorage.setItem('noise-poc-ui-v2', JSON.stringify(p)); });
+      await page.addInitScript(() => { const p = JSON.parse(localStorage.getItem('noise-poc-ui-v3') || '{}'); p.layout = 'single'; localStorage.setItem('noise-poc-ui-v3', JSON.stringify(p)); });
       await page.reload(); await page.waitForFunction(() => window.__noise && window.__noise.selftest);
       assert.ok((await page.getAttribute('#app', 'class')).includes('layout-single'), 'layout applied after reload');
     }
@@ -84,7 +84,7 @@ module.exports = [
     name: 'Clear menu: tidy the screen without deleting; remove plant, hoarding, NCAs, buildings; new project',
     async run({ page, assert }) {
       await page.click('#clrOverlays');
-      let L = await page.evaluate(() => ({ ...JSON.parse(localStorage.getItem('noise-poc-ui-v2')).layers }));
+      let L = await page.evaluate(() => ({ ...JSON.parse(localStorage.getItem('noise-poc-ui-v3')).layers }));
       assert.deepStrictEqual([L.heat, L.impact, L.blabels, L.slabels, L.legend, L.ncas, L.hoard], [false, false, false, false, false, true, true]);
       assert.ok(!(await page.isVisible('#legend')));
       await page.click('#clrShowAll');

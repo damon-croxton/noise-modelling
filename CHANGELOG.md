@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.13.0 – Map-first start and performance
+
+### Changed
+- **Opens on the map only:** an empty project centred on -33.85276, 151.19990, fully zoomed out, with the background map.
+  - That location is only a starting view. *Go to site* moves the project origin to the pasted site.
+  - *File → On start-up show* still offers the examples, the small demo and an empty project.
+  - Saved display preferences reset once (new storage key) so everyone gets the new start.
+- **Site step 1 is "Clear the sample".** It is ticked when no sample is loaded; **Clear sample** returns to the empty map. The other steps move down one (copy location, Go to site, Fetch OSM buildings, then optional DEM and LiDAR).
+- **Samples have no location,** so the background map is off under them. Samples are synthetic and can't line up with real streets. Going to a site from a sample still asks before clearing it.
+- **Heat map defaults to *Draft (16 px)* cells.** There is a new *Very coarse (12 px)* option; *Normal (5 px)* and finer remain. The property assessment is not affected.
+
+### Performance (slow laptops)
+Measured with the CPU slowed 4× (`THROTTLE=4`), corridor example, 1366 × 768:
+
+| | Before | After |
+|---|---|---|
+| Heat map update, 5 px cells | 3.5 s, page frozen | – |
+| Heat map update, 16 px cells (new default) | – | 0.4 s, in the background |
+| Pan, 20 drag steps | 59 s | 1.3 s |
+| Frame while hovering | 2–5 ms | 2–7 ms |
+
+- **The heat map is computed in slices of about 25 ms per frame,** so the page stays responsive. The last finished map stays on screen until the new one is ready, and the bottom bar shows progress.
+- **Panning and zooming no longer recalculate:** the current map image moves and scales with the view, and one recalculation runs about 0.3 s after the view stops.
+- **Dragging plant** uses a quick coarse pass (at least 16 px cells), then the full pass.
+- **A plain click on the map** no longer triggers a recalculation.
+- **Frame timings** (grid, drawing, probe) are recorded for checking performance.
+
+### Tests
+109 tests, all passing (see `docs/test-evidence/v0.13.0.txt`). New ones cover:
+- the map-only start (location, zoom, coarse cells, steps);
+- a sample having no background map, and Clear sample;
+- Go to site from a sample (asks) and from the opening map (moves the origin).
+
+The test runner answers every map-tile request with a stub image, so no test touches the real network. The whole suite also passes with the CPU slowed 3×.
+
 ## 0.12.0 – Online copy and background maps
 
 ### Added

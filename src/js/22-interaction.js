@@ -209,7 +209,7 @@ canvas.addEventListener('pointermove', e => {
   state.mouse = { x: mx, y: my };
   if (drag) {
     const v = state.view;
-    if (drag.kind === 'pan') { v.cx -= (mx - drag.lx) / v.scale; v.cy += (my - drag.ly) / v.scale; drag.lx = mx; drag.ly = my; requestCompute(true); return; }
+    if (drag.kind === 'pan') { v.cx -= (mx - drag.lx) / v.scale; v.cy += (my - drag.ly) / v.scale; drag.lx = mx; drag.ly = my; requestViewChange(); return; }
     if (drag.kind === 'source') { drag.obj.x = wx - drag.ox; drag.obj.y = wy - drag.oy; drag.moved = true; requestCompute(true); return; }
     if (drag.kind === 'poly') {
       const dx = wx - drag.lx, dy = wy - drag.ly;
@@ -228,7 +228,9 @@ function endDrag() {
     if (drag.type === 'building') { updateBase(drag.obj); geomChanged(); }
     log(`Moved “${drag.obj.name}”.`); renderSelPanel();
   }
-  drag = null; requestCompute(false);
+  // a pan already schedules its own recompute; a plain click needs none
+  const changed = drag.moved; drag = null;
+  if (changed) requestCompute(false); else requestRender();
 }
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
@@ -243,7 +245,7 @@ canvas.addEventListener('wheel', e => {
   const [mx, my] = mousePos(e), before = s2w(mx, my), v = state.view;
   v.scale = Math.min(60, Math.max(0.02, v.scale * Math.exp(-e.deltaY * 0.0015)));
   v.cx = before[0] - (mx - cssW / 2) / v.scale; v.cy = before[1] + (my - cssH / 2) / v.scale;
-  requestCompute(true);
+  requestViewChange();
 }, { passive: false });
 document.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();

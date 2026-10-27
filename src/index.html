@@ -36,7 +36,7 @@
           <button type="button" id="btnExample" title="Replace the project with the chosen synthetic example">Load example</button>
           <button type="button" id="btnDemo" title="Replace the project with the small starting demo">Load small demo</button>
           <hr>
-          <label class="poprow" title="What the app shows when it opens">On start-up show <select id="uiStart"><option value="corridor">Rail corridor example</option><option value="street">Street example</option><option value="setback">Set-back example</option><option value="demo">Small demo</option><option value="empty">Empty project</option></select></label>
+          <label class="poprow" title="What the app shows when it opens">On start-up show <select id="uiStart"><option value="map">Map only (empty project)</option><option value="corridor">Rail corridor example</option><option value="street">Street example</option><option value="setback">Set-back example</option><option value="demo">Small demo</option><option value="empty">Empty project</option></select></label>
         </div>
       </div>
       <div class="menu">
@@ -187,15 +187,17 @@
 
   <section class="card" id="card-mapdisplay" data-title="Heat map">
     <div class="row"><label for="setCell">Map detail</label>
-      <select id="setCell"><option value="3">Fine (3 px)</option><option value="5" selected>Normal (5 px)</option><option value="8">Coarse (8 px)</option></select></div>
+      <select id="setCell" title="Size of each heat-map cell on screen. Coarser is much faster – the property assessment is not affected, it always uses the façade points"><option value="3">Fine (3 px) – slow</option><option value="5">Normal (5 px)</option><option value="8">Coarse (8 px)</option><option value="12">Very coarse (12 px)</option><option value="16" selected>Draft (16 px) – fastest</option></select></div>
     <div class="row"><label for="setMin">Hide below (dB(A))</label>
       <select id="setMin"><option>30</option><option selected>35</option><option>40</option><option>45</option><option>50</option></select></div>
     <div class="row"><label for="setOp">Opacity</label><input type="range" id="setOp" min="0.2" max="1" step="0.05" value="0.7"></div>
   </section>
 
   <section class="card" id="card-site" data-title="Site and buildings">
-    <div id="exampleNote" class="note" hidden>You are looking at a <b>synthetic example</b> (no real location). Follow steps 1–3 to start your own project at your site – the example is cleared when you go to the site.</div>
+    <div id="exampleNote" class="note" hidden>You are looking at a <b>synthetic example</b>. It has no real location, so there is no background map under it. Clear it (step 1) to start your own project.</div>
     <ol class="proc" id="siteSteps">
+      <li data-step="clear"><b>Clear the sample.</b> If an example is loaded, clear it to start an empty project on the map.
+        <div class="btns"><button type="button" id="btnClearSample" title="Remove the example and show the empty map">Clear sample</button></div></li>
       <li data-step="site"><b>Copy the site location.</b> In Google Maps, right-click the project location, then click the coordinates at the top of the menu (for example <code>-33.88901, 151.23702</code>) – that copies them. Paste them here:
         <div class="row"><input type="text" id="siteLL" placeholder="Paste here, e.g. -33.88901, 151.23702" title="Latitude, longitude in decimal degrees, as Google Maps copies them"></div></li>
       <li data-step="go"><b>Click Go to site.</b> The map moves there and shows a background map for your bearings (OpenStreetMap in the online copy; the NSW base map when the app is opened from disk – change it under View).
@@ -209,7 +211,7 @@
         </details></li>
     </ol>
     <p class="proc-h">Optional – improves accuracy</p>
-    <ol class="proc" start="4">
+    <ol class="proc" start="5">
       <li data-step="dem"><b>Terrain:</b> download a 1 m DEM for the site from the <a href="https://elevation.fsdf.org.au/" target="_blank" rel="noopener">ELVIS portal</a> and load it in <i>Terrain (DEM)</i> below. Improves accuracy with the ground surface profile (cuttings, embankments, hills).</li>
       <li data-step="lidar"><b>Building heights:</b> download LiDAR point cloud tiles (.laz) for the site from <a href="https://elevation.fsdf.org.au/" target="_blank" rel="noopener">ELVIS</a> and load them in <i>Building heights from LiDAR</i>. Improves accuracy of building heights – estimated heights are shown with dashed outlines.</li>
     </ol>

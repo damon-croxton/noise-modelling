@@ -11,12 +11,13 @@ A construction noise screening and planning tool for Transport for NSW (TfNSW) p
 **Offline:** open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is inside that one file. From disk, the OpenStreetMap background can't load (OSM's servers refuse pages opened from disk), so the NSW base map is used instead.
 
 A typical OOHW assessment:
-1. **Site:** the app opens on a synthetic rail-corridor example in the guided layout, at step 1 *Site*.
-   1. In Google Maps, right-click the project location and click the coordinates at the top of the menu to copy them, then paste them into the app.
-   2. Click **Go to site**. The example is cleared and a background map appears under the model for your bearings: OpenStreetMap online, the NSW base map from disk, or NSW aerial imagery (*View*).
-   3. Click **Fetch OSM buildings**.
-   4. Optional: a 1 m DEM from the [ELVIS portal](https://elevation.fsdf.org.au/) adds the ground profile.
-   5. Optional: LiDAR (.laz) from ELVIS improves building heights.
+1. **Site:** the app opens on an empty project on the background map in the guided layout, at step 1 *Site*. The map is centred on Sydney and fully zoomed out.
+   1. If a sample is loaded (*File → Load example*), click **Clear sample**. Samples have no real location, so they show no background map.
+   2. In Google Maps, right-click the project location and click the coordinates at the top of the menu to copy them, then paste them into the app.
+   3. Click **Go to site**. The map zooms to the site, with a background map for your bearings: OpenStreetMap online, the NSW base map from disk, or NSW aerial imagery (*View*).
+   4. Click **Fetch OSM buildings**.
+   5. Optional: a 1 m DEM from the [ELVIS portal](https://elevation.fsdf.org.au/) adds the ground profile.
+   6. Optional: LiDAR (.laz) from ELVIS improves building heights.
 
    Then draw or import the noise catchment areas.
 2. **Shift:** in *Shifts*, set the name, time period and dates, then click **+ Plant** and click the map for each item.
@@ -32,7 +33,8 @@ A typical OOHW assessment:
   - **Guided:** numbered steps;
   - **Single column**.
 - *View* also sets the colours (light, dark, high contrast) and the map layers, including the background map (OpenStreetMap, NSW base map or NSW aerial imagery).
-- *File → On start-up show* picks what opens first: an example, the small demo or an empty project.
+- *File → On start-up show* picks what opens first: the map only (default), an example, the small demo or an empty project.
+- **Slow laptop?** The heat map defaults to *Draft (16 px)* cells and updates in the background; panning and zooming don't recalculate it until you stop. *Heat map → Map detail* gives finer cells. The property assessment always uses the façade points, whatever the map detail.
 - *Clear* tidies the screen or removes things from the project.
 - **F** shows the map only.
 
@@ -51,7 +53,7 @@ The report and CSV list properties and may contain addresses. Keep them on appro
 
 ## Status
 
-Version 0.12.0 publishes the app on GitHub Pages and adds NSW base-map and aerial-imagery backgrounds. Version 0.11.0 made the site set-up a numbered procedure, fetches footprints from the OSM API only (Overpass removed), opens on the rail-corridor example in the guided layout, and adds an OSM street-map underlay. Version 0.10.0 was a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
+Version 0.13.0 opens on the map only, with Clear sample as step 1, and does a performance pass for slow laptops. Version 0.12.0 published the app on GitHub Pages and adds NSW base-map and aerial-imagery backgrounds. Version 0.11.0 made the site set-up a numbered procedure, fetches footprints from the OSM API only (Overpass removed), opens on the rail-corridor example in the guided layout, and adds an OSM street-map underlay. Version 0.10.0 was a UI pass: a new layout with three layout options, themes, shift chips, a plant list, automatic updates, a Clear menu, map layers and a quick guide. Version 0.9.0 completed Stage 4, outputs:
 - shifts within one project, with batch run and comparison;
 - respite tracking against the CNVG-PTI respite-period rule;
 - a printable report with maps, the disclaimer, data sources and height sources.

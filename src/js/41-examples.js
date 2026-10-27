@@ -45,6 +45,7 @@ function buildReferenceExample(variant) {
   state.sources = REF_PLANT.map(p => Object.assign(makeSource(p.x, p.y, 'custom'), { name: p.name, lw: p.lw, on: p.on, pen: p.pen, mit: 0, h: 2 }));
   Object.assign(state.settings, { period: 'p2night', soft: 0, combine: 'all' });
   state.assess.results = null; state.terrain = null;
+  state.origin = null;   // synthetic: no real location, so no background map under it
   state.example = variant; resetShifts(`Night works – ${variant}`); state.provenance = [{ kind: 'Example', name: `Synthetic inner-city scene (${variant})`, detail: 'Generated in the app – not a real location', loaded: new Date().toISOString(), fileDate: null }];
   geomChanged(); syncSettingsUI(); syncAssessUI(); select(null);
   const desc = { corridor: 'rail corridor behind 2.4 m hoarding, façades 20 m away', street: 'street works, façades 10 m away', setback: 'open works area, façades 37 m away' }[variant];

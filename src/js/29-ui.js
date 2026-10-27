@@ -187,11 +187,29 @@ function newProject(keepOrigin) {
   updateDemInfo(); renderCalPanel(); syncAssessUI(); syncSettingsUI(); renderShiftPanel(true); updateSiteInfo();
 }
 /* What the app shows when it opens (File menu). */
+/* Returns true when the view should then be fitted to the content. */
 function startScene() {
-  if (['corridor', 'street', 'setback'].includes(UI.start)) buildReferenceExample(UI.start);
-  else if (UI.start === 'empty') { newProject(); log('Empty project.'); }
-  else loadDemo();
+  if (['corridor', 'street', 'setback'].includes(UI.start)) { buildReferenceExample(UI.start); return true; }
+  if (UI.start === 'empty') { newProject(); log('Empty project.'); return true; }
+  if (UI.start === 'demo') { loadDemo(); return true; }
+  startMapOnly(); return false;
 }
+/* Empty project on the background map at the default location, fully zoomed out. The
+   location is only a starting view: Go to site replaces it. */
+function startMapOnly() {
+  newProject();
+  const [lat, lon] = DEFAULT_SITE, z = zoneOf(lon), p = ll2mga(lat, lon, z);
+  state.origin = { type: 'projected', x0: Math.round(p[0]), y0: Math.round(p[1]), zone: z, epsg: null, isDefault: true };
+  const c = ll2local(lat, lon);
+  state.view = { cx: c[0], cy: c[1], scale: MIN_SCALE };
+  updateSiteInfo(); updateSiteSteps();
+  log('Map only – follow the Site steps: paste the site location, Go to site, Fetch OSM buildings.');
+  requestCompute(false);
+}
+$('btnClearSample').addEventListener('click', () => {
+  if (!state.example) { log('No sample is loaded.'); return; }
+  startMapOnly(); log('Sample cleared.');
+});
 $('uiStart').value = UI.start;
 $('uiBasemap').value = UI.basemap;
 $('uiBasemap').addEventListener('change', e => { UI.basemap = e.target.value; UI.layers.osm = true; savePrefs(); applyPanels(); log(`Background map: ${BASEMAPS[basemapKey()].label}${UI.basemap === 'auto' ? ' (automatic)' : ''}.`); });
@@ -265,9 +283,11 @@ function syncPlantList() {
 /* ---- site steps: tick off what has been done ---- */
 function updateSiteSteps() {
   const real = !!(state.origin && state.origin.zone), osm = state.buildings.some(b => b.osmId), P = state.provenance;
-  const done = { site: real || $('siteLL').value.trim() !== '', go: real, osm, dem: !!state.terrain, lidar: P.some(p => /LiDAR|DSM/.test(p.kind)) };
+  const atSite = real && !state.origin.isDefault;
+  const done = { clear: !state.example, site: atSite || $('siteLL').value.trim() !== '', go: atSite, osm, dem: !!state.terrain, lidar: P.some(p => /LiDAR|DSM/.test(p.kind)) };
   document.querySelectorAll('#card-site li[data-step]').forEach(li => li.classList.toggle('done', !!done[li.dataset.step]));
-  const next = ['site', 'go', 'osm'].find(k => !done[k]);
+  const next = ['clear', 'site', 'go', 'osm'].find(k => !done[k]);
+  $('btnClearSample').disabled = !state.example;
   document.querySelectorAll('#card-site li[data-step]').forEach(li => li.classList.toggle('next', li.dataset.step === next));
   $('exampleNote').hidden = !state.example;
 }
