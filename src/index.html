@@ -21,6 +21,7 @@
         <button type="button" data-mode="source">Add source (S)</button>
         <button type="button" data-mode="building">Draw building (B)</button>
         <button type="button" data-mode="hoarding">Draw hoarding (H)</button>
+        <button type="button" data-mode="nca">Draw NCA (N)</button>
       </div>
       <p id="hint" class="hint"></p>
       <div class="btns" style="margin-top:6px">
@@ -89,7 +90,7 @@
         <select id="setMethod"><option value="tfnsw">TfNSW estimator</option><option value="iso">ISO 9613-2</option></select></div>
       <p class="kv muted" id="methodNote"></p>
       <div class="row"><label for="setPeriod">Time period</label>
-        <select id="setPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2night">OOHW Period 2 – night</option></select></div>
+        <select id="setPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
       <div class="row"><label for="setSeason">Season (air absorption)</label>
         <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
       <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
@@ -99,6 +100,42 @@
       <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
       <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
       <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
+    </section>
+
+    <section>
+      <h2>Assessment</h2>
+      <p class="kv muted">Uses the time period set under Model. Each building is assessed on its exposed façades at 1.5 m above each floor; the worst point per floor is reported.</p>
+      <div class="row"><label for="asDefCat">Noise area outside NCAs</label><select id="asDefCat"></select></div>
+      <div class="row rbl3"><label>Measured RBL outside NCAs (day / eve / night)</label><span><input type="number" id="asRblD" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblE" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblN" min="20" max="80" step="1" placeholder="–"></span></div>
+      <div class="row"><label for="asFloorH">Floor height (m)</label><input type="number" id="asFloorH" min="2" max="6" step="0.1" value="3"></div>
+      <div class="row"><label for="asSpacing">Façade point spacing (m)</label><input type="number" id="asSpacing" min="2" max="50" step="1" value="10"></div>
+      <div class="row"><label for="asOffset">Distance in front of façade (m)</label><input type="number" id="asOffset" min="0.1" max="5" step="0.1" value="1"></div>
+      <div class="btns">
+        <button type="button" id="btnAssess" class="primary">Run assessment</button>
+        <button type="button" id="btnTable">Property table</button>
+        <button type="button" id="btnCsv">Export CSV</button>
+        <button type="button" id="btnNcaImport">Import NCAs (GeoJSON)</button>
+      </div>
+      <input type="file" id="fileNca" accept=".json,.geojson,application/json" hidden>
+      <div class="row"><label for="asDisplay">Map shows</label>
+        <select id="asDisplay"><option value="both">Impact categories + heat map</option><option value="cat">Impact categories only</option><option value="heat">Heat map only</option></select></div>
+      <div id="asStatus" class="kv"></div>
+      <div id="asSummary"></div>
+      <details class="sub2"><summary>Change land use in bulk</summary>
+        <div class="row"><label for="bulkFrom">Buildings with land use</label><select id="bulkFrom"></select></div>
+        <div class="row"><label for="bulkIn">Within</label><select id="bulkIn"></select></div>
+        <div class="row"><label for="bulkTo">Set land use to</label><select id="bulkTo"></select></div>
+        <div class="btns"><button type="button" id="btnBulk">Apply</button></div>
+      </details>
+      <details class="sub2"><summary>Assessment rules</summary>
+        <p id="rulesInfo" class="kv"></p>
+        <div class="btns">
+          <button type="button" id="btnRulesExport">Export rules</button>
+          <button type="button" id="btnRulesImport">Import rules</button>
+          <button type="button" id="btnRulesReset" class="danger">Reset to defaults</button>
+        </div>
+        <input type="file" id="fileRules" accept=".json,application/json" hidden>
+      </details>
     </section>
 
     <section>
@@ -145,6 +182,7 @@
     <canvas id="map" aria-label="Noise map"></canvas>
     <div id="busy"></div>
     <div id="hud">–</div>
+    <div id="ptable" hidden></div>
     <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
   </main>
 </div>

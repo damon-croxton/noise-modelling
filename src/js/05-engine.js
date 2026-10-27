@@ -136,10 +136,13 @@ function groundUnderScreening(agr, abar) {
      hard ground: Agr = As + Ar + Am = −1.5 − 1.5 − 3q (G = 0, §7.3.1);
      soft ground: eq. 10 with DΩ (§7.3.2); mixed: linear blend by %soft;
      Abar = Dz − Agr ≥ 0 with the 20/25 dB caps.
-   Lw is the effective level from prep(): time-on, penalty and mitigation applied. */
-function contrib(src, rx, ry, S, buildings, detail, gr) {
-  const hs = src.h, hr = S.hr, iso = S.method === 'iso', soft = Math.max(0, Math.min(1, S.soft || 0));
-  const zs = src._z, zr = (gr == null ? ground(rx, ry) : gr) + hr;
+   Lw is the effective level from prep(): time-on, penalty and mitigation applied.
+   gr: ground RL at the receiver if already known; zrAbs: absolute receiver RL
+   (default ground + S.hr). */
+function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
+  const iso = S.method === 'iso', soft = Math.max(0, Math.min(1, S.soft || 0));
+  const zg = gr == null ? ground(rx, ry) : gr, zr = zrAbs != null ? zrAbs : zg + S.hr;   // zrAbs: absolute receiver RL (façade receivers)
+  const hs = src.h, hr = Math.max(0, zr - zg), zs = src._z;
   const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
   const d = Math.max(Math.hypot(d2, zs - zr), 1);
   const Adiv = 20 * Math.log10(d) + (iso ? 11 : 8);

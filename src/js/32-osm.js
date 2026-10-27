@@ -159,7 +159,7 @@ function importOsm(data, t0) {
       if (old && !replace) { cnt.dup++; return; }
       if (old) { state.buildings.splice(state.buildings.indexOf(old), 1); cnt.replaced++; }
       const name = (tags.name || tags['addr:housenumber'] && (tags['addr:housenumber'] + ' ' + (tags['addr:street'] || '')) || (tags.building !== 'yes' ? tags.building : '') || 'OSM ' + el.id).slice(0, 40);
-      const b = makeBuilding(pts, hi.h, name, { hsrc: hi.src, osmId: id, btype: tags.building || 'yes' });
+      const b = makeBuilding(pts, hi.h, name, { hsrc: hi.src, osmId: id, btype: tags.building || 'yes', tags: keepTags(tags) });
       state.buildings.push(b); byId.set(id, b); cnt.added++; cnt[hi.src]++;
     });
   }

@@ -1,0 +1,95 @@
+{
+ "id": "tfnsw-cnvg-pti-4.6-defaults",
+ "name": "TfNSW CNVG-PTI defaults (EMF-NV-GD-0060 v4.6, Mar 2026)",
+ "_note": "Default assessment rules transcribed from the TfNSW Construction noise and vibration guideline – public transport infrastructure, v4.6, and the TfNSW Construction Noise Estimator. They are defaults, not a statement of compliance with any edition: verify against the current client strategy, project approval and EPL conditions, and edit or import project-specific rules where they differ.",
+ "periods": {
+  "std":     { "label": "Standard hours", "rbl": "day", "nmlAdd": 10, "bands": "std" },
+  "p1day":   { "label": "OOHW Period 1 – day", "rbl": "day", "nmlAdd": 5, "bands": "oohw1day" },
+  "p1eve":   { "label": "OOHW Period 1 – evening", "rbl": "evening", "nmlAdd": 5, "bands": "oohw1" },
+  "p2eve":   { "label": "OOHW Period 2 – evening (Sun/PH)", "rbl": "evening", "nmlAdd": 5, "bands": "oohw2" },
+  "p2night": { "label": "OOHW Period 2 – night", "rbl": "night", "nmlAdd": 5, "bands": "oohw2" }
+ },
+ "measuredRblFloor": { "day": 35, "evening": 30, "night": 30, "_note": "Minimum RBLs applied to measured RBLs, as in the TfNSW estimator (NPfI minimums). Noise area category RBLs are used as listed." },
+ "noiseAreaCategories": {
+  "R0": { "label": "R0 – rural, isolated, >500 m from transport corridors", "day": 30, "evening": 30, "night": 30 },
+  "R1": { "label": "R1 – negligible transportation", "day": 40, "evening": 35, "night": 30 },
+  "R2": { "label": "R2 – low density transportation", "day": 45, "evening": 40, "night": 35 },
+  "R3": { "label": "R3 – medium density transportation or some commerce/industry", "day": 50, "evening": 45, "night": 40 },
+  "R4": { "label": "R4 – dense transportation or some commerce/industry", "day": 55, "evening": 50, "night": 45 },
+  "R5": { "label": "R5 – predominantly commercial, dense high-rise", "day": 60, "evening": 55, "night": 50 }
+ },
+ "facadeReduction": 10,
+ "landUses": {
+  "residential":   { "label": "Residential", "nml": "rbl", "sleep": true },
+  "education":     { "label": "Educational (classrooms)", "nml": { "internal": 45 }, "periods": ["std", "p1day"], "_note": "CNVG-PTI Table 13: 45 dBA internal; assessed when in use (assumed daytime)." },
+  "childcare":     { "label": "Childcare", "nml": { "internal": 45 }, "periods": ["std", "p1day"], "_note": "Noise-sensitive business: project-specific level per CNVG-PTI A.1.1; default as classrooms – verify." },
+  "hospital":      { "label": "Hospital wards / theatres", "nml": { "internal": 45 } },
+  "worship":       { "label": "Place of worship", "nml": { "internal": 45 } },
+  "community":     { "label": "Community centre", "nml": { "internal": 45 }, "_note": "Depends on intended use (AS 2107) – verify." },
+  "activeRec":     { "label": "Active recreation", "nml": 65, "periods": ["std", "p1day", "p1eve", "p2eve"] },
+  "passiveRec":    { "label": "Passive recreation", "nml": 60, "periods": ["std", "p1day", "p1eve", "p2eve"] },
+  "commercial":    { "label": "Office / retail", "nml": 70 },
+  "industrial":    { "label": "Industrial", "nml": 75 },
+  "none":          { "label": "Not assessed (garage, shed, carport…)", "assess": false }
+ },
+ "bandSets": {
+  "std": [
+   { "above": 10, "label": "Clearly audible", "impact": "Low", "measures": [] },
+   { "above": 20, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V"] }
+  ],
+  "oohw1day": [
+   { "above": 5, "label": "Noticeable", "impact": "Negligible", "measures": [] },
+   { "above": 15, "label": "Clearly audible", "impact": "Low", "measures": ["PN"] },
+   { "above": 25, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V", "SN", "RO"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V", "SN", "RO"] }
+  ],
+  "oohw1": [
+   { "above": 5, "label": "Noticeable", "impact": "Negligible", "measures": [] },
+   { "above": 15, "label": "Clearly audible", "impact": "Low", "measures": ["PN"] },
+   { "above": 25, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V", "SN", "RO"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V", "SN", "RO", "RP", "DR"] }
+  ],
+  "oohw2": [
+   { "above": 5, "label": "Noticeable", "impact": "Negligible", "measures": ["PN"] },
+   { "above": 15, "label": "Clearly audible", "impact": "Low", "measures": ["PN", "V"] },
+   { "above": 25, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V", "SN", "RP", "DR"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V", "SN", "RP", "DR", "AA"] }
+  ],
+  "_note": "CNVG-PTI Table 9, by exceedance of the NML (dB, rounded to exceedanceDecimals). A band applies when the exceedance is above the previous band's limit and at or below its own 'above' value (null = no upper limit). Exceedance ≤ 0 is 'Below NML'. RP and DR do not apply in OOHW Period 1 day."
+ },
+ "exceedanceDecimals": 0,
+ "highlyAffected": { "level": 75, "periods": ["std"], "label": "Highly noise affected (≥ 75 dBA)", "measures": ["PN", "V", "SN"] },
+ "sleep": {
+  "periods": ["p2night"], "lmaxOffset": 5, "screeningAdd": 15, "minRbl": 30, "awakening": 65,
+  "_note": "LAmax is estimated as LAeq,15min + lmaxOffset, as in the TfNSW estimator (indicative only). Screening: RBL + 15 dB (RBL not below 30); awakening: 65 dBA outside a bedroom window (CNVG-PTI A.1.2)."
+ },
+ "measureCodes": {
+  "PN": "Periodic notification", "V": "Verification monitoring", "SN": "Specific notification, individual briefing or phone call",
+  "RO": "Project-specific respite offer", "RP": "Respite period", "DR": "Duration reduction", "AA": "Alternative accommodation",
+  "PC": "Phone calls", "IB": "Individual briefings"
+ },
+ "categoryStyle": {
+  "Below NML": "#d6dbe3", "Noticeable": "#fde68a", "Clearly audible": "#f59e0b", "Moderately intrusive": "#dc2626", "Highly intrusive": "#7e22ce", "Not assessed": "#ffffff"
+ },
+ "osmLandUse": {
+  "building": {
+   "house": "residential", "detached": "residential", "semidetached_house": "residential", "terrace": "residential", "residential": "residential",
+   "apartments": "residential", "bungalow": "residential", "dormitory": "residential", "cabin": "residential", "hotel": "residential", "farm": "residential",
+   "school": "education", "college": "education", "university": "education", "kindergarten": "childcare",
+   "hospital": "hospital", "church": "worship", "chapel": "worship", "cathedral": "worship", "mosque": "worship", "synagogue": "worship", "temple": "worship", "religious": "worship", "shrine": "worship",
+   "civic": "community", "public": "community", "government": "commercial", "community_centre": "community",
+   "sports_centre": "activeRec", "sports_hall": "activeRec", "grandstand": "activeRec", "stadium": "activeRec", "pavilion": "activeRec",
+   "commercial": "commercial", "retail": "commercial", "office": "commercial", "supermarket": "commercial", "kiosk": "commercial", "shop": "commercial", "train_station": "commercial", "transportation": "commercial",
+   "industrial": "industrial", "warehouse": "industrial", "manufacture": "industrial", "factory": "industrial", "storage_tank": "industrial", "service": "industrial", "transformer_tower": "industrial", "depot": "industrial",
+   "garage": "none", "garages": "none", "shed": "none", "carport": "none", "roof": "none", "hut": "none", "toilets": "none", "parking": "none", "construction": "none", "ruins": "none", "greenhouse": "none"
+  },
+  "amenity": {
+   "school": "education", "college": "education", "university": "education", "kindergarten": "childcare", "childcare": "childcare",
+   "hospital": "hospital", "place_of_worship": "worship", "community_centre": "community", "library": "community", "theatre": "commercial", "cinema": "commercial"
+  },
+  "commercialKeys": ["shop", "office"],
+  "unknown": "residential",
+  "_note": "Applied in order: amenity, then building value, then any shop/office tag → commercial. building=yes or unmapped values fall back to 'unknown' (residential, the conservative choice) and are flagged as assumed."
+ }
+}

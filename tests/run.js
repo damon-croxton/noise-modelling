@@ -22,7 +22,8 @@ async function open(browser) {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
   page._errors = [];
   page.on('pageerror', e => page._errors.push(e.message));
-  page.on('console', m => { if (m.type() === 'error') page._errors.push(m.text()); });
+  // app log lines marked 'fail' are echoed to console.error with a [noise-poc] prefix; tests assert on those explicitly
+  page.on('console', m => { if (m.type() === 'error' && !m.text().startsWith('[noise-poc]')) page._errors.push(m.text()); });
   await page.goto(PAGE);
   await page.waitForFunction(() => window.__noise && window.__noise.selftest, null, { timeout: 30000 });
   return page;

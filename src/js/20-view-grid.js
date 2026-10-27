@@ -56,7 +56,7 @@ function schedule() { if (!rafId) rafId = requestAnimationFrame(frame); }
 function frame() {
   rafId = 0;
   try {
-    if (needCompute) { needCompute = false; const cp = state.settings.cellPx; computeGrid(computeFast ? Math.max(cp * 2, 10) : cp, computeFast); }
+    if (needCompute) { needCompute = false; const cp = state.settings.cellPx; computeGrid(computeFast ? Math.max(cp * 2, 10) : cp, computeFast); if (!computeFast) assessStatusTick(); }
     render(); updateProbe();
   } catch (err) { log('Frame error: ' + err.message, 'fail'); console.error(err); }
 }

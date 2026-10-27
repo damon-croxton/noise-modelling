@@ -1,5 +1,5 @@
 /* ============================== CONSTANTS ============================== */
-const VERSION = '0.5.0';
+const VERSION = '0.6.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
 /* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
    the three bands – the same values and conditions as the TfNSW Construction
@@ -14,8 +14,10 @@ const AIR_ATTEN = {
    the TfNSW estimator applies so they sit on top of hemispherical spreading. */
 const CONCAWE_CAT4 = [[-61.2, 48.6, -9.53, 0.634], [-71.9, 82.23, -26.921, 2.9258], [-97.1, 104.68, -34.693, 3.8068]];
 const PERIODS = {
-  std: 'Standard hours', p1day: 'OOHW Period 1 – day', p1eve: 'OOHW Period 1 – evening', p2night: 'OOHW Period 2 – night'
+  std: 'Standard hours', p1day: 'OOHW Period 1 – day', p1eve: 'OOHW Period 1 – evening',
+  p2eve: 'OOHW Period 2 – evening (Sun/PH)', p2night: 'OOHW Period 2 – night'
 };
+const DEFAULT_NCA_CAT = 'R3';
 const MAX_TERRAIN_SAMPLES = 160;
 const MAX_DEM_CELLS = 4.5e6;
 

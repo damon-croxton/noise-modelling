@@ -1,11 +1,12 @@
 /* ============================== SELECTION ============================== */
-function listFor(type) { return type === 'source' ? state.sources : type === 'building' ? state.buildings : state.hoardings; }
+function listFor(type) { return type === 'source' ? state.sources : type === 'building' ? state.buildings : type === 'nca' ? state.ncas : state.hoardings; }
 function getSel() { if (!state.sel) return null; const obj = listFor(state.sel.type).find(o => o.id === state.sel.id); return obj ? { type: state.sel.type, obj } : null; }
 function select(type, id) { state.sel = type ? { type, id } : null; renderSelPanel(); requestRender(); }
 function deleteSel() {
   const s = getSel(); if (!s) return;
   if (s.type === 'source') state.sources = state.sources.filter(o => o !== s.obj);
   else if (s.type === 'building') { state.buildings = state.buildings.filter(o => o !== s.obj); geomChanged(); }
+  else if (s.type === 'nca') state.ncas = state.ncas.filter(o => o !== s.obj);
   else state.hoardings = state.hoardings.filter(o => o !== s.obj);
   log(`Deleted ${s.type} “${s.obj.name}”.`);
   select(null); requestCompute(false);
@@ -19,7 +20,7 @@ function bindNum(input, min, max, apply) {
 }
 function renderSelPanel() {
   const body = $('selBody'), s = getSel();
-  if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building or hoarding in Select mode.</p>'; return; }
+  if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building, hoarding or NCA boundary in Select mode.</p>'; return; }
   const o = s.obj;
   if (s.type === 'source') {
     body.innerHTML = `
@@ -60,13 +61,17 @@ function renderSelPanel() {
       <div class="row"><label for="bName">Name</label><input type="text" id="bName" value="${esc(o.name)}" maxlength="40"></div>
       <div class="row"><label for="bH">Height (m)</label><input type="number" id="bH" min="0.5" max="300" step="0.5" value="${fmt(o.h, 2)}"></div>
       <p class="kv" id="bInfo"></p>
+      ${buildingAssessHtml(o)}
       <div class="row"><span class="muted">${o.pts.length} vertices</span><button type="button" id="bDel" class="danger">Delete</button></div>`;
     const SRC = { manual: 'entered by hand', 'osm-height': 'OSM height tag', 'osm-levels': 'OSM levels × 3 m + 1 m', 'type-default': `ESTIMATE – typical “${o.btype || 'yes'}” height, check it`, dsm: 'DSM (90th percentile roof) − DEM', lidar: `LiDAR – 90th percentile of ${o.lidarN || '?'} roof cells (class 6) − ground`, file: 'imported file' };
     const info = () => { $('bInfo').textContent = `Height source: ${SRC[o.hsrc] || o.hsrc}${o.osmId ? ' · ' + o.osmId : ''}. Base RL ${fmt(o.base, 2)}${o.baseFixed != null ? ' (from file)' : state.terrain ? ' (lowest DEM point)' : ''} · Roof RL ${fmt(topOf(o), 2)}`; };
     info();
     $('bName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'Building'; });
     bindNum($('bH'), 0.5, 300, v => { o.h = v; o.roofRL = null; o.hsrc = 'manual'; info(); requestRender(); });
+    bindBuildingAssess(o);
     $('bDel').addEventListener('click', deleteSel);
+  } else if (s.type === 'nca') {
+    renderNcaPanel(body, o);
   } else {
     let len = 0; for (let i = 0; i < o.pts.length - 1; i++) len += hyp(o.pts[i], o.pts[i + 1]);
     body.innerHTML = `
@@ -84,7 +89,8 @@ const HINTS = {
   select: 'Drag a source, building or hoarding to move it. Drag empty space to pan; wheel to zoom. Delete removes the selection.',
   source: 'Click the map to place a noise source.',
   building: 'Click to add corners. Click the first corner, double-click or press Enter to finish. Esc cancels. Right-drag pans.',
-  hoarding: 'Click to add points along the hoarding line. Double-click or Enter to finish (2+ points). Esc cancels.'
+  hoarding: 'Click to add points along the hoarding line. Double-click or Enter to finish (2+ points). Esc cancels.',
+  nca: 'Click to add corners of a noise catchment area. Click the first corner, double-click or press Enter to finish. Esc cancels.'
 };
 function setMode(m) {
   if (state.mode !== m && state.draft.length) cancelDraft();
@@ -95,7 +101,7 @@ function setMode(m) {
   updateDraftButtons(); requestRender();
 }
 function updateDraftButtons() {
-  const show = (state.mode === 'building' || state.mode === 'hoarding') && state.draft.length > 0;
+  const show = isDrawMode(state.mode) && state.draft.length > 0;
   $('finishPoly').hidden = !show; $('cancelPoly').hidden = !show;
 }
 function cancelDraft() { state.draft = []; updateDraftButtons(); requestRender(); }
@@ -111,6 +117,12 @@ function finishDraft() {
     updateDraftButtons(); select('hoarding', ho.id); requestCompute(false); return;
   }
   if (pts.length > 1 && hyp(pts[0], pts[pts.length - 1]) <= tol) pts.pop();
+  if (state.mode === 'nca') {
+    if (pts.length < 3) { log('NCA needs at least 3 distinct corners.', 'warn'); return; }
+    const n = makeNca(pts); state.ncas.push(n); state.draft = [];
+    log(`Added ${n.name} (${n.cat}). Set its noise area category or measured RBLs in the Selection panel.`);
+    updateDraftButtons(); select('nca', n.id); requestCompute(false); return;
+  }
   if (pts.length < 3) { log('Building needs at least 3 distinct corners.', 'warn'); return; }
   const b = makeBuilding(pts, state.settings.newH);
   state.buildings.push(b); state.draft = []; geomChanged();
@@ -122,6 +134,12 @@ function finishDraft() {
 let drag = null;
 function mousePos(e) { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
 function hitSource(mx, my) { for (let i = state.sources.length - 1; i >= 0; i--) { const s = state.sources[i], [sx, sy] = w2s(s.x, s.y); if (Math.hypot(sx - mx, sy - my) <= 11) return s; } return null; }
+function isDrawMode(m) { return m === 'building' || m === 'hoarding' || m === 'nca'; }
+function hitNca(wx, wy) {
+  const tol = 6 / state.view.scale;
+  for (let k = state.ncas.length - 1; k >= 0; k--) { const n = state.ncas[k]; for (let i = 0, j = n.pts.length - 1; i < n.pts.length; j = i++) if (distSeg(wx, wy, n.pts[j], n.pts[i]) <= tol) return n; }
+  return null;
+}
 function hitHoarding(wx, wy) {
   const tol = 6 / state.view.scale;
   for (let k = state.hoardings.length - 1; k >= 0; k--) { const ho = state.hoardings[k]; for (let i = 0; i < ho.pts.length - 1; i++) if (distSeg(wx, wy, ho.pts[i], ho.pts[i + 1]) <= tol) return ho; }
@@ -139,8 +157,8 @@ canvas.addEventListener('pointerdown', e => {
     log(`Added source ${s.id} “${s.name}” ${lwBreakdown(s)} at ${coordText(wx, wy)}, ground RL ${fmt(ground(wx, wy), 2)}.`);
     setMode('select'); select('source', s.id); requestCompute(false); return;
   }
-  if (state.mode === 'building' || state.mode === 'hoarding') {
-    if (state.mode === 'building' && state.draft.length >= 3) {
+  if (isDrawMode(state.mode)) {
+    if (state.mode !== 'hoarding' && state.draft.length >= 3) {
       const [fx, fy] = w2s(state.draft[0][0], state.draft[0][1]);
       if (Math.hypot(fx - mx, fy - my) <= 10) { finishDraft(); return; }
     }
@@ -150,6 +168,8 @@ canvas.addEventListener('pointerdown', e => {
   if (s) { select('source', s.id); drag = { kind: 'source', obj: s, ox: wx - s.x, oy: wy - s.y, moved: false }; return; }
   const ho = hitHoarding(wx, wy);
   if (ho) { select('hoarding', ho.id); drag = { kind: 'poly', type: 'hoarding', obj: ho, lx: wx, ly: wy, moved: false }; return; }
+  const nc = hitNca(wx, wy);
+  if (nc) { select('nca', nc.id); drag = { kind: 'poly', type: 'nca', obj: nc, lx: wx, ly: wy, moved: false }; return; }
   const b = buildingAt(wx, wy);
   if (b) { select('building', b.id); drag = { kind: 'poly', type: 'building', obj: b, lx: wx, ly: wy, moved: false }; return; }
   if (state.sel) select(null);
@@ -186,7 +206,7 @@ canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('pointerleave', () => { if (!drag) { state.mouse = null; $('hud').textContent = '–'; requestRender(); } });
 canvas.addEventListener('dblclick', e => {
   e.preventDefault();
-  if (state.mode === 'building' && state.draft.length >= 3) finishDraft();
+  if ((state.mode === 'building' || state.mode === 'nca') && state.draft.length >= 3) finishDraft();
   if (state.mode === 'hoarding' && state.draft.length >= 2) finishDraft();
 });
 canvas.addEventListener('wheel', e => {
@@ -201,9 +221,9 @@ document.addEventListener('keydown', e => {
   if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;   // leave browser shortcuts (Ctrl+S, Ctrl+V …) alone
   const k = e.key.toLowerCase();
-  if (k === 'v') setMode('select'); else if (k === 's') setMode('source'); else if (k === 'b') setMode('building'); else if (k === 'h') setMode('hoarding');
+  if (k === 'v') setMode('select'); else if (k === 's') setMode('source'); else if (k === 'b') setMode('building'); else if (k === 'h') setMode('hoarding'); else if (k === 'n') setMode('nca');
   else if (k === 'escape') { if (state.draft.length) cancelDraft(); else select(null); }
-  else if (k === 'enter' && (state.mode === 'building' || state.mode === 'hoarding')) finishDraft();
+  else if (k === 'enter' && isDrawMode(state.mode)) finishDraft();
   else if (k === 'delete' || k === 'backspace') { if (state.sel) { e.preventDefault(); deleteSel(); } }
 });
 

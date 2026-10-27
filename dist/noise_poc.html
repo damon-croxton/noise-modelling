@@ -46,6 +46,28 @@
   #attrib { position: absolute; right: 8px; top: 8px; background: rgba(255,255,255,.9); border: 1px solid #c3c9d3; border-radius: 4px; padding: 2px 6px; font-size: 10.5px; }
   #attrib a { color: #1d4ed8; }
   .disclaimer { font-size: 11px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 5px 7px; border-radius: 4px; margin: 6px 0 0; }
+  .rbl3 span { display: flex; gap: 3px; }
+  .row.rbl3 input[type=number] { width: 48px; }
+  details.sub2 { margin-top: 8px; border-top: 1px dashed #e5e7eb; padding-top: 6px; }
+  details.sub2 summary { cursor: pointer; font-size: 12px; color: #374151; }
+  .stale { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 3px 6px; border-radius: 3px; margin: 4px 0; }
+  table.mini { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+  table.mini th, table.mini td { border-bottom: 1px solid #eef0f3; padding: 2px 3px; text-align: right; }
+  table.mini th:first-child, table.mini td:first-child { text-align: left; }
+  table.mini th { font-weight: 600; color: #374151; vertical-align: bottom; }
+  .chip { display: inline-block; width: 10px; height: 10px; border: 1px solid rgba(0,0,0,.25); vertical-align: -1px; margin-right: 3px; }
+  #ptable { position: absolute; inset: 8px; background: #fff; border: 1px solid #c3c9d3; border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.18); display: flex; flex-direction: column; z-index: 5; }
+  #ptable[hidden] { display: none; }
+  #ptable .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+  #ptable .bar h2 { margin: 0 8px 0 0; }
+  #ptable .bar input[type=search], #ptable .bar select { font: inherit; padding: 3px 5px; border: 1px solid #c3c9d3; border-radius: 3px; }
+  #ptable .scroll { overflow: auto; flex: 1; }
+  #ptable table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  #ptable th { position: sticky; top: 0; background: #f3f4f6; text-align: left; padding: 4px 6px; border-bottom: 1px solid #d5d9e0; cursor: pointer; white-space: nowrap; }
+  #ptable td { padding: 3px 6px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+  #ptable td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  #ptable tbody tr:hover { background: #eff6ff; cursor: pointer; }
+  #ptable .foot { padding: 5px 10px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; }
   @media (max-width: 800px) {
     #app { flex-direction: column; height: auto; }
     #side { width: auto; border-right: 0; border-bottom: 1px solid #d5d9e0; }
@@ -66,6 +88,7 @@
         <button type="button" data-mode="source">Add source (S)</button>
         <button type="button" data-mode="building">Draw building (B)</button>
         <button type="button" data-mode="hoarding">Draw hoarding (H)</button>
+        <button type="button" data-mode="nca">Draw NCA (N)</button>
       </div>
       <p id="hint" class="hint"></p>
       <div class="btns" style="margin-top:6px">
@@ -134,7 +157,7 @@
         <select id="setMethod"><option value="tfnsw">TfNSW estimator</option><option value="iso">ISO 9613-2</option></select></div>
       <p class="kv muted" id="methodNote"></p>
       <div class="row"><label for="setPeriod">Time period</label>
-        <select id="setPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2night">OOHW Period 2 – night</option></select></div>
+        <select id="setPeriod"><option value="std">Standard hours</option><option value="p1day">OOHW Period 1 – day</option><option value="p1eve">OOHW Period 1 – evening</option><option value="p2eve">OOHW Period 2 – evening (Sun/PH)</option><option value="p2night">OOHW Period 2 – night</option></select></div>
       <div class="row"><label for="setSeason">Season (air absorption)</label>
         <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
       <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
@@ -144,6 +167,42 @@
       <div class="row"><label for="setHr">Receiver height (m above ground)</label><input type="number" id="setHr" min="0" max="200" step="0.5" value="1.5"></div>
       <div class="row"><label for="setNewH">New building height (m)</label><input type="number" id="setNewH" min="0.5" max="300" step="0.5" value="9"></div>
       <div class="row"><label for="setNewHo">New hoarding height (m)</label><input type="number" id="setNewHo" min="0.3" max="20" step="0.1" value="2.4"></div>
+    </section>
+
+    <section>
+      <h2>Assessment</h2>
+      <p class="kv muted">Uses the time period set under Model. Each building is assessed on its exposed façades at 1.5 m above each floor; the worst point per floor is reported.</p>
+      <div class="row"><label for="asDefCat">Noise area outside NCAs</label><select id="asDefCat"></select></div>
+      <div class="row rbl3"><label>Measured RBL outside NCAs (day / eve / night)</label><span><input type="number" id="asRblD" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblE" min="20" max="80" step="1" placeholder="–"><input type="number" id="asRblN" min="20" max="80" step="1" placeholder="–"></span></div>
+      <div class="row"><label for="asFloorH">Floor height (m)</label><input type="number" id="asFloorH" min="2" max="6" step="0.1" value="3"></div>
+      <div class="row"><label for="asSpacing">Façade point spacing (m)</label><input type="number" id="asSpacing" min="2" max="50" step="1" value="10"></div>
+      <div class="row"><label for="asOffset">Distance in front of façade (m)</label><input type="number" id="asOffset" min="0.1" max="5" step="0.1" value="1"></div>
+      <div class="btns">
+        <button type="button" id="btnAssess" class="primary">Run assessment</button>
+        <button type="button" id="btnTable">Property table</button>
+        <button type="button" id="btnCsv">Export CSV</button>
+        <button type="button" id="btnNcaImport">Import NCAs (GeoJSON)</button>
+      </div>
+      <input type="file" id="fileNca" accept=".json,.geojson,application/json" hidden>
+      <div class="row"><label for="asDisplay">Map shows</label>
+        <select id="asDisplay"><option value="both">Impact categories + heat map</option><option value="cat">Impact categories only</option><option value="heat">Heat map only</option></select></div>
+      <div id="asStatus" class="kv"></div>
+      <div id="asSummary"></div>
+      <details class="sub2"><summary>Change land use in bulk</summary>
+        <div class="row"><label for="bulkFrom">Buildings with land use</label><select id="bulkFrom"></select></div>
+        <div class="row"><label for="bulkIn">Within</label><select id="bulkIn"></select></div>
+        <div class="row"><label for="bulkTo">Set land use to</label><select id="bulkTo"></select></div>
+        <div class="btns"><button type="button" id="btnBulk">Apply</button></div>
+      </details>
+      <details class="sub2"><summary>Assessment rules</summary>
+        <p id="rulesInfo" class="kv"></p>
+        <div class="btns">
+          <button type="button" id="btnRulesExport">Export rules</button>
+          <button type="button" id="btnRulesImport">Import rules</button>
+          <button type="button" id="btnRulesReset" class="danger">Reset to defaults</button>
+        </div>
+        <input type="file" id="fileRules" accept=".json,application/json" hidden>
+      </details>
     </section>
 
     <section>
@@ -190,6 +249,7 @@
     <canvas id="map" aria-label="Noise map"></canvas>
     <div id="busy"></div>
     <div id="hud">–</div>
+    <div id="ptable" hidden></div>
     <div id="attrib" hidden>Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)</div>
   </main>
 </div>
@@ -1670,10 +1730,448 @@ const DATA = {
     "group": "Custom"
    }
   ]
+ },
+ "rules": {
+  "id": "tfnsw-cnvg-pti-4.6-defaults",
+  "name": "TfNSW CNVG-PTI defaults (EMF-NV-GD-0060 v4.6, Mar 2026)",
+  "_note": "Default assessment rules transcribed from the TfNSW Construction noise and vibration guideline – public transport infrastructure, v4.6, and the TfNSW Construction Noise Estimator. They are defaults, not a statement of compliance with any edition: verify against the current client strategy, project approval and EPL conditions, and edit or import project-specific rules where they differ.",
+  "periods": {
+   "std": {
+    "label": "Standard hours",
+    "rbl": "day",
+    "nmlAdd": 10,
+    "bands": "std"
+   },
+   "p1day": {
+    "label": "OOHW Period 1 – day",
+    "rbl": "day",
+    "nmlAdd": 5,
+    "bands": "oohw1day"
+   },
+   "p1eve": {
+    "label": "OOHW Period 1 – evening",
+    "rbl": "evening",
+    "nmlAdd": 5,
+    "bands": "oohw1"
+   },
+   "p2eve": {
+    "label": "OOHW Period 2 – evening (Sun/PH)",
+    "rbl": "evening",
+    "nmlAdd": 5,
+    "bands": "oohw2"
+   },
+   "p2night": {
+    "label": "OOHW Period 2 – night",
+    "rbl": "night",
+    "nmlAdd": 5,
+    "bands": "oohw2"
+   }
+  },
+  "measuredRblFloor": {
+   "day": 35,
+   "evening": 30,
+   "night": 30,
+   "_note": "Minimum RBLs applied to measured RBLs, as in the TfNSW estimator (NPfI minimums). Noise area category RBLs are used as listed."
+  },
+  "noiseAreaCategories": {
+   "R0": {
+    "label": "R0 – rural, isolated, >500 m from transport corridors",
+    "day": 30,
+    "evening": 30,
+    "night": 30
+   },
+   "R1": {
+    "label": "R1 – negligible transportation",
+    "day": 40,
+    "evening": 35,
+    "night": 30
+   },
+   "R2": {
+    "label": "R2 – low density transportation",
+    "day": 45,
+    "evening": 40,
+    "night": 35
+   },
+   "R3": {
+    "label": "R3 – medium density transportation or some commerce/industry",
+    "day": 50,
+    "evening": 45,
+    "night": 40
+   },
+   "R4": {
+    "label": "R4 – dense transportation or some commerce/industry",
+    "day": 55,
+    "evening": 50,
+    "night": 45
+   },
+   "R5": {
+    "label": "R5 – predominantly commercial, dense high-rise",
+    "day": 60,
+    "evening": 55,
+    "night": 50
+   }
+  },
+  "facadeReduction": 10,
+  "landUses": {
+   "residential": {
+    "label": "Residential",
+    "nml": "rbl",
+    "sleep": true
+   },
+   "education": {
+    "label": "Educational (classrooms)",
+    "nml": {
+     "internal": 45
+    },
+    "periods": [
+     "std",
+     "p1day"
+    ],
+    "_note": "CNVG-PTI Table 13: 45 dBA internal; assessed when in use (assumed daytime)."
+   },
+   "childcare": {
+    "label": "Childcare",
+    "nml": {
+     "internal": 45
+    },
+    "periods": [
+     "std",
+     "p1day"
+    ],
+    "_note": "Noise-sensitive business: project-specific level per CNVG-PTI A.1.1; default as classrooms – verify."
+   },
+   "hospital": {
+    "label": "Hospital wards / theatres",
+    "nml": {
+     "internal": 45
+    }
+   },
+   "worship": {
+    "label": "Place of worship",
+    "nml": {
+     "internal": 45
+    }
+   },
+   "community": {
+    "label": "Community centre",
+    "nml": {
+     "internal": 45
+    },
+    "_note": "Depends on intended use (AS 2107) – verify."
+   },
+   "activeRec": {
+    "label": "Active recreation",
+    "nml": 65,
+    "periods": [
+     "std",
+     "p1day",
+     "p1eve",
+     "p2eve"
+    ]
+   },
+   "passiveRec": {
+    "label": "Passive recreation",
+    "nml": 60,
+    "periods": [
+     "std",
+     "p1day",
+     "p1eve",
+     "p2eve"
+    ]
+   },
+   "commercial": {
+    "label": "Office / retail",
+    "nml": 70
+   },
+   "industrial": {
+    "label": "Industrial",
+    "nml": 75
+   },
+   "none": {
+    "label": "Not assessed (garage, shed, carport…)",
+    "assess": false
+   }
+  },
+  "bandSets": {
+   "std": [
+    {
+     "above": 10,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": []
+    },
+    {
+     "above": 20,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V"
+     ]
+    }
+   ],
+   "oohw1day": [
+    {
+     "above": 5,
+     "label": "Noticeable",
+     "impact": "Negligible",
+     "measures": []
+    },
+    {
+     "above": 15,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": [
+      "PN"
+     ]
+    },
+    {
+     "above": 25,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO"
+     ]
+    }
+   ],
+   "oohw1": [
+    {
+     "above": 5,
+     "label": "Noticeable",
+     "impact": "Negligible",
+     "measures": []
+    },
+    {
+     "above": 15,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": [
+      "PN"
+     ]
+    },
+    {
+     "above": 25,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO",
+      "RP",
+      "DR"
+     ]
+    }
+   ],
+   "oohw2": [
+    {
+     "above": 5,
+     "label": "Noticeable",
+     "impact": "Negligible",
+     "measures": [
+      "PN"
+     ]
+    },
+    {
+     "above": 15,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": [
+      "PN",
+      "V"
+     ]
+    },
+    {
+     "above": 25,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RP",
+      "DR"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RP",
+      "DR",
+      "AA"
+     ]
+    }
+   ],
+   "_note": "CNVG-PTI Table 9, by exceedance of the NML (dB, rounded to exceedanceDecimals). A band applies when the exceedance is above the previous band's limit and at or below its own 'above' value (null = no upper limit). Exceedance ≤ 0 is 'Below NML'. RP and DR do not apply in OOHW Period 1 day."
+  },
+  "exceedanceDecimals": 0,
+  "highlyAffected": {
+   "level": 75,
+   "periods": [
+    "std"
+   ],
+   "label": "Highly noise affected (≥ 75 dBA)",
+   "measures": [
+    "PN",
+    "V",
+    "SN"
+   ]
+  },
+  "sleep": {
+   "periods": [
+    "p2night"
+   ],
+   "lmaxOffset": 5,
+   "screeningAdd": 15,
+   "minRbl": 30,
+   "awakening": 65,
+   "_note": "LAmax is estimated as LAeq,15min + lmaxOffset, as in the TfNSW estimator (indicative only). Screening: RBL + 15 dB (RBL not below 30); awakening: 65 dBA outside a bedroom window (CNVG-PTI A.1.2)."
+  },
+  "measureCodes": {
+   "PN": "Periodic notification",
+   "V": "Verification monitoring",
+   "SN": "Specific notification, individual briefing or phone call",
+   "RO": "Project-specific respite offer",
+   "RP": "Respite period",
+   "DR": "Duration reduction",
+   "AA": "Alternative accommodation",
+   "PC": "Phone calls",
+   "IB": "Individual briefings"
+  },
+  "categoryStyle": {
+   "Below NML": "#d6dbe3",
+   "Noticeable": "#fde68a",
+   "Clearly audible": "#f59e0b",
+   "Moderately intrusive": "#dc2626",
+   "Highly intrusive": "#7e22ce",
+   "Not assessed": "#ffffff"
+  },
+  "osmLandUse": {
+   "building": {
+    "house": "residential",
+    "detached": "residential",
+    "semidetached_house": "residential",
+    "terrace": "residential",
+    "residential": "residential",
+    "apartments": "residential",
+    "bungalow": "residential",
+    "dormitory": "residential",
+    "cabin": "residential",
+    "hotel": "residential",
+    "farm": "residential",
+    "school": "education",
+    "college": "education",
+    "university": "education",
+    "kindergarten": "childcare",
+    "hospital": "hospital",
+    "church": "worship",
+    "chapel": "worship",
+    "cathedral": "worship",
+    "mosque": "worship",
+    "synagogue": "worship",
+    "temple": "worship",
+    "religious": "worship",
+    "shrine": "worship",
+    "civic": "community",
+    "public": "community",
+    "government": "commercial",
+    "community_centre": "community",
+    "sports_centre": "activeRec",
+    "sports_hall": "activeRec",
+    "grandstand": "activeRec",
+    "stadium": "activeRec",
+    "pavilion": "activeRec",
+    "commercial": "commercial",
+    "retail": "commercial",
+    "office": "commercial",
+    "supermarket": "commercial",
+    "kiosk": "commercial",
+    "shop": "commercial",
+    "train_station": "commercial",
+    "transportation": "commercial",
+    "industrial": "industrial",
+    "warehouse": "industrial",
+    "manufacture": "industrial",
+    "factory": "industrial",
+    "storage_tank": "industrial",
+    "service": "industrial",
+    "transformer_tower": "industrial",
+    "depot": "industrial",
+    "garage": "none",
+    "garages": "none",
+    "shed": "none",
+    "carport": "none",
+    "roof": "none",
+    "hut": "none",
+    "toilets": "none",
+    "parking": "none",
+    "construction": "none",
+    "ruins": "none",
+    "greenhouse": "none"
+   },
+   "amenity": {
+    "school": "education",
+    "college": "education",
+    "university": "education",
+    "kindergarten": "childcare",
+    "childcare": "childcare",
+    "hospital": "hospital",
+    "place_of_worship": "worship",
+    "community_centre": "community",
+    "library": "community",
+    "theatre": "commercial",
+    "cinema": "commercial"
+   },
+   "commercialKeys": [
+    "shop",
+    "office"
+   ],
+   "unknown": "residential",
+   "_note": "Applied in order: amenity, then building value, then any shop/office tag → commercial. building=yes or unmapped values fall back to 'unknown' (residential, the conservative choice) and are flagged as assumed."
+  }
  }
 };
 /* ============================== CONSTANTS ============================== */
-const VERSION = '0.5.0';
+const VERSION = '0.6.0';
 const C_AIR = 343, F_BAND = 500, LAMBDA = C_AIR / F_BAND;
 /* Air absorption, dB/km, from ISO 9613-1 at 250 / 500 / 1000 Hz, averaged over
    the three bands – the same values and conditions as the TfNSW Construction
@@ -1688,8 +2186,10 @@ const AIR_ATTEN = {
    the TfNSW estimator applies so they sit on top of hemispherical spreading. */
 const CONCAWE_CAT4 = [[-61.2, 48.6, -9.53, 0.634], [-71.9, 82.23, -26.921, 2.9258], [-97.1, 104.68, -34.693, 3.8068]];
 const PERIODS = {
-  std: 'Standard hours', p1day: 'OOHW Period 1 – day', p1eve: 'OOHW Period 1 – evening', p2night: 'OOHW Period 2 – night'
+  std: 'Standard hours', p1day: 'OOHW Period 1 – day', p1eve: 'OOHW Period 1 – evening',
+  p2eve: 'OOHW Period 2 – evening (Sun/PH)', p2night: 'OOHW Period 2 – night'
 };
+const DEFAULT_NCA_CAT = 'R3';
 const MAX_TERRAIN_SAMPLES = 160;
 const MAX_DEM_CELLS = 4.5e6;
 
@@ -1709,12 +2209,16 @@ function libItem(id) { return LIBRARY.find(o => o.id === id) || LIBRARY.find(o =
 
 /* ================================ STATE ================================ */
 const state = {
-  sources: [], buildings: [], hoardings: [],
+  sources: [], buildings: [], hoardings: [], ncas: [],
   sel: null, mode: 'select', draft: [],
   view: { cx: 0, cy: 0, scale: 3 }, mouse: null, lastEq: DEFAULT_EQ,
   origin: null,            // {type:'projected', x0, y0, zone, epsg}  (MGA / GDA)
   dsm: null,
   terrain: null,
+  assess: {
+    defNca: { name: 'Outside NCAs', cat: DEFAULT_NCA_CAT, rbl: { day: null, evening: null, night: null } },
+    floorH: 3, spacing: 10, offset: 1, display: 'both', results: null, sig: null, running: false
+  },
   settings: { method: 'tfnsw', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
 };
 let nextId = 1, grid = null;
@@ -1826,10 +2330,15 @@ function buildingAt(x, y) {
 /* ============================== OBJECTS ================================ */
 function makeBuilding(pts, h, name, opt) {
   const id = nextId++;
-  const b = { id, name: name || ('Building ' + id), h, pts, bbox: bboxOf(pts), base: 0, baseFixed: null, roofRL: null, hsrc: 'manual', osmId: null, btype: null };
+  const b = { id, name: name || ('Building ' + id), h, pts, bbox: bboxOf(pts), base: 0, baseFixed: null, roofRL: null, hsrc: 'manual', osmId: null, btype: null,
+    tags: null, landUse: null, luSrc: null, floors: null, address: null };
   if (opt) {
     if (opt.baseRL != null) b.baseFixed = opt.baseRL; if (opt.roofRL != null) b.roofRL = opt.roofRL;
     if (opt.hsrc) b.hsrc = opt.hsrc; if (opt.osmId) b.osmId = opt.osmId; if (opt.btype) b.btype = opt.btype;
+    if (opt.tags) b.tags = opt.tags;
+    if (opt.landUse) { b.landUse = opt.landUse; b.luSrc = opt.luSrc || 'manual'; }
+    if (opt.floors != null) b.floors = opt.floors;
+    if (opt.address) b.address = opt.address;
   }
   updateBase(b);
   return b;
@@ -1871,6 +2380,23 @@ function makeHoarding(pts, h, name) {
   return { id, name: name || ('Hoarding ' + id), h, pts, bbox: bboxOf(pts) };
 }
 function geomChanged() { IDX.dirty = true; }
+/* Noise catchment area: polygon with a noise area category and optional
+   measured RBLs (dBA) that override the category's values. */
+function makeNca(pts, name) {
+  const id = nextId++;
+  return { id, name: name || ('NCA ' + String(state.ncas.length + 1).padStart(2, '0')), pts, bbox: bboxOf(pts), cat: DEFAULT_NCA_CAT, rbl: { day: null, evening: null, night: null } };
+}
+function ncaAt(x, y) {
+  for (let k = state.ncas.length - 1; k >= 0; k--) { const n = state.ncas[k]; if (inBox(x, y, n.bbox) && pip(x, y, n.pts)) return n; }
+  return null;
+}
+/* A point inside the footprint (centroid, or a corner-triangle centroid for odd shapes). */
+function insidePoint(b) {
+  let cx = b.pts.reduce((a, p) => a + p[0], 0) / b.pts.length, cy = b.pts.reduce((a, p) => a + p[1], 0) / b.pts.length;
+  if (!pip(cx, cy, b.pts)) { const p = b.pts; cx = (p[0][0] + p[1][0] + p[2][0]) / 3; cy = (p[0][1] + p[1][1] + p[2][1]) / 3; }
+  return [cx, cy];
+}
+function ncaOf(b) { const c = insidePoint(b); return ncaAt(c[0], c[1]) || state.assess.defNca; }
 
 /* ============================ ACOUSTIC ENGINE ========================== */
 function segPolyIntervals(sx, sy, rx, ry, pts) {
@@ -2010,10 +2536,13 @@ function groundUnderScreening(agr, abar) {
      hard ground: Agr = As + Ar + Am = −1.5 − 1.5 − 3q (G = 0, §7.3.1);
      soft ground: eq. 10 with DΩ (§7.3.2); mixed: linear blend by %soft;
      Abar = Dz − Agr ≥ 0 with the 20/25 dB caps.
-   Lw is the effective level from prep(): time-on, penalty and mitigation applied. */
-function contrib(src, rx, ry, S, buildings, detail, gr) {
-  const hs = src.h, hr = S.hr, iso = S.method === 'iso', soft = Math.max(0, Math.min(1, S.soft || 0));
-  const zs = src._z, zr = (gr == null ? ground(rx, ry) : gr) + hr;
+   Lw is the effective level from prep(): time-on, penalty and mitigation applied.
+   gr: ground RL at the receiver if already known; zrAbs: absolute receiver RL
+   (default ground + S.hr). */
+function contrib(src, rx, ry, S, buildings, detail, gr, zrAbs) {
+  const iso = S.method === 'iso', soft = Math.max(0, Math.min(1, S.soft || 0));
+  const zg = gr == null ? ground(rx, ry) : gr, zr = zrAbs != null ? zrAbs : zg + S.hr;   // zrAbs: absolute receiver RL (façade receivers)
+  const hs = src.h, hr = Math.max(0, zr - zg), zs = src._z;
   const d2 = Math.max(Math.hypot(rx - src.x, ry - src.y), 0.01);
   const d = Math.max(Math.hypot(d2, zs - zr), 1);
   const Adiv = 20 * Math.log10(d) + (iso ? 11 : 8);
@@ -2052,6 +2581,275 @@ function prep(sources) {
   }
 }
 
+/* ======================== LAND USE, FLOORS, ADDRESS ===================== */
+/* OSM tags kept on each building (everything else is dropped on import). */
+const KEEP_TAGS = ['building', 'amenity', 'shop', 'office', 'name', 'building:levels', 'building:use', 'height',
+  'addr:unit', 'addr:housenumber', 'addr:street', 'addr:suburb', 'addr:postcode'];
+function keepTags(tags) {
+  const t = {}; let n = 0;
+  for (const k of KEEP_TAGS) if (tags && tags[k] != null) { t[k] = String(tags[k]).slice(0, 80); n++; }
+  return n ? t : null;
+}
+
+/* Land use from OSM tags, using RULES.osmLandUse: amenity first, then the
+   building value, then any shop/office tag. Anything else falls back to the
+   'unknown' land use (residential by default) and is marked as assumed. */
+function landUseFromTags(tags) {
+  const M = RULES.osmLandUse; tags = tags || {};
+  if (tags.amenity && M.amenity[tags.amenity]) return { lu: M.amenity[tags.amenity], src: `OSM amenity=${tags.amenity}` };
+  const bu = tags['building:use'] || tags.building;
+  if (bu && M.building[bu]) return { lu: M.building[bu], src: `OSM building=${bu}` };
+  for (const k of M.commercialKeys || []) if (tags[k]) return { lu: 'commercial', src: `OSM ${k}=${tags[k]}` };
+  return { lu: M.unknown, src: `assumed – OSM building=${bu || 'not tagged'}`, assumed: true };
+}
+/* Effective land use of a building: manual/file value, else OSM-derived. */
+function luOf(b) {
+  if (b.landUse && RULES.landUses[b.landUse]) return { lu: b.landUse, src: b.luSrc === 'file' ? 'imported file' : 'set by user' };
+  if (b.tags) return landUseFromTags(b.tags);
+  if (b.btype) return landUseFromTags({ building: b.btype });
+  return { lu: RULES.osmLandUse.unknown, src: 'assumed – no land use data', assumed: true };
+}
+
+/* Floor count: user value, else OSM building:levels, else height ÷ floor height
+   (rounded down, at least 1, so pitched roofs don't add a storey). */
+function floorsOf(b) {
+  if (b.floors != null && b.floors >= 1) return { n: Math.round(b.floors), src: 'set by user' };
+  const lv = b.tags && parseFloat(b.tags['building:levels']);
+  if (isFinite(lv) && lv >= 1 && lv < 200) return { n: Math.round(lv), src: 'OSM building:levels' };
+  const fh = state.assess.floorH;
+  return { n: Math.max(1, Math.floor((b.h + 0.25) / fh)), src: `height ${fmt(b.h, 1)} m ÷ ${fmt(fh, 1)} m` };
+}
+function floorLabel(k) { return k === 0 ? 'G' : 'L' + k; }
+
+/* Address: user value, else OSM addr:* tags, else the building name. */
+function addressOf(b) {
+  if (b.address) return b.address;
+  const t = b.tags || {};
+  if (t['addr:housenumber'] || t['addr:street']) {
+    return [t['addr:unit'] ? t['addr:unit'] + '/' : '', t['addr:housenumber'] || '', t['addr:housenumber'] ? ' ' : '', t['addr:street'] || '', t['addr:suburb'] ? ', ' + t['addr:suburb'] : ''].join('').trim();
+  }
+  return '';
+}
+/* =========================== ASSESSMENT RULES ========================== */
+/* Rules come from src/data/rules.json (TfNSW CNVG-PTI defaults) and can be
+   exported, edited and re-imported, so project-specific strategies don't need
+   a code change. Nothing here claims compliance with a particular edition. */
+const clone = o => JSON.parse(JSON.stringify(o));
+let RULES = clone(DATA.rules);
+
+function landUseRule(lu) { return RULES.landUses[lu] || RULES.landUses[RULES.osmLandUse.unknown]; }
+function landUseLabel(lu) { const L = RULES.landUses[lu]; return L ? L.label : lu; }
+
+/* RBL for an NCA and RBL period ('day' | 'evening' | 'night'): a measured value
+   where the NCA has one (raised to the minimum RBL), otherwise its category. */
+function ncaRbl(nca, rp) {
+  const m = nca && nca.rbl ? nca.rbl[rp] : null;
+  if (m != null && isFinite(m)) {
+    const floor = (RULES.measuredRblFloor || {})[rp] || 0;
+    return m < floor ? { rbl: floor, src: `measured ${fmt(m, 0)}, raised to minimum ${floor}` } : { rbl: m, src: 'measured' };
+  }
+  const cat = RULES.noiseAreaCategories[nca && nca.cat] || RULES.noiseAreaCategories[DEFAULT_NCA_CAT];
+  return { rbl: cat[rp], src: `category ${nca && RULES.noiseAreaCategories[nca.cat] ? nca.cat : DEFAULT_NCA_CAT}` };
+}
+
+/* Noise management level for a land use in an NCA and period.
+   → { nml, basis } or { nml: null, reason } when not assessed. */
+function nmlFor(lu, nca, period) {
+  const L = landUseRule(lu), P = RULES.periods[period];
+  if (!P) return { nml: null, reason: `no rules for period ${period}` };
+  if (L.assess === false) return { nml: null, reason: 'not assessed' };
+  if (L.periods && !L.periods.includes(period)) return { nml: null, reason: 'not in use in this period' };
+  if (L.nml === 'rbl') {
+    const r = ncaRbl(nca, P.rbl);
+    return { nml: r.rbl + P.nmlAdd, basis: `${P.rbl} RBL ${fmt(r.rbl, 0)} (${r.src}) + ${P.nmlAdd}` };
+  }
+  if (typeof L.nml === 'number') return { nml: L.nml, basis: `${L.label}: ${L.nml} dBA external` };
+  if (L.nml && isFinite(L.nml.internal)) {
+    const f = RULES.facadeReduction;
+    return { nml: L.nml.internal + f, basis: `${L.nml.internal} dBA internal + ${f} dB façade reduction` };
+  }
+  return { nml: null, reason: 'land use has no NML rule' };
+}
+
+/* Exceedance band and additional mitigation measures (CNVG-PTI Table 9 by
+   default). Exceedance is rounded first, as reported in tables; a band applies
+   above the previous limit and at or below its own. */
+function classify(Leq, nml, period, lu) {
+  const p = Math.pow(10, RULES.exceedanceDecimals || 0);
+  const exc = Math.round((Leq - nml) * p) / p;
+  let label = 'Below NML', impact = 'None', measures = [];
+  if (exc > 0) {
+    const set = RULES.bandSets[RULES.periods[period].bands] || [];
+    const band = set.find(b => b.above == null || exc <= b.above) || set[set.length - 1];
+    if (band) { label = band.label; impact = band.impact || ''; measures = band.measures.slice(); }
+  }
+  const H = RULES.highlyAffected;
+  let highly = false;
+  if (H && H.periods.includes(period) && landUseRule(lu).nml === 'rbl' && Leq >= H.level) {
+    highly = true;
+    for (const m of H.measures) if (!measures.includes(m)) measures.push(m);
+  }
+  return { exc, label, impact, measures, highly };
+}
+
+/* Sleep disturbance screening (indicative): LAmax ≈ LAeq + offset. */
+function sleepCheck(Leq, nca, lu, period) {
+  const Sr = RULES.sleep;
+  if (!Sr || !Sr.periods.includes(period) || !landUseRule(lu).sleep) return null;
+  const r = ncaRbl(nca, 'night'), lmax = Leq + Sr.lmaxOffset, screen = Math.max(r.rbl, Sr.minRbl) + Sr.screeningAdd;
+  return { lmax, screen, overScreen: lmax > screen, awakening: lmax >= Sr.awakening };
+}
+
+/* Light check of an imported rules file. Throws with a readable message. */
+function validateRules(R) {
+  const need = (c, msg) => { if (!c) throw new Error(msg); };
+  need(R && typeof R === 'object', 'not a JSON object');
+  for (const k of Object.keys(PERIODS)) {
+    const P = R.periods && R.periods[k];
+    need(P && ['day', 'evening', 'night'].includes(P.rbl) && isFinite(P.nmlAdd), `periods.${k} missing or invalid`);
+    need(Array.isArray(R.bandSets && R.bandSets[P.bands]), `bandSets.${P.bands} (used by ${k}) missing`);
+  }
+  need(R.landUses && Object.keys(R.landUses).length, 'landUses missing');
+  need(R.noiseAreaCategories && R.noiseAreaCategories[DEFAULT_NCA_CAT], `noiseAreaCategories must include ${DEFAULT_NCA_CAT}`);
+  need(R.osmLandUse && R.landUses[R.osmLandUse.unknown], 'osmLandUse.unknown must name a land use');
+  return R;
+}
+function categoryColor(label) { return (RULES.categoryStyle || {})[label] || '#9ca3af'; }
+/* Short description of an NCA's background levels, e.g. "R3" or "R2 · measured RBL night 36". */
+function ncaSummary(n) {
+  const r = n.rbl || {}, m = ['day', 'evening', 'night'].filter(k => r[k] != null && isFinite(r[k]));
+  const cat = n.cat || DEFAULT_NCA_CAT;
+  return m.length ? `${cat} · measured RBL ${m.map(k => `${k} ${fmt(r[k], 0)}`).join(', ')}` : cat;
+}
+/* ===================== FAÇADE RECEIVERS AND ASSESSMENT ================== */
+/* Receiver points along each exposed façade, `offset` m outside the wall and
+   about `spacing` m apart (at least one per wall of 1 m or more). A point that
+   lands inside another building is on a party wall and is skipped. */
+function facadePoints(b, spacing, offset) {
+  const P = b.pts, n = P.length;
+  let a2 = 0;
+  for (let i = 0, j = n - 1; i < n; j = i++) a2 += P[j][0] * P[i][1] - P[i][0] * P[j][1];
+  const sgn = a2 > 0 ? 1 : -1;            // anticlockwise: the outward normal of (dx, dy) is (dy, −dx)
+  const pts = []; let party = 0;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const a = P[j], c = P[i], dx = c[0] - a[0], dy = c[1] - a[1], L = Math.hypot(dx, dy);
+    if (L < 1) continue;
+    const nx = sgn * dy / L, ny = -sgn * dx / L, k = Math.max(1, Math.round(L / spacing));
+    for (let q = 0; q < k; q++) {
+      const t = (q + 0.5) / k, x = a[0] + dx * t + nx * offset, y = a[1] + dy * t + ny * offset;
+      if (buildingAt(x, y)) { party++; continue; }
+      pts.push({ x, y, wall: j });
+    }
+  }
+  return { pts, party };
+}
+
+/* Rank of a category label within the current period's band set (0 = below NML). */
+function categoryRank(label, period) {
+  if (label === 'Not assessed') return -1;
+  if (label === 'Below NML') return 0;
+  const set = RULES.bandSets[RULES.periods[period].bands] || [];
+  const k = set.findIndex(b => b.label === label);
+  return k < 0 ? 0 : k + 1;
+}
+function categoryList(period) {
+  return ['Below NML'].concat((RULES.bandSets[RULES.periods[period].bands] || []).map(b => b.label));
+}
+
+/* Compact fingerprint of everything the assessment depends on, used to tell
+   when the results no longer match the scenario. */
+function inputsSignature() {
+  const S = state.settings, A = state.assess, r2 = v => Math.round(v * 100);
+  let h = 5381;
+  const add = v => { const s = String(v); for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; h = ((h * 33) ^ 124) >>> 0; };
+  [S.method, S.soft, S.season, S.period, S.barCap, S.air, S.barriers, S.terrain, A.floorH, A.spacing, A.offset, JSON.stringify(A.defNca), RULES.id, state.rulesEdited ? JSON.stringify(RULES).length : 0, state.terrain ? state.terrain.name : ''].forEach(add);
+  for (const s of state.sources) [r2(s.x), r2(s.y), s.h, s.lw, s.on, s.pen, s.mit].forEach(add);
+  for (const b of state.buildings) { [b.id, r2(b.h), r2(b.base), b.landUse, b.floors].forEach(add); for (const p of b.pts) { add(r2(p[0])); add(r2(p[1])); } }
+  for (const ho of state.hoardings) { add(ho.h); for (const p of ho.pts) { add(r2(p[0])); add(r2(p[1])); } }
+  for (const n of state.ncas) { [n.cat, JSON.stringify(n.rbl)].forEach(add); for (const p of n.pts) { add(r2(p[0])); add(r2(p[1])); } }
+  return h;
+}
+function assessStale() { const R = state.assess.results; return !!R && R.sig !== inputsSignature(); }
+
+/* Run the assessment for the current time period. For every assessed building
+   and floor, the level is predicted at each exposed façade point and the worst
+   point is reported. Points whose free-field upper bound (spreading only, no
+   ground, air or screening losses) is already below the NML can't exceed it,
+   so they are not calculated in full. */
+async function runAssessment() {
+  const A = state.assess, S = state.settings, period = S.period, B = state.buildings, srcs = state.sources;
+  if (A.running) return null;
+  if (!srcs.length) { log('Add at least one source before running the assessment.', 'warn'); return null; }
+  if (!B.length) { log('There are no buildings to assess – fetch, import or draw them first.', 'warn'); return null; }
+  A.running = true; updateAssessButtons();
+  const t0 = performance.now();
+  try {
+    prep(srcs); idx();
+    const K = S.method === 'iso' ? 5 : 8;   // largest possible gain over 20·lg d (ISO: hard-ground −6 dB Agr)
+    const receivers = [], byBuilding = new Map();
+    let nPts = 0, nExact = 0, nBound = 0, party = 0, noFacade = 0, skipped = 0, last = performance.now();
+    for (let bi = 0; bi < B.length; bi++) {
+      const b = B[bi], lu = luOf(b), nca = ncaOf(b), N = nmlFor(lu.lu, nca, period), fl = floorsOf(b);
+      if (N.nml == null) { byBuilding.set(b.id, { worst: 'Not assessed', floors: fl.n, maxLeq: null, reason: N.reason }); skipped++; continue; }
+      const fp = facadePoints(b, A.spacing, A.offset); party += fp.party;
+      if (!fp.pts.length) { byBuilding.set(b.id, { worst: 'Not assessed', floors: fl.n, maxLeq: null, reason: 'no exposed façade' }); noFacade++; continue; }
+      let worst = 'Below NML', worstRank = 0, maxLeq = null;
+      for (let f = 0; f < fl.n; f++) {
+        const z = b.base + 1.5 + f * A.floorH;
+        let best = -Infinity, bestP = null, ubMax = -Infinity;
+        for (const p of fp.pts) {
+          nPts++;
+          let ub = 0;
+          for (const s of srcs) ub += Math.pow(10, (s._lw - 20 * Math.log10(Math.max(Math.hypot(p.x - s.x, p.y - s.y, z - s._z), 1)) - K) / 10);
+          ub = 10 * Math.log10(ub);
+          if (ub < N.nml) { nBound++; if (ub > ubMax) ubMax = ub; continue; }
+          nExact++;
+          const gr = ground(p.x, p.y);
+          let e = 0;
+          for (const s of srcs) e += Math.pow(10, contrib(s, p.x, p.y, S, B, false, gr, z) / 10);
+          const L = 10 * Math.log10(e);
+          if (L > best) { best = L; bestP = p; }
+        }
+        const Leq = best > -Infinity ? best : null;
+        const c = Leq != null ? classify(Leq, N.nml, period, lu.lu) : { exc: null, label: 'Below NML', impact: 'None', measures: [], highly: false };
+        const rec = {
+          id: `B${b.id}-${floorLabel(f)}`, bId: b.id, floor: f, floorLabel: floorLabel(f), x: bestP ? bestP.x : null, y: bestP ? bestP.y : null, z,
+          lu: lu.lu, luSrc: lu.src, nca: nca.name, nml: N.nml, nmlBasis: N.basis, Leq, ub: Leq == null ? ubMax : null,
+          exc: c.exc, label: c.label, impact: c.impact, measures: c.measures, highly: c.highly,
+          sleep: Leq != null ? sleepCheck(Leq, nca, lu.lu, period) : null, floorsSrc: fl.src
+        };
+        receivers.push(rec);
+        const rk = categoryRank(c.label, period);
+        if (rk > worstRank) { worstRank = rk; worst = c.label; }
+        if (Leq != null && (maxLeq == null || Leq > maxLeq)) maxLeq = Leq;
+      }
+      byBuilding.set(b.id, { worst, floors: fl.n, maxLeq });
+      if (performance.now() - last > 40) {
+        $('busy').textContent = `Assessing… ${Math.round(100 * bi / B.length)} % (${bi.toLocaleString()} of ${B.length.toLocaleString()} buildings)`;
+        await new Promise(r => setTimeout(r, 0)); last = performance.now();
+      }
+    }
+    const ms = performance.now() - t0, above = receivers.filter(r => r.exc != null && r.exc > 0);
+    A.results = {
+      period, method: S.method, at: new Date().toISOString(), receivers, byBuilding, sig: inputsSignature(),
+      stats: { buildings: B.length, assessed: B.length - skipped - noFacade, skipped, noFacade, receivers: receivers.length, points: nPts, exact: nExact, bound: nBound, party, above: above.length, ms }
+    };
+    $('busy').textContent = `Assessment: ${receivers.length.toLocaleString()} building-floors, ${above.length} above NML · ${(ms / 1000).toFixed(1)} s`;
+    log(`Assessment (${PERIODS[period]}, ${S.method === 'iso' ? 'ISO 9613-2' : 'TfNSW estimator basis'}): ${B.length - skipped - noFacade} of ${B.length} buildings, ${receivers.length.toLocaleString()} building-floors, ` +
+      `${nPts.toLocaleString()} façade points (${nExact.toLocaleString()} calculated, ${nBound.toLocaleString()} below NML on distance alone, ${party.toLocaleString()} on party walls skipped). ` +
+      `${above.length} building-floor(s) above NML in ${new Set(above.map(r => r.bId)).size} building(s). ${(ms / 1000).toFixed(1)} s.`, 'pass');
+    if (skipped) log(`${skipped} building(s) not assessed for this period (land use not assessed or not in use).`);
+    if (noFacade) log(`${noFacade} building(s) have no exposed façade (all walls touch other buildings) – check footprints.`, 'warn');
+    const assumed = B.filter(b => luOf(b).assumed).length;
+    if (assumed) log(`${assumed} building(s) have an assumed land use (${landUseLabel(RULES.osmLandUse.unknown)}) – check them in the property table or set land use in bulk.`, 'warn');
+    return A.results;
+  } catch (err) {
+    log(`Assessment FAILED: ${err.message}`, 'fail'); console.error(err);
+    return null;
+  } finally {
+    A.running = false; updateAssessButtons(); renderAssessPanel(); renderSelPanel(); requestRender();
+  }
+}
 /* ===================== TIFF / GeoTIFF READER (local) ==================== */
 const TYPE_SIZE = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8, 16: 8, 17: 8, 18: 8 };
 const COMP_NAMES = { 1: 'none', 5: 'LZW', 7: 'JPEG', 8: 'Deflate', 32946: 'Deflate (old)', 32773: 'PackBits', 34887: 'LERC', 50000: 'ZSTD', 50001: 'WebP', 34925: 'LZMA' };
@@ -2595,7 +3393,7 @@ function schedule() { if (!rafId) rafId = requestAnimationFrame(frame); }
 function frame() {
   rafId = 0;
   try {
-    if (needCompute) { needCompute = false; const cp = state.settings.cellPx; computeGrid(computeFast ? Math.max(cp * 2, 10) : cp, computeFast); }
+    if (needCompute) { needCompute = false; const cp = state.settings.cellPx; computeGrid(computeFast ? Math.max(cp * 2, 10) : cp, computeFast); if (!computeFast) assessStatusTick(); }
     render(); updateProbe();
   } catch (err) { log('Frame error: ' + err.message, 'fail'); console.error(err); }
 }
@@ -2624,7 +3422,8 @@ function render() {
   for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) { const sy = Math.round(w2s(0, y)[1]) + 0.5; ctx.moveTo(0, sy); ctx.lineTo(cssW, sy); }
   ctx.stroke();
 
-  if (grid && state.sources.length) {
+  const AR = state.assess.results, showCat = AR && state.assess.display !== 'heat';
+  if (grid && state.sources.length && !(AR && state.assess.display === 'cat')) {
     ctx.save(); ctx.globalAlpha = S.opacity; ctx.imageSmoothingEnabled = false;
     ctx.drawImage(off, 0, 0, grid.gw * grid.cellPx, grid.gh * grid.cellPx);
     ctx.restore();
@@ -2636,21 +3435,39 @@ function render() {
     ctx.drawImage(lazCv, a, b, D.w * D.cx * v.scale, D.h * D.cy * v.scale);
     ctx.restore();
   }
+  for (const n of state.ncas) {
+    const sel = state.sel && state.sel.type === 'nca' && state.sel.id === n.id;
+    polyPath(n.pts, true);
+    ctx.fillStyle = sel ? 'rgba(13,148,136,0.10)' : 'rgba(13,148,136,0.04)'; ctx.fill();
+    ctx.lineWidth = sel ? 3 : 2; ctx.strokeStyle = '#0f766e'; ctx.setLineDash([10, 5]); ctx.stroke(); ctx.setLineDash([]);
+    const label = `${n.name} · ${ncaSummary(n)}`;
+    ctx.font = '600 11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    const w = ctx.measureText(label).width;
+    // label at the top vertex, kept inside the view (and inside the NCA's on-screen extent)
+    const top = n.pts.reduce((a, p) => (p[1] > a[1] ? p : a)), sb = bboxOf(n.pts.map(p => w2s(p[0], p[1])));
+    let [lx, ly] = w2s(top[0], top[1]);
+    lx = Math.min(Math.max(lx, Math.max(sb[0], 0) + 4), Math.min(sb[2], cssW) - w - 8);
+    ly = Math.max(ly, Math.max(sb[1], 0) + 20, 46);   // clear of the status box at the top left
+    ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(lx - 2, ly - 16, w + 6, 15);
+    ctx.fillStyle = '#0f766e'; ctx.fillText(label, lx + 1, ly - 2);
+  }
   const showLabels = state.buildings.length < 400;
   for (const b of state.buildings) {
     const bb = b.bbox;
     if (bb[2] < x0 || bb[0] > x1 || bb[3] < y0 || bb[1] > y1) continue;
     const sel = state.sel && state.sel.type === 'building' && state.sel.id === b.id;
     polyPath(b.pts, true);
-    ctx.fillStyle = sel ? 'rgba(37,99,235,0.55)' : 'rgba(55,60,72,0.78)'; ctx.fill();
+    const cat = showCat ? AR.byBuilding.get(b.id) : null, catFill = cat ? categoryColor(cat.worst) : null;
+    ctx.fillStyle = sel ? 'rgba(37,99,235,0.55)' : catFill || 'rgba(55,60,72,0.78)'; ctx.fill();
     if (isEstimated(b) && !sel) { ctx.lineWidth = 1.5; ctx.strokeStyle = '#f59e0b'; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]); }
     else { ctx.lineWidth = sel ? 2.5 : 1; ctx.strokeStyle = sel ? '#1d4ed8' : '#1f2937'; ctx.stroke(); }
     if (showLabels && (bb[2] - bb[0]) * v.scale > 34) {
       let cx = b.pts.reduce((a, p) => a + p[0], 0) / b.pts.length, cy = b.pts.reduce((a, p) => a + p[1], 0) / b.pts.length;
       if (!pip(cx, cy, b.pts)) { const p = b.pts; cx = (p[0][0] + p[1][0] + p[2][0]) / 3; cy = (p[0][1] + p[1][1] + p[2][1]) / 3; }
       const [lx, ly] = w2s(cx, cy);
-      ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
-      ctx.fillText(`${fmt(b.h, 1)} m${isEstimated(b) ? '?' : ''}`, lx, ly);
+      ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = catFill && !sel && cat.worst !== 'Moderately intrusive' && cat.worst !== 'Highly intrusive' ? '#111827' : '#fff';
+      ctx.fillText(cat ? `${cat.floors}F · ${cat.worst === 'Not assessed' ? 'n/a' : cat.maxLeq != null ? fmt(cat.maxLeq, 0) + ' dB' : '< NML'}` : `${fmt(b.h, 1)} m${isEstimated(b) ? '?' : ''}`, lx, ly);
     }
   }
   for (const ho of state.hoardings) {
@@ -2664,7 +3481,7 @@ function render() {
   if (state.draft.length) {
     polyPath(state.draft, false);
     if (state.mouse) ctx.lineTo(state.mouse.x, state.mouse.y);
-    ctx.strokeStyle = state.mode === 'hoarding' ? '#b45309' : '#1d4ed8'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = state.mode === 'hoarding' ? '#b45309' : state.mode === 'nca' ? '#0f766e' : '#1d4ed8'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
     state.draft.forEach((p, i) => { const [sx, sy] = w2s(p[0], p[1]); ctx.beginPath(); ctx.arc(sx, sy, i ? 3.5 : 6, 0, 7); ctx.fillStyle = i ? '#1d4ed8' : '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2; ctx.stroke(); });
   }
 
@@ -2703,7 +3520,11 @@ function updateProbe() {
   const el = $('probe');
   if (!state.sources.length) { el.innerHTML = '<p class="muted">Add a source to see levels.</p>'; $('hud').textContent = hud; return; }
   const hb = buildingAt(wx, wy);
-  if (hb) { el.innerHTML = `<p class="muted">Inside “${esc(hb.name)}” (base RL ${fmt(hb.base, 2)}, roof RL ${fmt(topOf(hb), 2)}) – receivers masked.</p>`; $('hud').textContent = hud + ' · inside building'; return; }
+  if (hb) {
+    const ph = probeBuildingHtml(hb);
+    el.innerHTML = ph || `<p class="muted">Inside “${esc(hb.name)}” (base RL ${fmt(hb.base, 2)}, roof RL ${fmt(topOf(hb), 2)}) – grid receivers masked. Run the assessment for façade results.</p>`;
+    $('hud').textContent = hud + ' · ' + (ph ? `${hb.name}: ${(state.assess.results.byBuilding.get(hb.id) || {}).worst}` : 'inside building'); return;
+  }
   prep(state.sources);
   let e = 0, rows = '';
   for (const s of state.sources) {
@@ -2727,13 +3548,14 @@ function updateProbe() {
 }
 
 /* ============================== SELECTION ============================== */
-function listFor(type) { return type === 'source' ? state.sources : type === 'building' ? state.buildings : state.hoardings; }
+function listFor(type) { return type === 'source' ? state.sources : type === 'building' ? state.buildings : type === 'nca' ? state.ncas : state.hoardings; }
 function getSel() { if (!state.sel) return null; const obj = listFor(state.sel.type).find(o => o.id === state.sel.id); return obj ? { type: state.sel.type, obj } : null; }
 function select(type, id) { state.sel = type ? { type, id } : null; renderSelPanel(); requestRender(); }
 function deleteSel() {
   const s = getSel(); if (!s) return;
   if (s.type === 'source') state.sources = state.sources.filter(o => o !== s.obj);
   else if (s.type === 'building') { state.buildings = state.buildings.filter(o => o !== s.obj); geomChanged(); }
+  else if (s.type === 'nca') state.ncas = state.ncas.filter(o => o !== s.obj);
   else state.hoardings = state.hoardings.filter(o => o !== s.obj);
   log(`Deleted ${s.type} “${s.obj.name}”.`);
   select(null); requestCompute(false);
@@ -2747,7 +3569,7 @@ function bindNum(input, min, max, apply) {
 }
 function renderSelPanel() {
   const body = $('selBody'), s = getSel();
-  if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building or hoarding in Select mode.</p>'; return; }
+  if (!s) { body.innerHTML = '<p class="muted">Nothing selected. Click a source, building, hoarding or NCA boundary in Select mode.</p>'; return; }
   const o = s.obj;
   if (s.type === 'source') {
     body.innerHTML = `
@@ -2788,13 +3610,17 @@ function renderSelPanel() {
       <div class="row"><label for="bName">Name</label><input type="text" id="bName" value="${esc(o.name)}" maxlength="40"></div>
       <div class="row"><label for="bH">Height (m)</label><input type="number" id="bH" min="0.5" max="300" step="0.5" value="${fmt(o.h, 2)}"></div>
       <p class="kv" id="bInfo"></p>
+      ${buildingAssessHtml(o)}
       <div class="row"><span class="muted">${o.pts.length} vertices</span><button type="button" id="bDel" class="danger">Delete</button></div>`;
     const SRC = { manual: 'entered by hand', 'osm-height': 'OSM height tag', 'osm-levels': 'OSM levels × 3 m + 1 m', 'type-default': `ESTIMATE – typical “${o.btype || 'yes'}” height, check it`, dsm: 'DSM (90th percentile roof) − DEM', lidar: `LiDAR – 90th percentile of ${o.lidarN || '?'} roof cells (class 6) − ground`, file: 'imported file' };
     const info = () => { $('bInfo').textContent = `Height source: ${SRC[o.hsrc] || o.hsrc}${o.osmId ? ' · ' + o.osmId : ''}. Base RL ${fmt(o.base, 2)}${o.baseFixed != null ? ' (from file)' : state.terrain ? ' (lowest DEM point)' : ''} · Roof RL ${fmt(topOf(o), 2)}`; };
     info();
     $('bName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'Building'; });
     bindNum($('bH'), 0.5, 300, v => { o.h = v; o.roofRL = null; o.hsrc = 'manual'; info(); requestRender(); });
+    bindBuildingAssess(o);
     $('bDel').addEventListener('click', deleteSel);
+  } else if (s.type === 'nca') {
+    renderNcaPanel(body, o);
   } else {
     let len = 0; for (let i = 0; i < o.pts.length - 1; i++) len += hyp(o.pts[i], o.pts[i + 1]);
     body.innerHTML = `
@@ -2812,7 +3638,8 @@ const HINTS = {
   select: 'Drag a source, building or hoarding to move it. Drag empty space to pan; wheel to zoom. Delete removes the selection.',
   source: 'Click the map to place a noise source.',
   building: 'Click to add corners. Click the first corner, double-click or press Enter to finish. Esc cancels. Right-drag pans.',
-  hoarding: 'Click to add points along the hoarding line. Double-click or Enter to finish (2+ points). Esc cancels.'
+  hoarding: 'Click to add points along the hoarding line. Double-click or Enter to finish (2+ points). Esc cancels.',
+  nca: 'Click to add corners of a noise catchment area. Click the first corner, double-click or press Enter to finish. Esc cancels.'
 };
 function setMode(m) {
   if (state.mode !== m && state.draft.length) cancelDraft();
@@ -2823,7 +3650,7 @@ function setMode(m) {
   updateDraftButtons(); requestRender();
 }
 function updateDraftButtons() {
-  const show = (state.mode === 'building' || state.mode === 'hoarding') && state.draft.length > 0;
+  const show = isDrawMode(state.mode) && state.draft.length > 0;
   $('finishPoly').hidden = !show; $('cancelPoly').hidden = !show;
 }
 function cancelDraft() { state.draft = []; updateDraftButtons(); requestRender(); }
@@ -2839,6 +3666,12 @@ function finishDraft() {
     updateDraftButtons(); select('hoarding', ho.id); requestCompute(false); return;
   }
   if (pts.length > 1 && hyp(pts[0], pts[pts.length - 1]) <= tol) pts.pop();
+  if (state.mode === 'nca') {
+    if (pts.length < 3) { log('NCA needs at least 3 distinct corners.', 'warn'); return; }
+    const n = makeNca(pts); state.ncas.push(n); state.draft = [];
+    log(`Added ${n.name} (${n.cat}). Set its noise area category or measured RBLs in the Selection panel.`);
+    updateDraftButtons(); select('nca', n.id); requestCompute(false); return;
+  }
   if (pts.length < 3) { log('Building needs at least 3 distinct corners.', 'warn'); return; }
   const b = makeBuilding(pts, state.settings.newH);
   state.buildings.push(b); state.draft = []; geomChanged();
@@ -2850,6 +3683,12 @@ function finishDraft() {
 let drag = null;
 function mousePos(e) { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
 function hitSource(mx, my) { for (let i = state.sources.length - 1; i >= 0; i--) { const s = state.sources[i], [sx, sy] = w2s(s.x, s.y); if (Math.hypot(sx - mx, sy - my) <= 11) return s; } return null; }
+function isDrawMode(m) { return m === 'building' || m === 'hoarding' || m === 'nca'; }
+function hitNca(wx, wy) {
+  const tol = 6 / state.view.scale;
+  for (let k = state.ncas.length - 1; k >= 0; k--) { const n = state.ncas[k]; for (let i = 0, j = n.pts.length - 1; i < n.pts.length; j = i++) if (distSeg(wx, wy, n.pts[j], n.pts[i]) <= tol) return n; }
+  return null;
+}
 function hitHoarding(wx, wy) {
   const tol = 6 / state.view.scale;
   for (let k = state.hoardings.length - 1; k >= 0; k--) { const ho = state.hoardings[k]; for (let i = 0; i < ho.pts.length - 1; i++) if (distSeg(wx, wy, ho.pts[i], ho.pts[i + 1]) <= tol) return ho; }
@@ -2867,8 +3706,8 @@ canvas.addEventListener('pointerdown', e => {
     log(`Added source ${s.id} “${s.name}” ${lwBreakdown(s)} at ${coordText(wx, wy)}, ground RL ${fmt(ground(wx, wy), 2)}.`);
     setMode('select'); select('source', s.id); requestCompute(false); return;
   }
-  if (state.mode === 'building' || state.mode === 'hoarding') {
-    if (state.mode === 'building' && state.draft.length >= 3) {
+  if (isDrawMode(state.mode)) {
+    if (state.mode !== 'hoarding' && state.draft.length >= 3) {
       const [fx, fy] = w2s(state.draft[0][0], state.draft[0][1]);
       if (Math.hypot(fx - mx, fy - my) <= 10) { finishDraft(); return; }
     }
@@ -2878,6 +3717,8 @@ canvas.addEventListener('pointerdown', e => {
   if (s) { select('source', s.id); drag = { kind: 'source', obj: s, ox: wx - s.x, oy: wy - s.y, moved: false }; return; }
   const ho = hitHoarding(wx, wy);
   if (ho) { select('hoarding', ho.id); drag = { kind: 'poly', type: 'hoarding', obj: ho, lx: wx, ly: wy, moved: false }; return; }
+  const nc = hitNca(wx, wy);
+  if (nc) { select('nca', nc.id); drag = { kind: 'poly', type: 'nca', obj: nc, lx: wx, ly: wy, moved: false }; return; }
   const b = buildingAt(wx, wy);
   if (b) { select('building', b.id); drag = { kind: 'poly', type: 'building', obj: b, lx: wx, ly: wy, moved: false }; return; }
   if (state.sel) select(null);
@@ -2914,7 +3755,7 @@ canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('pointerleave', () => { if (!drag) { state.mouse = null; $('hud').textContent = '–'; requestRender(); } });
 canvas.addEventListener('dblclick', e => {
   e.preventDefault();
-  if (state.mode === 'building' && state.draft.length >= 3) finishDraft();
+  if ((state.mode === 'building' || state.mode === 'nca') && state.draft.length >= 3) finishDraft();
   if (state.mode === 'hoarding' && state.draft.length >= 2) finishDraft();
 });
 canvas.addEventListener('wheel', e => {
@@ -2929,9 +3770,9 @@ document.addEventListener('keydown', e => {
   if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;   // leave browser shortcuts (Ctrl+S, Ctrl+V …) alone
   const k = e.key.toLowerCase();
-  if (k === 'v') setMode('select'); else if (k === 's') setMode('source'); else if (k === 'b') setMode('building'); else if (k === 'h') setMode('hoarding');
+  if (k === 'v') setMode('select'); else if (k === 's') setMode('source'); else if (k === 'b') setMode('building'); else if (k === 'h') setMode('hoarding'); else if (k === 'n') setMode('nca');
   else if (k === 'escape') { if (state.draft.length) cancelDraft(); else select(null); }
-  else if (k === 'enter' && (state.mode === 'building' || state.mode === 'hoarding')) finishDraft();
+  else if (k === 'enter' && isDrawMode(state.mode)) finishDraft();
   else if (k === 'delete' || k === 'backspace') { if (state.sel) { e.preventDefault(); deleteSel(); } }
 });
 
@@ -3033,6 +3874,298 @@ $('btnLibReset').addEventListener('click', () => {
   LIBRARY = DATA.equipment.items.map(o => Object.assign({}, o)); state.libraryEdited = false;
   log('Equipment library reset to the built-in list.'); updateLibInfo(); renderSelPanel();
 });
+/* ============================ ASSESSMENT UI ============================ */
+function catOptions(sel) {
+  return Object.entries(RULES.noiseAreaCategories).map(([k, c]) => `<option value="${esc(k)}" ${k === sel ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
+}
+function luOptions(sel) {
+  return Object.entries(RULES.landUses).map(([k, L]) => `<option value="${esc(k)}" ${k === sel ? 'selected' : ''}>${esc(L.label)}</option>`).join('');
+}
+const optNum = v => (v === '' || v == null ? null : num(v, 20, 80));
+
+function updateAssessButtons() {
+  const A = state.assess, has = !!A.results;
+  $('btnAssess').disabled = A.running; $('btnAssess').textContent = A.running ? 'Running…' : 'Run assessment';
+  $('btnTable').disabled = !has || A.running; $('btnCsv').disabled = !has || A.running;
+}
+function syncAssessUI() {
+  const A = state.assess, r = A.defNca.rbl;
+  $('asDefCat').innerHTML = catOptions(A.defNca.cat);
+  $('asRblD').value = r.day ?? ''; $('asRblE').value = r.evening ?? ''; $('asRblN').value = r.night ?? '';
+  $('asFloorH').value = A.floorH; $('asSpacing').value = A.spacing; $('asOffset').value = A.offset; $('asDisplay').value = A.display;
+  $('bulkTo').innerHTML = luOptions('residential');
+  $('rulesInfo').innerHTML = `<b>${esc(RULES.name)}</b>${state.rulesEdited ? ' <span class="muted">(imported / edited)</span>' : ''}<br><span class="muted">${esc(RULES._note || '')}</span>`;
+  refreshBulkSelects(); updateAssessButtons(); renderAssessPanel();
+}
+function refreshBulkSelects() {
+  const from = $('bulkFrom').value, within = $('bulkIn').value;
+  $('bulkFrom').innerHTML = `<option value="*">Any</option><option value="?">Assumed (no land use data)</option>` + luOptions(null);
+  $('bulkIn').innerHTML = `<option value="*">All buildings</option><option value="view">Buildings in view</option><option value="outside">Outside all NCAs</option>` +
+    state.ncas.map(n => `<option value="nca:${n.id}">${esc(n.name)}</option>`).join('');
+  if (from) $('bulkFrom').value = from;
+  if (within && [...$('bulkIn').options].some(o => o.value === within)) $('bulkIn').value = within;
+}
+
+/* Status line and summary: building-floors per land use and category. */
+function renderAssessPanel() {
+  const A = state.assess, R = A.results;
+  if (!R) { $('asStatus').innerHTML = '<span class="muted">Not run yet.</span>'; $('asSummary').innerHTML = ''; return; }
+  const stale = assessStale();
+  const st = R.stats, t = new Date(R.at);
+  $('asStatus').innerHTML = (stale ? '<div class="stale">Inputs have changed since this run – run the assessment again.</div>' : '') +
+    `Run ${t.toLocaleTimeString()} · ${esc(PERIODS[R.period])} · ${R.method === 'iso' ? 'ISO 9613-2' : 'TfNSW estimator basis'}<br>` +
+    `${st.assessed.toLocaleString()} buildings, ${st.receivers.toLocaleString()} building-floors · <b>${st.above}</b> above NML in <b>${new Set(R.receivers.filter(r => r.exc > 0).map(r => r.bId)).size}</b> building(s)`;
+  const cats = categoryList(R.period), rows = new Map(), meas = new Map();
+  for (const r of R.receivers) {
+    if (!rows.has(r.lu)) rows.set(r.lu, new Array(cats.length).fill(0));
+    const k = cats.indexOf(r.label); if (k >= 0) rows.get(r.lu)[k]++;
+    for (const m of r.measures) meas.set(m, (meas.get(m) || 0) + 1);
+  }
+  let html = '<table class="mini"><tr><th>Land use</th>' + cats.map(c => `<th title="${esc(c)}"><span class="chip" style="background:${categoryColor(c)}"></span>${esc(c.replace('intrusive', 'intr.').replace('Below NML', '≤ NML'))}</th>`).join('') + '</tr>';
+  for (const [lu, v] of rows) html += `<tr><td>${esc(landUseLabel(lu))}</td>${v.map(n => `<td>${n || ''}</td>`).join('')}</tr>`;
+  html += '</table>';
+  if (meas.size) html += `<p class="kv">Measures triggered (building-floors): ${[...meas].map(([m, n]) => `<b title="${esc((RULES.measureCodes || {})[m] || m)}">${esc(m)}</b> ${n}`).join(' · ')}</p>`;
+  const sl = R.receivers.filter(r => r.sleep && (r.sleep.overScreen || r.sleep.awakening));
+  if (sl.length) html += `<p class="kv">Sleep disturbance screening (indicative, L<sub>Amax</sub> ≈ L<sub>Aeq</sub> + ${RULES.sleep.lmaxOffset}): ${sl.filter(r => r.sleep.overScreen).length} above RBL + ${RULES.sleep.screeningAdd}, ${sl.filter(r => r.sleep.awakening).length} at or above ${RULES.sleep.awakening} dBA.</p>`;
+  $('asSummary').innerHTML = html + '<p class="kv muted">Building-floors = one result per floor of each building (worst façade point). Screening estimate only.</p>';
+}
+let staleTimer = 0;
+function assessStatusTick() {   // called after full recomputes; debounced check that keeps the stale warning current
+  clearTimeout(staleTimer);
+  staleTimer = setTimeout(() => {
+    if (!state.assess.results || state.assess.running) return;
+    if (assessStale() !== !!$('asStatus').querySelector('.stale')) renderAssessPanel();
+  }, 300);
+}
+
+/* -------- panel bindings -------- */
+$('btnAssess').addEventListener('click', () => runAssessment());
+$('asDefCat').addEventListener('change', e => { state.assess.defNca.cat = e.target.value; log(`Noise area outside NCAs: ${e.target.value}.`); renderAssessPanel(); requestRender(); });
+[['asRblD', 'day'], ['asRblE', 'evening'], ['asRblN', 'night']].forEach(([id, k]) => $(id).addEventListener('input', e => {
+  const v = optNum(e.target.value); e.target.classList.toggle('bad', e.target.value !== '' && v === null);
+  if (e.target.value === '' || v !== null) { state.assess.defNca.rbl[k] = v; renderAssessPanel(); }
+}));
+bindNum($('asFloorH'), 2, 6, v => { state.assess.floorH = v; });
+bindNum($('asSpacing'), 2, 50, v => { state.assess.spacing = v; });
+bindNum($('asOffset'), 0.1, 5, v => { state.assess.offset = v; });
+$('asDisplay').addEventListener('change', e => { state.assess.display = e.target.value; requestRender(); });
+$('btnBulk').addEventListener('click', () => {
+  const from = $('bulkFrom').value, within = $('bulkIn').value, to = $('bulkTo').value, vb = viewBoxLocal();
+  let n = 0;
+  for (const b of state.buildings) {
+    const cur = luOf(b), c = insidePoint(b);
+    if (from === '?' ? !cur.assumed : from !== '*' && cur.lu !== from) continue;
+    if (within === 'view' && !inBox(c[0], c[1], vb)) continue;
+    if (within === 'outside' && ncaAt(c[0], c[1])) continue;
+    if (within.startsWith('nca:') && (ncaAt(c[0], c[1]) || {}).id !== +within.slice(4)) continue;
+    b.landUse = to; b.luSrc = 'manual'; n++;
+  }
+  log(`Land use set to “${landUseLabel(to)}” for ${n} building(s).`, n ? 'pass' : 'warn');
+  renderAssessPanel(); renderSelPanel(); requestRender();
+});
+
+/* -------- rules import / export -------- */
+$('btnRulesExport').addEventListener('click', () => { download('assessment_rules.json', JSON.stringify(RULES, null, 1)); log('Exported assessment rules.'); });
+$('btnRulesImport').addEventListener('click', () => $('fileRules').click());
+readJSONFile($('fileRules'), (d, name) => {
+  try { validateRules(d); } catch (e) { log(`Rules ${name} rejected: ${e.message}`, 'fail'); return; }
+  RULES = d; state.rulesEdited = true;
+  log(`Imported assessment rules “${d.name || name}”. Run the assessment again to apply them.`, 'pass');
+  syncAssessUI(); renderSelPanel();
+});
+$('btnRulesReset').addEventListener('click', () => { RULES = clone(DATA.rules); state.rulesEdited = false; log('Assessment rules reset to the TfNSW CNVG-PTI defaults.'); syncAssessUI(); renderSelPanel(); });
+
+/* -------- NCA import (GeoJSON polygons) -------- */
+$('btnNcaImport').addEventListener('click', () => $('fileNca').click());
+readJSONFile($('fileNca'), (gj, name) => {
+  const feats = gj.type === 'FeatureCollection' ? gj.features : gj.type === 'Feature' ? [gj] : [];
+  const polys = [];
+  for (const f of feats) {
+    const g = f && f.geometry; if (!g) continue;
+    if (g.type === 'Polygon') polys.push({ ring: g.coordinates[0], pr: f.properties || {} });
+    else if (g.type === 'MultiPolygon') g.coordinates.forEach(pc => polys.push({ ring: pc[0], pr: f.properties || {} }));
+  }
+  if (!polys.length) throw new Error('no Polygon features found');
+  const all = []; polys.forEach(p => p.ring.forEach(c => all.push(c)));
+  const bb = bboxOf(all), lonlat = bb[0] >= -180 && bb[2] <= 180 && bb[1] >= -90 && bb[3] <= 90;
+  let tf;
+  if (lonlat) { const lon = (bb[0] + bb[2]) / 2, lat = (bb[1] + bb[3]) / 2, z = (state.origin && state.origin.zone) || zoneOf(lon), c = ll2mga(lat, lon, z); ensureOrigin(c[0], c[1], null, z, 'NCA file (lat/lon)'); tf = p => ll2local(p[1], p[0]); }
+  else { const o = ensureOrigin((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2, null, null, 'NCA file (projected)'); tf = p => [p[0] - o.x0, p[1] - o.y0]; }
+  const val = (pr, keys) => { for (const k of Object.keys(pr)) if (keys.includes(k.toLowerCase())) return pr[k]; return undefined; };
+  let n = 0;
+  for (const { ring, pr } of polys) {
+    let pts = validPts(ring); if (!pts) continue;
+    pts = pts.map(tf); if (hyp(pts[0], pts[pts.length - 1]) < 1e-6) pts.pop();
+    if (pts.length < 3) continue;
+    const nc = makeNca(pts, String(val(pr, ['name', 'nca', 'nca_name', 'id']) ?? '').slice(0, 40) || undefined);
+    const cat = String(val(pr, ['category', 'cat', 'noise_area', 'nac', 'area_category']) ?? '').toUpperCase();
+    if (RULES.noiseAreaCategories[cat]) nc.cat = cat;
+    nc.rbl = { day: optNum(val(pr, ['rbl_day', 'day', 'rbl_d'])), evening: optNum(val(pr, ['rbl_evening', 'rbl_eve', 'evening', 'rbl_e'])), night: optNum(val(pr, ['rbl_night', 'night', 'rbl_n'])) };
+    state.ncas.push(nc); n++;
+  }
+  log(`Imported ${n} NCA(s) from ${name}.`, n ? 'pass' : 'warn');
+  refreshBulkSelects(); requestCompute(false);
+});
+
+/* -------- selection panels -------- */
+function renderNcaPanel(body, o) {
+  const inside = state.buildings.filter(b => { const c = insidePoint(b); return ncaAt(c[0], c[1]) === o; }).length;
+  body.innerHTML = `
+    <div class="row"><label for="nName">Name</label><input type="text" id="nName" value="${esc(o.name)}" maxlength="40"></div>
+    <div class="row"><label for="nCat">Noise area category</label><select id="nCat">${catOptions(o.cat)}</select></div>
+    <div class="row rbl3"><label>Measured RBL (day / eve / night)</label><span><input type="number" id="nRblD" min="20" max="80" step="1" placeholder="–" value="${o.rbl.day ?? ''}"><input type="number" id="nRblE" min="20" max="80" step="1" placeholder="–" value="${o.rbl.evening ?? ''}"><input type="number" id="nRblN" min="20" max="80" step="1" placeholder="–" value="${o.rbl.night ?? ''}"></span></div>
+    <p class="kv muted">Blank RBLs use the category. Measured RBLs below the minimum (day ${RULES.measuredRblFloor.day}, evening/night ${RULES.measuredRblFloor.night}) are raised to it.</p>
+    <p class="kv" id="nInfo"></p>
+    <div class="row"><span class="muted">${inside} building(s) inside</span><button type="button" id="nDel" class="danger">Delete</button></div>`;
+  const info = () => {
+    $('nInfo').textContent = Object.keys(PERIODS).map(p => { const N = nmlFor('residential', o, p); return `${PERIODS[p]}: NML ${N.nml}`; }).join(' · ');
+    requestRender();
+  };
+  info();
+  $('nName').addEventListener('input', e => { o.name = e.target.value.slice(0, 40) || 'NCA'; refreshBulkSelects(); requestRender(); });
+  $('nCat').addEventListener('change', e => { o.cat = e.target.value; info(); });
+  [['nRblD', 'day'], ['nRblE', 'evening'], ['nRblN', 'night']].forEach(([id, k]) => $(id).addEventListener('input', e => {
+    const v = optNum(e.target.value); e.target.classList.toggle('bad', e.target.value !== '' && v === null);
+    if (e.target.value === '' || v !== null) { o.rbl[k] = v; info(); }
+  }));
+  $('nDel').addEventListener('click', () => { deleteSel(); refreshBulkSelects(); });
+}
+/* Extra rows for the building panel: land use, floors, address and results. */
+function buildingAssessHtml(o) {
+  const lu = luOf(o), fl = floorsOf(o), auto = o.landUse ? null : lu;
+  return `
+    <div class="row"><label for="bLu">Land use</label><select id="bLu"><option value="">Auto – ${esc(landUseLabel((auto || luOf(Object.assign({}, o, { landUse: null }))).lu))}</option>${luOptions(o.landUse)}</select></div>
+    <p class="kv muted">Land use: ${esc(lu.src)}${lu.assumed ? ' – <b>check</b>' : ''} · NCA: ${esc(ncaOf(o).name)}</p>
+    <div class="row"><label for="bFloors">Floors</label><input type="number" id="bFloors" min="1" max="200" step="1" placeholder="${fl.n}" value="${o.floors ?? ''}"></div>
+    <p class="kv muted">Floors: ${fl.n} (${esc(fl.src)})</p>
+    <div class="row"><label for="bAddr">Address</label><input type="text" id="bAddr" maxlength="120" placeholder="${esc(addressOf(Object.assign({}, o, { address: null })) || '–')}" value="${esc(o.address || '')}"></div>
+    ${floorTableHtml(o)}`;
+}
+function bindBuildingAssess(o) {
+  $('bLu').addEventListener('change', e => { o.landUse = e.target.value || null; o.luSrc = 'manual'; log(`“${o.name}” land use → ${o.landUse ? landUseLabel(o.landUse) : 'auto'}.`); renderSelPanel(); renderAssessPanel(); });
+  $('bFloors').addEventListener('input', e => { const v = e.target.value === '' ? null : num(e.target.value, 1, 200); e.target.classList.toggle('bad', e.target.value !== '' && v === null); if (e.target.value === '' || v !== null) { o.floors = v; renderAssessPanel(); } });
+  $('bAddr').addEventListener('input', e => { o.address = e.target.value.trim().slice(0, 120) || null; });
+}
+/* Per-floor results for a building (worst façade point per floor). */
+function floorTableHtml(b) {
+  const R = state.assess.results; if (!R) return '';
+  const bb = R.byBuilding.get(b.id); if (!bb) return '<p class="kv muted">Not in the last assessment run.</p>';
+  if (bb.worst === 'Not assessed') return `<p class="kv muted">Not assessed: ${esc(bb.reason || '')}.</p>`;
+  const rows = R.receivers.filter(r => r.bId === b.id).sort((a, c) => c.floor - a.floor);
+  return `<table class="mini"><tr><th>Floor</th><th>NML</th><th>L<sub>Aeq</sub></th><th>Exc.</th><th>Category</th><th>Measures</th></tr>` +
+    rows.map(r => `<tr><td>${r.floorLabel}</td><td>${r.nml}</td><td>${r.Leq != null ? fmt(r.Leq, 0) : '< ' + fmt(r.ub, 0)}</td><td>${r.exc != null ? (r.exc > 0 ? '+' : '') + r.exc : '–'}</td>` +
+      `<td><span class="chip" style="background:${categoryColor(r.label)}"></span>${esc(r.label)}</td><td>${esc(r.measures.join(', ') || '–')}</td></tr>`).join('') +
+    `</table><p class="kv muted">${esc(rows[0] ? rows[0].nmlBasis : '')}${assessStale() ? ' · <b>results out of date</b>' : ''}</p>`;
+}
+/* Probe over a building: per-floor results plus the full term breakdown at
+   the worst façade point of the worst floor. */
+function probeBuildingHtml(b) {
+  const R = state.assess.results; if (!R || !R.byBuilding.has(b.id)) return null;
+  let html = `<p class="kv"><b>${esc(addressOf(b) || b.name)}</b> · ${esc(landUseLabel(luOf(b).lu))} · ${esc(ncaOf(b).name)}</p>` + floorTableHtml(b);
+  const worst = R.receivers.filter(r => r.bId === b.id && r.Leq != null).sort((a, c) => c.Leq - a.Leq)[0];
+  if (worst && worst.x != null) {
+    prep(state.sources);
+    const gr = ground(worst.x, worst.y);
+    html += `<p class="kv">Worst point: floor ${worst.floorLabel}, ${coordText(worst.x, worst.y)}, RL ${fmt(worst.z, 1)}</p><table><tr><th>Source</th><th>L<sub>w</sub></th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>atm</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>`;
+    for (const s of state.sources) {
+      const r = contrib(s, worst.x, worst.y, state.settings, state.buildings, true, gr, worst.z);
+      html += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
+    }
+    html += '</table>';
+  }
+  return html;
+}
+
+/* -------- property table and CSV -------- */
+function propertyRows() {
+  const R = state.assess.results; if (!R) return [];
+  const byId = new Map(state.buildings.map(b => [b.id, b])), o = state.origin;
+  return R.receivers.map(r => {
+    const b = byId.get(r.bId);
+    return Object.assign({}, r, {
+      addr: b ? (addressOf(b) || b.name) : `building ${r.bId} (deleted)`, luLabel: landUseLabel(r.lu),
+      measuresStr: r.measures.join(', '), hsrc: b ? b.hsrc : '', height: b ? b.h : null,
+      E: r.x != null && o ? r.x + o.x0 : r.x, N: r.y != null && o ? r.y + o.y0 : r.y,
+      rank: categoryRank(r.label, R.period)
+    });
+  });
+}
+const PT_COLS = [
+  ['id', 'Receiver'], ['addr', 'Address / building'], ['floorLabel', 'Floor'], ['luLabel', 'Land use'], ['nca', 'NCA'],
+  ['nml', 'NML', 1], ['Leq', 'LAeq,15min', 1], ['exc', 'Exceed.', 1], ['label', 'Category'], ['measuresStr', 'Measures'], ['sleepTxt', 'Sleep (indicative)']
+];
+const ptState = { sort: 'exc', dir: -1, q: '', cat: 'above', lu: '*' };
+function openPropertyTable() {
+  const R = state.assess.results; if (!R) return;
+  const cats = categoryList(R.period), lus = [...new Set(R.receivers.map(r => r.lu))];
+  const el = $('ptable');
+  el.innerHTML = `<div class="bar"><h2>Property table – ${esc(PERIODS[R.period])}</h2>
+    <input type="search" id="ptQ" placeholder="Search address, ID, NCA…" value="${esc(ptState.q)}">
+    <select id="ptCat"><option value="above">Above NML</option><option value="*">All</option>${cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select>
+    <select id="ptLu"><option value="*">All land uses</option>${lus.map(k => `<option value="${esc(k)}">${esc(landUseLabel(k))}</option>`).join('')}</select>
+    <button type="button" id="ptCsv">Export CSV</button><button type="button" id="ptClose">Close</button></div>
+    <div class="scroll"><table><thead><tr>${PT_COLS.map(([k, t]) => `<th data-k="${k}">${t}${ptState.sort === k ? (ptState.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead><tbody id="ptBody"></tbody></table></div>
+    <div class="foot" id="ptFoot"></div>`;
+  $('ptCat').value = ptState.cat; $('ptLu').value = lus.includes(ptState.lu) ? ptState.lu : '*';
+  el.hidden = false;
+  $('ptQ').addEventListener('input', e => { ptState.q = e.target.value; fillPropertyTable(); });
+  $('ptCat').addEventListener('change', e => { ptState.cat = e.target.value; fillPropertyTable(); });
+  $('ptLu').addEventListener('change', e => { ptState.lu = e.target.value; fillPropertyTable(); });
+  $('ptCsv').addEventListener('click', exportCsv);
+  $('ptClose').addEventListener('click', () => { el.hidden = true; });
+  el.querySelectorAll('th').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.k; if (ptState.sort === k) ptState.dir = -ptState.dir; else { ptState.sort = k; ptState.dir = k === 'exc' || k === 'Leq' ? -1 : 1; }
+    openPropertyTable();
+  }));
+  fillPropertyTable();
+}
+function filteredRows() {
+  const q = ptState.q.trim().toLowerCase();
+  let rows = propertyRows().filter(r =>
+    (ptState.cat === '*' || (ptState.cat === 'above' ? r.exc != null && r.exc > 0 : r.label === ptState.cat)) &&
+    (ptState.lu === '*' || r.lu === ptState.lu) &&
+    (!q || `${r.id} ${r.addr} ${r.nca} ${r.luLabel} ${r.measuresStr}`.toLowerCase().includes(q)));
+  const k = ptState.sort, d = ptState.dir, key = r => (k === 'label' ? r.rank : k === 'exc' ? (r.exc ?? -1e9) : k === 'Leq' ? (r.Leq ?? r.ub ?? -1e9) : r[k]);
+  rows.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * d || a.id.localeCompare(b.id); });
+  return rows;
+}
+function sleepText(r) { return r.sleep ? `${fmt(r.sleep.lmax, 0)}${r.sleep.awakening ? ' ≥ ' + RULES.sleep.awakening : r.sleep.overScreen ? ' > ' + fmt(r.sleep.screen, 0) : ''}` : ''; }
+function fillPropertyTable() {
+  const rows = filteredRows(), MAX = 3000, show = rows.slice(0, MAX);
+  $('ptBody').innerHTML = show.map(r => `<tr data-b="${r.bId}"><td>${esc(r.id)}</td><td>${esc(r.addr)}</td><td>${r.floorLabel}</td><td>${esc(r.luLabel)}</td><td>${esc(r.nca)}</td>` +
+    `<td class="num">${r.nml}</td><td class="num">${r.Leq != null ? fmt(r.Leq, 0) : '< ' + fmt(r.ub, 0)}</td><td class="num">${r.exc != null ? (r.exc > 0 ? '+' : '') + r.exc : '–'}</td>` +
+    `<td><span class="chip" style="background:${categoryColor(r.label)}"></span>${esc(r.label)}</td><td>${esc(r.measuresStr)}</td><td>${esc(sleepText(r))}</td></tr>`).join('');
+  $('ptFoot').textContent = `${rows.length.toLocaleString()} row(s)${rows.length > MAX ? ` – first ${MAX.toLocaleString()} shown; the CSV has all` : ''}. Click a row to show the building. Levels rounded to whole dB; screening estimate only.`;
+  $('ptBody').querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => {
+    const b = state.buildings.find(x => x.id === +tr.dataset.b); if (!b) return;
+    $('ptable').hidden = true;
+    const c = insidePoint(b); state.view.cx = c[0]; state.view.cy = c[1]; state.view.scale = Math.max(state.view.scale, 4);
+    select('building', b.id); requestCompute(false);
+  }));
+}
+function csvCell(v) { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function exportCsv() {
+  const R = state.assess.results; if (!R) return;
+  if (!window.confirm('The property list can contain addresses. Keep the file on this computer or approved project storage, and share it only through approved channels.\n\nExport the CSV?')) { log('CSV export cancelled.'); return; }
+  const rows = filteredRows();
+  const cols = [
+    ['Receiver ID', r => r.id], ['Building ID', r => r.bId], ['Address / building', r => r.addr], ['Floor', r => r.floorLabel], ['Receiver RL (m)', r => fmt(r.z, 1)],
+    ['Land use', r => r.luLabel], ['Land use source', r => r.luSrc], ['NCA', r => r.nca], ['NML (dBA)', r => r.nml], ['NML basis', r => r.nmlBasis],
+    ['Predicted LAeq,15min (dBA)', r => (r.Leq != null ? fmt(r.Leq, 1) : '')], ['Upper bound if not calculated (dBA)', r => (r.Leq == null ? fmt(r.ub, 1) : '')],
+    ['Exceedance (dB)', r => r.exc ?? ''], ['Category', r => r.label], ['Impact', r => r.impact], ['Additional measures', r => r.measuresStr], ['Highly noise affected', r => (r.highly ? 'yes' : '')],
+    ['LAmax estimate (dBA)', r => (r.sleep ? fmt(r.sleep.lmax, 1) : '')], ['Sleep screening level (dBA)', r => (r.sleep ? fmt(r.sleep.screen, 0) : '')],
+    ['Above sleep screening', r => (r.sleep ? (r.sleep.overScreen ? 'yes' : 'no') : '')], ['Awakening level reached', r => (r.sleep ? (r.sleep.awakening ? 'yes' : 'no') : '')],
+    ['Floors source', r => r.floorsSrc], ['Building height (m)', r => (r.height != null ? fmt(r.height, 1) : '')], ['Height source', r => r.hsrc],
+    ['Easting', r => (r.E != null ? fmt(r.E, 1) : '')], ['Northing', r => (r.N != null ? fmt(r.N, 1) : '')]
+  ];
+  const meta = `Period: ${PERIODS[R.period]}; method: ${R.method === 'iso' ? 'ISO 9613-2' : 'TfNSW estimator basis'}; rules: ${RULES.name}; run ${R.at}; noise_poc v${VERSION}. Screening estimate only – not a substitute for an assessment by a qualified acoustic consultant.`;
+  const lines = [cols.map(c => csvCell(c[0])).join(',')].concat(rows.map(r => cols.map(c => csvCell(c[1](r))).join(',')));
+  lines.push('', csvCell(meta));
+  download(`property_list_${R.period}_${R.at.slice(0, 10)}.csv`, '﻿' + lines.join('\r\n'), 'text/csv');
+  log(`Exported property list CSV: ${rows.length} row(s) (current table filter). Contains addresses – keep it on approved storage.`, 'warn');
+}
+$('btnTable').addEventListener('click', openPropertyTable);
+$('btnCsv').addEventListener('click', exportCsv);
 /* ======================= LAS / LAZ READER (pure JS) ======================
    Port of the LASzip decoder (arithmetic coder by A. Said; LASzip by
    M. Isenburg, Apache-2.0). Supports:
@@ -3856,7 +4989,7 @@ function importOsm(data, t0) {
       if (old && !replace) { cnt.dup++; return; }
       if (old) { state.buildings.splice(state.buildings.indexOf(old), 1); cnt.replaced++; }
       const name = (tags.name || tags['addr:housenumber'] && (tags['addr:housenumber'] + ' ' + (tags['addr:street'] || '')) || (tags.building !== 'yes' ? tags.building : '') || 'OSM ' + el.id).slice(0, 40);
-      const b = makeBuilding(pts, hi.h, name, { hsrc: hi.src, osmId: id, btype: tags.building || 'yes' });
+      const b = makeBuilding(pts, hi.h, name, { hsrc: hi.src, osmId: id, btype: tags.building || 'yes', tags: keepTags(tags) });
       state.buildings.push(b); byId.set(id, b); cnt.added++; cnt[hi.src]++;
     });
   }
@@ -3980,23 +5113,30 @@ function zoomTerrain() {
   state.view.scale = Math.min(60, Math.max(0.02, Math.min(cssW / (w * 1.05), cssH / (h * 1.05))));
   requestCompute(false);
 }
-function download(name, text) {
+function download(name, text, type) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.href = URL.createObjectURL(new Blob([text], { type: type || 'application/json' }));
   a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
 $('btnSave').addEventListener('click', () => {
+  const addrs = state.buildings.filter(b => addressOf(b)).length;
+  if (addrs && !window.confirm(`This scenario includes ${addrs} building address(es). Keep the file on this computer or approved project storage.\n\nSave the scenario?`)) { log('Scenario save cancelled.'); return; }
+  const A = state.assess;
   const data = {
     app: 'noise-poc', version: VERSION, saved: new Date().toISOString(), origin: state.origin,
     dem: state.terrain ? state.terrain.name : null, settings: state.settings, view: state.view,
     sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, on: s.on, pen: s.pen, mit: s.mit, h: s.h, x: s.x, y: s.y })),
     library: state.libraryEdited ? LIBRARY : undefined,
-    buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype, pts: b.pts })),
-    hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts }))
+    buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype,
+      tags: b.tags || undefined, landUse: b.landUse || undefined, luSrc: b.landUse ? b.luSrc : undefined, floors: b.floors ?? undefined, address: b.address || undefined, pts: b.pts })),
+    hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts })),
+    ncas: state.ncas.map(n => ({ name: n.name, cat: n.cat, rbl: n.rbl, pts: n.pts })),
+    assess: { defNca: A.defNca, floorH: A.floorH, spacing: A.spacing, offset: A.offset, display: A.display },
+    rules: state.rulesEdited ? RULES : undefined
   };
   download('noise_scenario.json', JSON.stringify(data));
-  log(`Saved scenario (${data.sources.length} sources, ${data.buildings.length} buildings, ${data.hoardings.length} hoardings).`);
+  log(`Saved scenario (${data.sources.length} sources, ${data.buildings.length} buildings, ${data.hoardings.length} hoardings, ${data.ncas.length} NCAs).`);
 });
 $('btnLoad').addEventListener('click', () => $('fileLoad').click());
 $('btnGeo').addEventListener('click', () => $('fileGeo').click());
@@ -4030,6 +5170,11 @@ function sanitizeSettings(raw, cur) {
   }
   return out;
 }
+/* name / category / measured RBLs of a saved NCA, validated */
+function cleanNca(n, defName) {
+  const r = n.rbl || {}, v = x => (x == null || x === '' ? null : num(x, 20, 80));
+  return { name: String(n.name || defName).slice(0, 40), cat: RULES.noiseAreaCategories[n.cat] ? n.cat : DEFAULT_NCA_CAT, rbl: { day: v(r.day), evening: v(r.evening), night: v(r.night) } };
+}
 function validPts(pts, min) {
   if (!Array.isArray(pts)) return null;
   const out = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).map(p => [+p[0], +p[1]]);
@@ -4044,6 +5189,16 @@ readJSONFile($('fileLoad'), (d, name) => {
   }
   const sh = p => [+p[0] + dx, +p[1] + dy];
   state.settings = sanitizeSettings(d.settings, state.settings);
+  if (d.rules) {
+    try { RULES = validateRules(d.rules); state.rulesEdited = true; log(`Scenario carries its own assessment rules (“${RULES.name || 'unnamed'}”).`); }
+    catch (e) { log(`Scenario rules ignored (${e.message}) – using the current rules.`, 'warn'); }
+  }
+  if (d.assess && typeof d.assess === 'object') {
+    const A = state.assess, a = d.assess;
+    A.floorH = num(a.floorH, 2, 6) ?? A.floorH; A.spacing = num(a.spacing, 2, 50) ?? A.spacing; A.offset = num(a.offset, 0.1, 5) ?? A.offset;
+    if (['both', 'cat', 'heat'].includes(a.display)) A.display = a.display;
+    if (a.defNca && typeof a.defNca === 'object') A.defNca = cleanNca(a.defNca, A.defNca.name);
+  }
   if (d.library) {
     try { LIBRARY = cleanLibrary(d.library); state.libraryEdited = true; updateLibInfo(); log(`Scenario carries its own equipment library (${LIBRARY.length} items).`); }
     catch (e) { log(`Scenario library ignored: ${e.message}`, 'warn'); }
@@ -4056,11 +5211,15 @@ readJSONFile($('fileLoad'), (d, name) => {
     o.on = num(s.on, 1, 100) ?? 100; o.pen = num(s.pen, 0, 10) ?? (typeof s.eq === 'string' ? o.pen : 0); o.mit = num(s.mit, 0, 30) ?? 0;
     return o;
   });
-  state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null }) : null; }).filter(Boolean);
+  state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null,
+    tags: b.tags && typeof b.tags === 'object' ? keepTags(b.tags) : null, landUse: typeof b.landUse === 'string' && RULES.landUses[b.landUse] ? b.landUse : null, luSrc: b.luSrc === 'file' ? 'file' : 'manual',
+    floors: num(b.floors, 1, 200), address: typeof b.address === 'string' ? b.address.slice(0, 120) : null }) : null; }).filter(Boolean);
   state.hoardings = (d.hoardings || []).map(h => { const p = validPts(h.pts, 2); return p ? makeHoarding(p.map(sh), num(h.h, 0.3, 20) ?? 2.4, String(h.name || '').slice(0, 40) || undefined) : null; }).filter(Boolean);
-  geomChanged(); syncSettingsUI(); select(null); updateSiteInfo();
+  state.ncas = (Array.isArray(d.ncas) ? d.ncas : []).map(n => { const p = validPts(n && n.pts); return p ? Object.assign(makeNca(p.map(sh)), cleanNca(n, 'NCA')) : null; }).filter(Boolean);
+  state.assess.results = null;
+  geomChanged(); syncSettingsUI(); syncAssessUI(); select(null); updateSiteInfo();
   $('attrib').hidden = !state.buildings.some(b => b.osmId);
-  log(`Loaded ${name}: ${state.sources.length} sources, ${state.buildings.length} buildings, ${state.hoardings.length} hoardings.`);
+  log(`Loaded ${name}: ${state.sources.length} sources, ${state.buildings.length} buildings, ${state.hoardings.length} hoardings, ${state.ncas.length} NCAs.`);
   if (d.dem && !state.terrain) log(`This scenario used DEM “${d.dem}” – load it to restore terrain.`, 'warn');
   zoomExtents();
 });
@@ -4109,6 +5268,7 @@ function importGeoJSON(gj, name) {
     const o = ensureOrigin(cx, cy, null, null, 'GeoJSON (projected)'); tf = p => [p[0] - o.x0, p[1] - o.y0];
   }
   let added = 0, defH = 0, withRoof = 0;
+  const luUnknown = new Set();
   const pick = (pr, keys) => { for (const k of keys) if (pr[k] != null && isFinite(+pr[k])) return +pr[k]; return null; };
   for (const r of rings) {
     let pts = validPts(r.ring); if (!pts) continue;
@@ -4122,11 +5282,19 @@ function importGeoJSON(gj, name) {
     if (h === null && roof === null && isOsm) { const oh = osmHeight(pr); h = oh.h; hsrc = oh.src; }
     else if (h === null && roof === null) { h = state.settings.newH; defH++; hsrc = 'type-default'; }
     if (roof !== null) withRoof++;
-    state.buildings.push(makeBuilding(pts, h ?? state.settings.newH, String(pr.name || pr.NAME || '').slice(0, 40) || undefined, { baseRL: base, roofRL: roof, hsrc, btype: pr.building || null, osmId: isOsm ? String(pr['@id'] || r.fid || '') || null : null })); added++;
+    const luRaw = ['land_use', 'landuse', 'LAND_USE', 'LandUse', 'LU'].map(k => pr[k]).find(v => typeof v === 'string');
+    const lu = luRaw && Object.keys(RULES.landUses).find(k => k.toLowerCase() === luRaw.toLowerCase() || RULES.landUses[k].label.toLowerCase() === luRaw.toLowerCase());
+    if (luRaw && !lu) luUnknown.add(luRaw);
+    const floors = num(pick(pr, ['floors', 'FLOORS', 'levels', 'storeys', 'building:levels']), 1, 200);
+    const address = ['address', 'ADDRESS', 'Address'].map(k => pr[k]).find(v => typeof v === 'string');
+    state.buildings.push(makeBuilding(pts, h ?? state.settings.newH, String(pr.name || pr.NAME || '').slice(0, 40) || undefined, {
+      baseRL: base, roofRL: roof, hsrc, btype: pr.building || null, osmId: isOsm ? String(pr['@id'] || r.fid || '') || null : null,
+      tags: isOsm ? keepTags(pr) : null, landUse: lu || null, luSrc: 'file', floors, address: address ? address.slice(0, 120) : null })); added++;
   }
   geomChanged(); if (state.dsm) applyDsmHeights(true);
   $('attrib').hidden = !state.buildings.some(b => b.osmId);
   log(`Imported ${added} building(s) from ${name}${withRoof ? `; ${withRoof} with roof RL` : ''}${defH ? `; ${defH} without height → ${state.settings.newH} m` : ''}.`);
+  if (luUnknown.size) log(`Land use values not in the rules, ignored: ${[...luUnknown].slice(0, 8).join(', ')}. Known: ${Object.keys(RULES.landUses).join(', ')}.`, 'warn');
   zoomExtents();
 }
 $('fileDem').addEventListener('change', async () => {
@@ -4159,17 +5327,17 @@ $('btnFit').addEventListener('click', zoomExtents);
 
 function loadDemo() {
   state.buildings = [
-    makeBuilding(rect(30, 10, 95, 24), 7, 'Terrace row'),
-    makeBuilding(rect(-75, -30, -45, 25), 14, 'Apartment block'),
-    makeBuilding(rect(6, -26, 18, -19), 3, 'Site shed'),
-    makeBuilding([[20, -75], [65, -75], [65, -60], [35, -60], [35, -40], [20, -40]], 10, 'Office (L-shape)'),
-    makeBuilding(rect(-30, 45, 10, 60), 5, 'Shops')
+    makeBuilding(rect(30, 10, 95, 24), 7, 'Terrace row', { landUse: 'residential' }),
+    makeBuilding(rect(-75, -30, -45, 25), 14, 'Apartment block', { landUse: 'residential' }),
+    makeBuilding(rect(6, -26, 18, -19), 3, 'Site shed', { landUse: 'none' }),
+    makeBuilding([[20, -75], [65, -75], [65, -60], [35, -60], [35, -40], [20, -40]], 10, 'Office (L-shape)', { landUse: 'commercial' }),
+    makeBuilding(rect(-30, 45, 10, 60), 5, 'Shops', { landUse: 'commercial' })
   ];
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
-  state.sources = [makeSource(0, 0, DEFAULT_EQ)];
+  state.sources = [makeSource(0, 0, DEFAULT_EQ)]; state.ncas = []; state.assess.results = null;
   geomChanged(); select(null);
   log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
-  requestCompute(false);
+  renderAssessPanel(); updateAssessButtons(); refreshBulkSelects(); requestCompute(false);
 }
 
 /* ============================== SELF-TESTS ============================= */
@@ -4262,11 +5430,11 @@ $('ver').textContent = 'v' + VERSION;
 log(`Noise POC v${VERSION} starting. λ = ${LAMBDA.toFixed(3)} m (${F_BAND} Hz). DecompressionStream: ${typeof DecompressionStream !== 'undefined' ? 'yes' : 'NO'}.`);
 const selftest = selfTest();
 nextId = 1;
-syncSettingsUI(); updateLibInfo(); setMode('select'); loadDemo(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
+syncSettingsUI(); updateLibInfo(); syncAssessUI(); setMode('select'); loadDemo(); renderSelPanel(); updateDemInfo(); updateSiteInfo();
 if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
 resize();
 requestAnimationFrame(() => zoomExtents());
-window.__noise = { _t: { crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings }, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
+window.__noise = { _t: { crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings, nmlFor, classify, sleepCheck, landUseFromTags, luOf, floorsOf, addressOf, facadePoints, makeBuilding, makeNca, geomChanged, rules: () => RULES }, runAssessment, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
 })();
 </script>
 </body>

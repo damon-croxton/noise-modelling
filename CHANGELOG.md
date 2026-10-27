@@ -1,5 +1,70 @@
 # Changelog
 
+## 0.6.0 – Stage 1: the assessment
+
+### Added
+- **Façade receivers per floor.**
+  - Points sit 1 m in front of each exposed wall, about 10 m apart (both configurable), at 1.5 m above each floor. Party walls are skipped.
+  - Floors come from OSM `building:levels`, or from height ÷ floor height (3 m, configurable), or are set per building.
+  - The worst point per building and floor is reported.
+  - Points whose free-field upper bound is already below the NML are not calculated in full. A brute-force test confirms this never hides an exceedance.
+  - 2,000 buildings (8,000 building-floors, 48,000 façade points, 3 sources) assess in about 2 s.
+- **Land use per building.**
+  - Derived from OSM tags: building, amenity, shop, office.
+  - Can be overridden per building, or in bulk by current land use and area (all, in view, outside NCAs, or a given NCA).
+  - Buildings with no usable tag are assumed residential and flagged.
+  - The OSM import now keeps the relevant tags, including the address. GeoJSON imports read `land_use`, `floors` and `address` properties.
+- **Noise catchment areas (NCAs).**
+  - Draw mode (N), or import from GeoJSON.
+  - Each NCA has an R0–R5 category and optional measured day / evening / night RBLs.
+  - Buildings outside every NCA use a default category or RBLs.
+- **Assessment rules** (`src/data/rules.json`) hold the TfNSW CNVG-PTI v4.6 defaults:
+  - NML = RBL + 10 (standard hours) / + 5 (OOHW), with minimum RBLs for measured values;
+  - non-residential NMLs (Table 13), with an internal-to-external façade reduction;
+  - the Table 9 bands and mitigation codes for each period;
+  - highly noise affected (≥ 75 dBA);
+  - sleep disturbance screening;
+  - the OSM land-use mapping.
+
+  Rules can be exported, imported (validated on import) and reset. They are marked "verify against the current client strategy".
+- **New time period:** OOHW Period 2 – evening (Sundays and public holidays).
+- **Outputs.**
+  - Buildings are coloured by worst impact category, with or without the heat map.
+  - Summary of building-floors per land use and category, plus counts per measure code.
+  - Sortable, filterable property table; clicking a row shows the building.
+  - CSV export with a privacy prompt; it covers every row in the current filter, with the NML basis, sleep check, height source and coordinates.
+  - The probe and the building panel show per-floor results and the full term breakdown at the worst point.
+- **Stale results are flagged.** A warning appears when sources, buildings, NCAs, settings or rules change after a run.
+- **Scenario files** now keep NCAs, assessment settings, per-building land use, floors and address, and edited rules. Saving asks first if the file will contain addresses.
+- **The demo** has land uses: residential, commercial, and a site shed that isn't assessed.
+
+### Tests
+52 tests, all passing (see `docs/test-evidence/v0.6.0.txt`). The 16 new Stage 1 browser tests cover:
+- NML derivation per period;
+- Table 9 bands and measures at the boundaries;
+- sleep checks;
+- OSM land use, floors and address;
+- façade point geometry;
+- a street canyon (upper floors louder than the screened ground floor);
+- the pre-screen compared with brute force;
+- NCAs drawn and imported;
+- OSM import with tags;
+- per-building and bulk land-use change;
+- property table and CSV;
+- stale flag;
+- scenario round trip;
+- project rules import and rejection of invalid rules;
+- performance.
+
+### Known limits
+- **No façade reflection correction:** receivers are free-field.
+- **No side diffraction:** the 15 dB screening cap is still the interim safeguard.
+- **LAmax is indicative:** it is estimated as LAeq + 5.
+- **Land use for `building=yes`** is assumed residential.
+- **No unit-level addresses**, and no zoning or address-dataset import yet.
+- **Results are not saved in the scenario file;** re-run after loading.
+- See `GAP_REGISTER.md`.
+
 ## 0.5.0 – Stage 0: fixes and foundations
 
 ### Changed

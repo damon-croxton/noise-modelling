@@ -19,7 +19,9 @@ Open `dist/noise_poc.html` in Edge or Chrome. Everything the tool needs is insid
 
 ## Status
 
-Version 0.5.0 completes Stage 0 of the plan: fixes and foundations. The assessment layer comes next: façade receivers per floor, land use, noise catchment areas, NML tables, impact categories, mitigation lookup and property lists. See [`CHANGELOG.md`](CHANGELOG.md) for what has changed and [`GAP_REGISTER.md`](GAP_REGISTER.md) for what the tool cannot do yet.
+Version 0.6.0 completes Stage 1: the assessment. Set the time period, place the plant and draw or import noise catchment areas. **Run assessment** then gives, for each building and floor, the NML, predicted level, exceedance, impact category and additional mitigation measures (TfNSW CNVG-PTI defaults, editable). Results come as a coloured map, a summary, a property table and a CSV for the community team.
+
+Next is Stage 2, calibration: comparing against the TfNSW estimator case by case and against the reference case. See [`CHANGELOG.md`](CHANGELOG.md) and [`GAP_REGISTER.md`](GAP_REGISTER.md).
 
 ## Development
 
@@ -28,7 +30,7 @@ The single-file deliverable is built from separate sources. Node is needed only 
 ```
 src/index.html        page shell (markup) with build markers
 src/style.css         styles
-src/data/*.json       embedded data (equipment library)
+src/data/*.json       embedded data (equipment library, assessment rules)
 src/js/NN-*.js        scripts, joined in file-name order into one scope
 build.js              zero-dependency build → dist/noise_poc.html
 tests/run.js          headless runner: in-app self-tests + tests/*.test.js

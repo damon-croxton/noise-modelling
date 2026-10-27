@@ -18,23 +18,30 @@ function zoomTerrain() {
   state.view.scale = Math.min(60, Math.max(0.02, Math.min(cssW / (w * 1.05), cssH / (h * 1.05))));
   requestCompute(false);
 }
-function download(name, text) {
+function download(name, text, type) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.href = URL.createObjectURL(new Blob([text], { type: type || 'application/json' }));
   a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
 $('btnSave').addEventListener('click', () => {
+  const addrs = state.buildings.filter(b => addressOf(b)).length;
+  if (addrs && !window.confirm(`This scenario includes ${addrs} building address(es). Keep the file on this computer or approved project storage.\n\nSave the scenario?`)) { log('Scenario save cancelled.'); return; }
+  const A = state.assess;
   const data = {
     app: 'noise-poc', version: VERSION, saved: new Date().toISOString(), origin: state.origin,
     dem: state.terrain ? state.terrain.name : null, settings: state.settings, view: state.view,
     sources: state.sources.map(s => ({ name: s.name, eq: s.eq, lw: s.lw, on: s.on, pen: s.pen, mit: s.mit, h: s.h, x: s.x, y: s.y })),
     library: state.libraryEdited ? LIBRARY : undefined,
-    buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype, pts: b.pts })),
-    hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts }))
+    buildings: state.buildings.map(b => ({ name: b.name, h: b.h, baseRL: b.baseFixed, roofRL: b.roofRL, hsrc: b.hsrc, osmId: b.osmId, btype: b.btype,
+      tags: b.tags || undefined, landUse: b.landUse || undefined, luSrc: b.landUse ? b.luSrc : undefined, floors: b.floors ?? undefined, address: b.address || undefined, pts: b.pts })),
+    hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts })),
+    ncas: state.ncas.map(n => ({ name: n.name, cat: n.cat, rbl: n.rbl, pts: n.pts })),
+    assess: { defNca: A.defNca, floorH: A.floorH, spacing: A.spacing, offset: A.offset, display: A.display },
+    rules: state.rulesEdited ? RULES : undefined
   };
   download('noise_scenario.json', JSON.stringify(data));
-  log(`Saved scenario (${data.sources.length} sources, ${data.buildings.length} buildings, ${data.hoardings.length} hoardings).`);
+  log(`Saved scenario (${data.sources.length} sources, ${data.buildings.length} buildings, ${data.hoardings.length} hoardings, ${data.ncas.length} NCAs).`);
 });
 $('btnLoad').addEventListener('click', () => $('fileLoad').click());
 $('btnGeo').addEventListener('click', () => $('fileGeo').click());
@@ -68,6 +75,11 @@ function sanitizeSettings(raw, cur) {
   }
   return out;
 }
+/* name / category / measured RBLs of a saved NCA, validated */
+function cleanNca(n, defName) {
+  const r = n.rbl || {}, v = x => (x == null || x === '' ? null : num(x, 20, 80));
+  return { name: String(n.name || defName).slice(0, 40), cat: RULES.noiseAreaCategories[n.cat] ? n.cat : DEFAULT_NCA_CAT, rbl: { day: v(r.day), evening: v(r.evening), night: v(r.night) } };
+}
 function validPts(pts, min) {
   if (!Array.isArray(pts)) return null;
   const out = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).map(p => [+p[0], +p[1]]);
@@ -82,6 +94,16 @@ readJSONFile($('fileLoad'), (d, name) => {
   }
   const sh = p => [+p[0] + dx, +p[1] + dy];
   state.settings = sanitizeSettings(d.settings, state.settings);
+  if (d.rules) {
+    try { RULES = validateRules(d.rules); state.rulesEdited = true; log(`Scenario carries its own assessment rules (“${RULES.name || 'unnamed'}”).`); }
+    catch (e) { log(`Scenario rules ignored (${e.message}) – using the current rules.`, 'warn'); }
+  }
+  if (d.assess && typeof d.assess === 'object') {
+    const A = state.assess, a = d.assess;
+    A.floorH = num(a.floorH, 2, 6) ?? A.floorH; A.spacing = num(a.spacing, 2, 50) ?? A.spacing; A.offset = num(a.offset, 0.1, 5) ?? A.offset;
+    if (['both', 'cat', 'heat'].includes(a.display)) A.display = a.display;
+    if (a.defNca && typeof a.defNca === 'object') A.defNca = cleanNca(a.defNca, A.defNca.name);
+  }
   if (d.library) {
     try { LIBRARY = cleanLibrary(d.library); state.libraryEdited = true; updateLibInfo(); log(`Scenario carries its own equipment library (${LIBRARY.length} items).`); }
     catch (e) { log(`Scenario library ignored: ${e.message}`, 'warn'); }
@@ -94,11 +116,15 @@ readJSONFile($('fileLoad'), (d, name) => {
     o.on = num(s.on, 1, 100) ?? 100; o.pen = num(s.pen, 0, 10) ?? (typeof s.eq === 'string' ? o.pen : 0); o.mit = num(s.mit, 0, 30) ?? 0;
     return o;
   });
-  state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null }) : null; }).filter(Boolean);
+  state.buildings = d.buildings.map(b => { const p = validPts(b.pts); return p ? makeBuilding(p.map(sh), num(b.h, 0.5, 300) ?? state.settings.newH, String(b.name || '').slice(0, 40) || undefined, { baseRL: isFinite(b.baseRL) && b.baseRL !== null ? +b.baseRL : null, roofRL: isFinite(b.roofRL) && b.roofRL !== null ? +b.roofRL : null, hsrc: typeof b.hsrc === 'string' ? b.hsrc : 'manual', osmId: typeof b.osmId === 'string' ? b.osmId : null, btype: typeof b.btype === 'string' ? b.btype : null,
+    tags: b.tags && typeof b.tags === 'object' ? keepTags(b.tags) : null, landUse: typeof b.landUse === 'string' && RULES.landUses[b.landUse] ? b.landUse : null, luSrc: b.luSrc === 'file' ? 'file' : 'manual',
+    floors: num(b.floors, 1, 200), address: typeof b.address === 'string' ? b.address.slice(0, 120) : null }) : null; }).filter(Boolean);
   state.hoardings = (d.hoardings || []).map(h => { const p = validPts(h.pts, 2); return p ? makeHoarding(p.map(sh), num(h.h, 0.3, 20) ?? 2.4, String(h.name || '').slice(0, 40) || undefined) : null; }).filter(Boolean);
-  geomChanged(); syncSettingsUI(); select(null); updateSiteInfo();
+  state.ncas = (Array.isArray(d.ncas) ? d.ncas : []).map(n => { const p = validPts(n && n.pts); return p ? Object.assign(makeNca(p.map(sh)), cleanNca(n, 'NCA')) : null; }).filter(Boolean);
+  state.assess.results = null;
+  geomChanged(); syncSettingsUI(); syncAssessUI(); select(null); updateSiteInfo();
   $('attrib').hidden = !state.buildings.some(b => b.osmId);
-  log(`Loaded ${name}: ${state.sources.length} sources, ${state.buildings.length} buildings, ${state.hoardings.length} hoardings.`);
+  log(`Loaded ${name}: ${state.sources.length} sources, ${state.buildings.length} buildings, ${state.hoardings.length} hoardings, ${state.ncas.length} NCAs.`);
   if (d.dem && !state.terrain) log(`This scenario used DEM “${d.dem}” – load it to restore terrain.`, 'warn');
   zoomExtents();
 });
@@ -147,6 +173,7 @@ function importGeoJSON(gj, name) {
     const o = ensureOrigin(cx, cy, null, null, 'GeoJSON (projected)'); tf = p => [p[0] - o.x0, p[1] - o.y0];
   }
   let added = 0, defH = 0, withRoof = 0;
+  const luUnknown = new Set();
   const pick = (pr, keys) => { for (const k of keys) if (pr[k] != null && isFinite(+pr[k])) return +pr[k]; return null; };
   for (const r of rings) {
     let pts = validPts(r.ring); if (!pts) continue;
@@ -160,11 +187,19 @@ function importGeoJSON(gj, name) {
     if (h === null && roof === null && isOsm) { const oh = osmHeight(pr); h = oh.h; hsrc = oh.src; }
     else if (h === null && roof === null) { h = state.settings.newH; defH++; hsrc = 'type-default'; }
     if (roof !== null) withRoof++;
-    state.buildings.push(makeBuilding(pts, h ?? state.settings.newH, String(pr.name || pr.NAME || '').slice(0, 40) || undefined, { baseRL: base, roofRL: roof, hsrc, btype: pr.building || null, osmId: isOsm ? String(pr['@id'] || r.fid || '') || null : null })); added++;
+    const luRaw = ['land_use', 'landuse', 'LAND_USE', 'LandUse', 'LU'].map(k => pr[k]).find(v => typeof v === 'string');
+    const lu = luRaw && Object.keys(RULES.landUses).find(k => k.toLowerCase() === luRaw.toLowerCase() || RULES.landUses[k].label.toLowerCase() === luRaw.toLowerCase());
+    if (luRaw && !lu) luUnknown.add(luRaw);
+    const floors = num(pick(pr, ['floors', 'FLOORS', 'levels', 'storeys', 'building:levels']), 1, 200);
+    const address = ['address', 'ADDRESS', 'Address'].map(k => pr[k]).find(v => typeof v === 'string');
+    state.buildings.push(makeBuilding(pts, h ?? state.settings.newH, String(pr.name || pr.NAME || '').slice(0, 40) || undefined, {
+      baseRL: base, roofRL: roof, hsrc, btype: pr.building || null, osmId: isOsm ? String(pr['@id'] || r.fid || '') || null : null,
+      tags: isOsm ? keepTags(pr) : null, landUse: lu || null, luSrc: 'file', floors, address: address ? address.slice(0, 120) : null })); added++;
   }
   geomChanged(); if (state.dsm) applyDsmHeights(true);
   $('attrib').hidden = !state.buildings.some(b => b.osmId);
   log(`Imported ${added} building(s) from ${name}${withRoof ? `; ${withRoof} with roof RL` : ''}${defH ? `; ${defH} without height → ${state.settings.newH} m` : ''}.`);
+  if (luUnknown.size) log(`Land use values not in the rules, ignored: ${[...luUnknown].slice(0, 8).join(', ')}. Known: ${Object.keys(RULES.landUses).join(', ')}.`, 'warn');
   zoomExtents();
 }
 $('fileDem').addEventListener('change', async () => {
@@ -197,16 +232,16 @@ $('btnFit').addEventListener('click', zoomExtents);
 
 function loadDemo() {
   state.buildings = [
-    makeBuilding(rect(30, 10, 95, 24), 7, 'Terrace row'),
-    makeBuilding(rect(-75, -30, -45, 25), 14, 'Apartment block'),
-    makeBuilding(rect(6, -26, 18, -19), 3, 'Site shed'),
-    makeBuilding([[20, -75], [65, -75], [65, -60], [35, -60], [35, -40], [20, -40]], 10, 'Office (L-shape)'),
-    makeBuilding(rect(-30, 45, 10, 60), 5, 'Shops')
+    makeBuilding(rect(30, 10, 95, 24), 7, 'Terrace row', { landUse: 'residential' }),
+    makeBuilding(rect(-75, -30, -45, 25), 14, 'Apartment block', { landUse: 'residential' }),
+    makeBuilding(rect(6, -26, 18, -19), 3, 'Site shed', { landUse: 'none' }),
+    makeBuilding([[20, -75], [65, -75], [65, -60], [35, -60], [35, -40], [20, -40]], 10, 'Office (L-shape)', { landUse: 'commercial' }),
+    makeBuilding(rect(-30, 45, 10, 60), 5, 'Shops', { landUse: 'commercial' })
   ];
   state.hoardings = [makeHoarding([[-25, -15], [-25, 25], [5, 32]], 2.4, 'Site hoarding')];
-  state.sources = [makeSource(0, 0, DEFAULT_EQ)];
+  state.sources = [makeSource(0, 0, DEFAULT_EQ)]; state.ncas = []; state.assess.results = null;
   geomChanged(); select(null);
   log('Demo loaded: 1 excavator (20 t, Lw 105), 5 buildings, 1 hoarding (2.4 m).');
-  requestCompute(false);
+  renderAssessPanel(); updateAssessButtons(); refreshBulkSelects(); requestCompute(false);
 }
 

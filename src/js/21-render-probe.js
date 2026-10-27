@@ -22,7 +22,8 @@ function render() {
   for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) { const sy = Math.round(w2s(0, y)[1]) + 0.5; ctx.moveTo(0, sy); ctx.lineTo(cssW, sy); }
   ctx.stroke();
 
-  if (grid && state.sources.length) {
+  const AR = state.assess.results, showCat = AR && state.assess.display !== 'heat';
+  if (grid && state.sources.length && !(AR && state.assess.display === 'cat')) {
     ctx.save(); ctx.globalAlpha = S.opacity; ctx.imageSmoothingEnabled = false;
     ctx.drawImage(off, 0, 0, grid.gw * grid.cellPx, grid.gh * grid.cellPx);
     ctx.restore();
@@ -34,21 +35,39 @@ function render() {
     ctx.drawImage(lazCv, a, b, D.w * D.cx * v.scale, D.h * D.cy * v.scale);
     ctx.restore();
   }
+  for (const n of state.ncas) {
+    const sel = state.sel && state.sel.type === 'nca' && state.sel.id === n.id;
+    polyPath(n.pts, true);
+    ctx.fillStyle = sel ? 'rgba(13,148,136,0.10)' : 'rgba(13,148,136,0.04)'; ctx.fill();
+    ctx.lineWidth = sel ? 3 : 2; ctx.strokeStyle = '#0f766e'; ctx.setLineDash([10, 5]); ctx.stroke(); ctx.setLineDash([]);
+    const label = `${n.name} · ${ncaSummary(n)}`;
+    ctx.font = '600 11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    const w = ctx.measureText(label).width;
+    // label at the top vertex, kept inside the view (and inside the NCA's on-screen extent)
+    const top = n.pts.reduce((a, p) => (p[1] > a[1] ? p : a)), sb = bboxOf(n.pts.map(p => w2s(p[0], p[1])));
+    let [lx, ly] = w2s(top[0], top[1]);
+    lx = Math.min(Math.max(lx, Math.max(sb[0], 0) + 4), Math.min(sb[2], cssW) - w - 8);
+    ly = Math.max(ly, Math.max(sb[1], 0) + 20, 46);   // clear of the status box at the top left
+    ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(lx - 2, ly - 16, w + 6, 15);
+    ctx.fillStyle = '#0f766e'; ctx.fillText(label, lx + 1, ly - 2);
+  }
   const showLabels = state.buildings.length < 400;
   for (const b of state.buildings) {
     const bb = b.bbox;
     if (bb[2] < x0 || bb[0] > x1 || bb[3] < y0 || bb[1] > y1) continue;
     const sel = state.sel && state.sel.type === 'building' && state.sel.id === b.id;
     polyPath(b.pts, true);
-    ctx.fillStyle = sel ? 'rgba(37,99,235,0.55)' : 'rgba(55,60,72,0.78)'; ctx.fill();
+    const cat = showCat ? AR.byBuilding.get(b.id) : null, catFill = cat ? categoryColor(cat.worst) : null;
+    ctx.fillStyle = sel ? 'rgba(37,99,235,0.55)' : catFill || 'rgba(55,60,72,0.78)'; ctx.fill();
     if (isEstimated(b) && !sel) { ctx.lineWidth = 1.5; ctx.strokeStyle = '#f59e0b'; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]); }
     else { ctx.lineWidth = sel ? 2.5 : 1; ctx.strokeStyle = sel ? '#1d4ed8' : '#1f2937'; ctx.stroke(); }
     if (showLabels && (bb[2] - bb[0]) * v.scale > 34) {
       let cx = b.pts.reduce((a, p) => a + p[0], 0) / b.pts.length, cy = b.pts.reduce((a, p) => a + p[1], 0) / b.pts.length;
       if (!pip(cx, cy, b.pts)) { const p = b.pts; cx = (p[0][0] + p[1][0] + p[2][0]) / 3; cy = (p[0][1] + p[1][1] + p[2][1]) / 3; }
       const [lx, ly] = w2s(cx, cy);
-      ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
-      ctx.fillText(`${fmt(b.h, 1)} m${isEstimated(b) ? '?' : ''}`, lx, ly);
+      ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = catFill && !sel && cat.worst !== 'Moderately intrusive' && cat.worst !== 'Highly intrusive' ? '#111827' : '#fff';
+      ctx.fillText(cat ? `${cat.floors}F · ${cat.worst === 'Not assessed' ? 'n/a' : cat.maxLeq != null ? fmt(cat.maxLeq, 0) + ' dB' : '< NML'}` : `${fmt(b.h, 1)} m${isEstimated(b) ? '?' : ''}`, lx, ly);
     }
   }
   for (const ho of state.hoardings) {
@@ -62,7 +81,7 @@ function render() {
   if (state.draft.length) {
     polyPath(state.draft, false);
     if (state.mouse) ctx.lineTo(state.mouse.x, state.mouse.y);
-    ctx.strokeStyle = state.mode === 'hoarding' ? '#b45309' : '#1d4ed8'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = state.mode === 'hoarding' ? '#b45309' : state.mode === 'nca' ? '#0f766e' : '#1d4ed8'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
     state.draft.forEach((p, i) => { const [sx, sy] = w2s(p[0], p[1]); ctx.beginPath(); ctx.arc(sx, sy, i ? 3.5 : 6, 0, 7); ctx.fillStyle = i ? '#1d4ed8' : '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2; ctx.stroke(); });
   }
 
@@ -101,7 +120,11 @@ function updateProbe() {
   const el = $('probe');
   if (!state.sources.length) { el.innerHTML = '<p class="muted">Add a source to see levels.</p>'; $('hud').textContent = hud; return; }
   const hb = buildingAt(wx, wy);
-  if (hb) { el.innerHTML = `<p class="muted">Inside “${esc(hb.name)}” (base RL ${fmt(hb.base, 2)}, roof RL ${fmt(topOf(hb), 2)}) – receivers masked.</p>`; $('hud').textContent = hud + ' · inside building'; return; }
+  if (hb) {
+    const ph = probeBuildingHtml(hb);
+    el.innerHTML = ph || `<p class="muted">Inside “${esc(hb.name)}” (base RL ${fmt(hb.base, 2)}, roof RL ${fmt(topOf(hb), 2)}) – grid receivers masked. Run the assessment for façade results.</p>`;
+    $('hud').textContent = hud + ' · ' + (ph ? `${hb.name}: ${(state.assess.results.byBuilding.get(hb.id) || {}).worst}` : 'inside building'); return;
+  }
   prep(state.sources);
   let e = 0, rows = '';
   for (const s of state.sources) {
