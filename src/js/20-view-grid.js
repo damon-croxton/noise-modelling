@@ -12,7 +12,7 @@ function resize() {
 /* ============================ GRID COMPUTE ============================= */
 function computeGrid(cellPx, quiet) {
   const t0 = performance.now();
-  const S = state.settings, B = state.buildings, srcs = state.sources;
+  const S = state.settings, B = state.buildings, srcs = activeSources();
   prep(srcs);
   const gw = Math.ceil(cssW / cellPx), gh = Math.ceil(cssH / cellPx);
   off.width = gw; off.height = gh;

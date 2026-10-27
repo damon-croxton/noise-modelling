@@ -19,6 +19,7 @@ $('setMethod').addEventListener('change', e => { state.settings.method = e.targe
 $('setPeriod').addEventListener('change', e => { state.settings.period = e.target.value; log(`Time period: ${PERIODS[e.target.value]}.`); requestCompute(false); });
 $('setSeason').addEventListener('change', e => { state.settings.season = e.target.value; log(`Season: ${e.target.value === 'warm' ? 'Oct–Apr' : 'May–Sep'} (air ${fmt(airAlpha(state.settings), 2)} dB/km).`); requestCompute(false); });
 bindNum($('setSoft'), 0, 100, v => { state.settings.soft = v / 100; });
+$('setCombine').addEventListener('change', e => { state.settings.combine = e.target.value; activeCache.sig = ''; log(`Plant combination: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
 bindNum($('setBarCap'), 5, 25, v => { state.settings.barCap = v; });
 bindNum($('setHr'), 0, 200, v => { state.settings.hr = v; });
 bindNum($('setNewH'), 0.5, 300, v => { state.settings.newH = v; });
@@ -30,7 +31,7 @@ function syncSettingsUI() {
   const S = state.settings;
   $('setBar').checked = S.barriers; $('setTerr').checked = S.terrain; $('setShade').checked = S.shade; $('setAir').checked = S.air;
   $('setMethod').value = S.method; $('setPeriod').value = S.period; $('setSeason').value = S.season;
-  $('setSoft').value = Math.round(S.soft * 100); $('setBarCap').value = S.barCap; onMethodChange();
+  $('setSoft').value = Math.round(S.soft * 100); $('setCombine').value = S.combine; $('setBarCap').value = S.barCap; onMethodChange();
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
   $('setCell').value = String(S.cellPx); $('setMin').value = String(S.minDb); $('setOp').value = S.opacity; buildLegend();
 }

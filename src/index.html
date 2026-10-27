@@ -94,6 +94,8 @@
       <div class="row"><label for="setSeason">Season (air absorption)</label>
         <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
       <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
+      <div class="row"><label for="setCombine">Plant combination</label>
+        <select id="setCombine"><option value="all">All plant (conservative)</option><option value="estimator">Loudest 1–3 rows (TfNSW estimator)</option></select></div>
       <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
       <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
       <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
@@ -128,6 +130,7 @@
         <div class="btns"><button type="button" id="btnBulk">Apply</button></div>
       </details>
       <details class="sub2"><summary>Assessment rules</summary>
+        <div class="row"><label for="rulesSet">Rule set</label><select id="rulesSet"></select></div>
         <p id="rulesInfo" class="kv"></p>
         <div class="btns">
           <button type="button" id="btnRulesExport">Export rules</button>

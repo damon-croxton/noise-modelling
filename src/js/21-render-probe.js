@@ -86,15 +86,17 @@ function render() {
   }
 
   for (const s of state.sources) {
-    const [sx, sy] = w2s(s.x, s.y);
+    const [sx, sy] = w2s(s.x, s.y), excl = isExcluded(s);
     const sel = state.sel && state.sel.type === 'source' && state.sel.id === s.id;
+    ctx.save(); if (excl) ctx.globalAlpha = 0.45;
     ctx.beginPath(); ctx.arc(sx, sy, sel ? 9 : 7, 0, 7);
     ctx.fillStyle = '#111827'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = sel ? '#60a5fa' : '#fff'; ctx.stroke();
     ctx.beginPath(); ctx.arc(sx, sy, 3, 0, 7); ctx.fillStyle = '#ef4444'; ctx.fill();
     ctx.font = '600 11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    const label = `${s.name} · Lw ${fmt(effectiveLw(s), 0)}${overMax(s) != null ? ' ⚠' : ''}`, w = ctx.measureText(label).width;
+    const label = `${s.name} · Lw ${fmt(effectiveLw(s), 0)}${overMax(s) != null ? ' ⚠' : ''}${excl ? ' (not in worst case)' : ''}`, w = ctx.measureText(label).width;
     ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(sx + 11, sy - 8, w + 6, 16);
     ctx.fillStyle = '#111827'; ctx.fillText(label, sx + 14, sy);
+    ctx.restore();
   }
 
   const sb = niceStep(110 / v.scale), sbPx = sb * v.scale;
@@ -125,9 +127,9 @@ function updateProbe() {
     el.innerHTML = ph || `<p class="muted">Inside “${esc(hb.name)}” (base RL ${fmt(hb.base, 2)}, roof RL ${fmt(topOf(hb), 2)}) – grid receivers masked. Run the assessment for façade results.</p>`;
     $('hud').textContent = hud + ' · ' + (ph ? `${hb.name}: ${(state.assess.results.byBuilding.get(hb.id) || {}).worst}` : 'inside building'); return;
   }
-  prep(state.sources);
+  const srcsA = activeSources(); prep(srcsA);
   let e = 0, rows = '';
-  for (const s of state.sources) {
+  for (const s of srcsA) {
     const r = contrib(s, wx, wy, S, B, true, gr);
     e += Math.pow(10, r.Lp / 10);
     rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;

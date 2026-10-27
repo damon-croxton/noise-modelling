@@ -18,6 +18,9 @@ function syncAssessUI() {
   $('asRblD').value = r.day ?? ''; $('asRblE').value = r.evening ?? ''; $('asRblN').value = r.night ?? '';
   $('asFloorH').value = A.floorH; $('asSpacing').value = A.spacing; $('asOffset').value = A.offset; $('asDisplay').value = A.display;
   $('bulkTo').innerHTML = luOptions('residential');
+  $('rulesSet').innerHTML = Object.entries(RULESETS).map(([k, r]) => `<option value="${k}">${esc(r.label)}</option>`).join('') +
+    (state.rulesEdited ? `<option value="imported">Imported: ${esc(RULES.name || 'unnamed')}</option>` : '');
+  $('rulesSet').value = state.rulesEdited ? 'imported' : (state.rulesSet || 'cnvg');
   $('rulesInfo').innerHTML = `<b>${esc(RULES.name)}</b>${state.rulesEdited ? ' <span class="muted">(imported / edited)</span>' : ''}<br><span class="muted">${esc(RULES._note || '')}</span>`;
   refreshBulkSelects(); updateAssessButtons(); renderAssessPanel();
 }
@@ -97,7 +100,13 @@ readJSONFile($('fileRules'), (d, name) => {
   log(`Imported assessment rules “${d.name || name}”. Run the assessment again to apply them.`, 'pass');
   syncAssessUI(); renderSelPanel();
 });
-$('btnRulesReset').addEventListener('click', () => { RULES = clone(DATA.rules); state.rulesEdited = false; log('Assessment rules reset to the TfNSW CNVG-PTI defaults.'); syncAssessUI(); renderSelPanel(); });
+$('btnRulesReset').addEventListener('click', () => { setRuleSet('cnvg'); log('Assessment rules reset to the TfNSW CNVG-PTI defaults.'); syncAssessUI(); renderSelPanel(); });
+$('rulesSet').addEventListener('change', e => {
+  if (e.target.value === 'imported') return;
+  setRuleSet(e.target.value);
+  log(`Assessment rules: ${RULESETS[e.target.value].label}. Run the assessment again to apply them.`);
+  syncAssessUI(); renderSelPanel();
+});
 
 /* -------- NCA import (GeoJSON polygons) -------- */
 $('btnNcaImport').addEventListener('click', () => $('fileNca').click());
@@ -188,10 +197,10 @@ function probeBuildingHtml(b) {
   let html = `<p class="kv"><b>${esc(addressOf(b) || b.name)}</b> · ${esc(landUseLabel(luOf(b).lu))} · ${esc(ncaOf(b).name)}</p>` + floorTableHtml(b);
   const worst = R.receivers.filter(r => r.bId === b.id && r.Leq != null).sort((a, c) => c.Leq - a.Leq)[0];
   if (worst && worst.x != null) {
-    prep(state.sources);
+    const srcsA = activeSources(); prep(srcsA);
     const gr = ground(worst.x, worst.y);
     html += `<p class="kv">Worst point: floor ${worst.floorLabel}, ${coordText(worst.x, worst.y)}, RL ${fmt(worst.z, 1)}</p><table><tr><th>Source</th><th>L<sub>w</sub></th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>atm</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>`;
-    for (const s of state.sources) {
+    for (const s of srcsA) {
       const r = contrib(s, worst.x, worst.y, state.settings, state.buildings, true, gr, worst.z);
       html += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
     }

@@ -38,7 +38,7 @@ $('btnSave').addEventListener('click', () => {
     hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts })),
     ncas: state.ncas.map(n => ({ name: n.name, cat: n.cat, rbl: n.rbl, pts: n.pts })),
     assess: { defNca: A.defNca, floorH: A.floorH, spacing: A.spacing, offset: A.offset, display: A.display },
-    rules: state.rulesEdited ? RULES : undefined
+    rules: state.rulesEdited ? RULES : undefined, rulesSet: state.rulesEdited ? undefined : state.rulesSet
   };
   download('noise_scenario.json', JSON.stringify(data));
   log(`Saved scenario (${data.sources.length} sources, ${data.buildings.length} buildings, ${data.hoardings.length} hoardings, ${data.ncas.length} NCAs).`);
@@ -64,7 +64,7 @@ function sanitizeSettings(raw, cur) {
   const inR = (a, b) => v => typeof v === 'number' && isFinite(v) && v >= a && v <= b;
   const oneOf = (...vals) => v => vals.includes(v);
   const bool = v => typeof v === 'boolean';
-  pick('method', oneOf('tfnsw', 'iso')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
+  pick('method', oneOf('tfnsw', 'iso')); pick('combine', oneOf('all', 'estimator')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
   pick('air', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
   pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
@@ -94,6 +94,7 @@ readJSONFile($('fileLoad'), (d, name) => {
   }
   const sh = p => [+p[0] + dx, +p[1] + dy];
   state.settings = sanitizeSettings(d.settings, state.settings);
+  if (!d.rules && RULESETS[d.rulesSet]) setRuleSet(d.rulesSet);
   if (d.rules) {
     try { RULES = validateRules(d.rules); state.rulesEdited = true; log(`Scenario carries its own assessment rules (“${RULES.name || 'unnamed'}”).`); }
     catch (e) { log(`Scenario rules ignored (${e.message}) – using the current rules.`, 'warn'); }

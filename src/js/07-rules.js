@@ -3,7 +3,23 @@
    exported, edited and re-imported, so project-specific strategies don't need
    a code change. Nothing here claims compliance with a particular edition. */
 const clone = o => JSON.parse(JSON.stringify(o));
+/* Overlay rule files ("extends") are deep-merged over their base; arrays replace. */
+function mergeRules(base, over) {
+  const out = clone(base);
+  for (const [k, v] of Object.entries(over)) {
+    if (k === 'extends') continue;
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k]) ? mergeRules(out[k], v) : clone(v);
+  }
+  return out;
+}
+const RULESETS = {
+  cnvg: { label: 'CNVG-PTI v4.6 Table 9 (guideline)', rules: DATA.rules },
+  estimator: { label: 'TfNSW estimator Step 4 (spreadsheet)', rules: mergeRules(DATA.rules, DATA['rules-estimator']) }
+};
 let RULES = clone(DATA.rules);
+function setRuleSet(key) {
+  RULES = clone(RULESETS[key].rules); state.rulesSet = key; state.rulesEdited = false;
+}
 
 function landUseRule(lu) { return RULES.landUses[lu] || RULES.landUses[RULES.osmLandUse.unknown]; }
 function landUseLabel(lu) { const L = RULES.landUses[lu]; return L ? L.label : lu; }
@@ -48,7 +64,8 @@ function classify(Leq, nml, period, lu) {
   let label = 'Below NML', impact = 'None', measures = [];
   if (exc > 0) {
     const set = RULES.bandSets[RULES.periods[period].bands] || [];
-    const band = set.find(b => b.above == null || exc <= b.above) || set[set.length - 1];
+    const lower = RULES.boundary === 'lower';   // 'lower': band includes its lower limit (estimator); 'upper': its upper limit (guideline)
+    const band = set.find(b => b.above == null || (lower ? exc < b.above : exc <= b.above)) || set[set.length - 1];
     if (band) { label = band.label; impact = band.impact || ''; measures = band.measures.slice(); }
   }
   const H = RULES.highlyAffected;

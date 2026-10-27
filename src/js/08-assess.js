@@ -30,7 +30,7 @@ function categoryRank(label, period) {
   return k < 0 ? 0 : k + 1;
 }
 function categoryList(period) {
-  return ['Below NML'].concat((RULES.bandSets[RULES.periods[period].bands] || []).map(b => b.label));
+  return [...new Set(['Below NML'].concat((RULES.bandSets[RULES.periods[period].bands] || []).map(b => b.label)))];
 }
 
 /* Compact fingerprint of everything the assessment depends on, used to tell
@@ -39,7 +39,7 @@ function inputsSignature() {
   const S = state.settings, A = state.assess, r2 = v => Math.round(v * 100);
   let h = 5381;
   const add = v => { const s = String(v); for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; h = ((h * 33) ^ 124) >>> 0; };
-  [S.method, S.soft, S.season, S.period, S.barCap, S.air, S.barriers, S.terrain, A.floorH, A.spacing, A.offset, JSON.stringify(A.defNca), RULES.id, state.rulesEdited ? JSON.stringify(RULES).length : 0, state.terrain ? state.terrain.name : ''].forEach(add);
+  [S.method, S.soft, S.season, S.period, S.barCap, S.air, S.barriers, S.terrain, S.combine, A.floorH, A.spacing, A.offset, JSON.stringify(A.defNca), RULES.id, state.rulesEdited ? JSON.stringify(RULES).length : 0, state.terrain ? state.terrain.name : ''].forEach(add);
   for (const s of state.sources) [r2(s.x), r2(s.y), s.h, s.lw, s.on, s.pen, s.mit].forEach(add);
   for (const b of state.buildings) { [b.id, r2(b.h), r2(b.base), b.landUse, b.floors].forEach(add); for (const p of b.pts) { add(r2(p[0])); add(r2(p[1])); } }
   for (const ho of state.hoardings) { add(ho.h); for (const p of ho.pts) { add(r2(p[0])); add(r2(p[1])); } }
@@ -54,7 +54,7 @@ function assessStale() { const R = state.assess.results; return !!R && R.sig !==
    ground, air or screening losses) is already below the NML can't exceed it,
    so they are not calculated in full. */
 async function runAssessment() {
-  const A = state.assess, S = state.settings, period = S.period, B = state.buildings, srcs = state.sources;
+  const A = state.assess, S = state.settings, period = S.period, B = state.buildings, srcs = activeSources();
   if (A.running) return null;
   if (!srcs.length) { log('Add at least one source before running the assessment.', 'warn'); return null; }
   if (!B.length) { log('There are no buildings to assess – fetch, import or draw them first.', 'warn'); return null; }

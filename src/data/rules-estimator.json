@@ -1,0 +1,41 @@
+{
+ "extends": "rules",
+ "id": "tfnsw-estimator-step4",
+ "name": "TfNSW Construction Noise Estimator (EMF-NV-TT-0068) – Step 4 measures",
+ "_note": "Reproduces the measures matrix of the TfNSW Construction Noise Estimator spreadsheet ('Step 4 Mitigation Measures') as it actually calculates, so results reconcile with it. It differs from CNVG-PTI v4.6 Table 9: a band includes its lower limit (an exceedance of exactly 5 dB is in the 5–15 band); OOHW Period 1 evening adds RP and DR from 10 dB; OOHW Period 2 evening uses the evening NML with PN, V, SN, RO, RP and DR from 5 dB; OOHW Period 2 night gives PN, V, SN, RP and DR from 5 dB and no PN below 5 dB (the spreadsheet's PN cell for that band can never be true). NMLs and other rules are as in the CNVG-PTI defaults. Verify which convention the client accepts.",
+ "boundary": "lower",
+ "periods": { "p2eve": { "bands": "oohw2eve" } },
+ "bandSets": {
+  "std": [
+   { "above": 10, "label": "Clearly audible", "impact": "Low", "measures": [] },
+   { "above": 20, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V"] }
+  ],
+  "oohw1day": [
+   { "above": 5, "label": "Noticeable", "impact": "Negligible", "measures": [] },
+   { "above": 15, "label": "Clearly audible", "impact": "Low", "measures": ["PN"] },
+   { "above": 25, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V", "SN", "RO"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V", "SN", "RO"] }
+  ],
+  "oohw1": [
+   { "above": 5, "label": "Noticeable", "impact": "Negligible", "measures": [] },
+   { "above": 10, "label": "Clearly audible", "impact": "Low", "measures": ["PN"] },
+   { "above": 15, "label": "Clearly audible", "impact": "Low", "measures": ["PN", "RP", "DR"] },
+   { "above": 25, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V", "SN", "RO", "RP", "DR"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V", "SN", "RO", "RP", "DR"] }
+  ],
+  "oohw2eve": [
+   { "above": 5, "label": "Noticeable", "impact": "Negligible", "measures": [] },
+   { "above": 15, "label": "Clearly audible", "impact": "Low", "measures": ["PN", "V", "SN", "RO", "RP", "DR"] },
+   { "above": 25, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V", "SN", "RO", "RP", "DR"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V", "SN", "RO", "RP", "DR", "AA"] }
+  ],
+  "oohw2": [
+   { "above": 5, "label": "Noticeable", "impact": "Negligible", "measures": [] },
+   { "above": 15, "label": "Clearly audible", "impact": "Low", "measures": ["PN", "V", "SN", "RP", "DR"] },
+   { "above": 25, "label": "Moderately intrusive", "impact": "Medium", "measures": ["PN", "V", "SN", "RP", "DR"] },
+   { "above": null, "label": "Highly intrusive", "impact": "High", "measures": ["PN", "V", "SN", "RP", "DR", "AA"] }
+  ]
+ },
+ "highlyAffected": { "level": 75, "periods": ["std"], "label": "Highly noise affected (≥ 75 dBA)", "measures": ["PN", "V", "SN"] }
+}

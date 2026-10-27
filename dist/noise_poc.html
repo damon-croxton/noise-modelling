@@ -161,6 +161,8 @@
       <div class="row"><label for="setSeason">Season (air absorption)</label>
         <select id="setSeason"><option value="warm">Oct – Apr</option><option value="cool">May – Sep</option></select></div>
       <div class="row"><label for="setSoft">Soft ground between source and receivers (%)</label><input type="number" id="setSoft" min="0" max="100" step="5" value="0"></div>
+      <div class="row"><label for="setCombine">Plant combination</label>
+        <select id="setCombine"><option value="all">All plant (conservative)</option><option value="estimator">Loudest 1–3 rows (TfNSW estimator)</option></select></div>
       <div class="row" id="rowBarCap"><label for="setBarCap">Screening cap (dB)</label><input type="number" id="setBarCap" min="5" max="25" step="1" value="15"></div>
       <label class="chk"><input type="checkbox" id="setBar" checked> Buildings &amp; hoarding block sound</label>
       <label class="chk"><input type="checkbox" id="setAir" checked> Air absorption (ISO 9613-1, seasonal)</label>
@@ -195,6 +197,7 @@
         <div class="btns"><button type="button" id="btnBulk">Apply</button></div>
       </details>
       <details class="sub2"><summary>Assessment rules</summary>
+        <div class="row"><label for="rulesSet">Rule set</label><select id="rulesSet"></select></div>
         <p id="rulesInfo" class="kv"></p>
         <div class="btns">
           <button type="button" id="btnRulesExport">Export rules</button>
@@ -1731,6 +1734,241 @@ const DATA = {
    }
   ]
  },
+ "rules-estimator": {
+  "extends": "rules",
+  "id": "tfnsw-estimator-step4",
+  "name": "TfNSW Construction Noise Estimator (EMF-NV-TT-0068) – Step 4 measures",
+  "_note": "Reproduces the measures matrix of the TfNSW Construction Noise Estimator spreadsheet ('Step 4 Mitigation Measures') as it actually calculates, so results reconcile with it. It differs from CNVG-PTI v4.6 Table 9: a band includes its lower limit (an exceedance of exactly 5 dB is in the 5–15 band); OOHW Period 1 evening adds RP and DR from 10 dB; OOHW Period 2 evening uses the evening NML with PN, V, SN, RO, RP and DR from 5 dB; OOHW Period 2 night gives PN, V, SN, RP and DR from 5 dB and no PN below 5 dB (the spreadsheet's PN cell for that band can never be true). NMLs and other rules are as in the CNVG-PTI defaults. Verify which convention the client accepts.",
+  "boundary": "lower",
+  "periods": {
+   "p2eve": {
+    "bands": "oohw2eve"
+   }
+  },
+  "bandSets": {
+   "std": [
+    {
+     "above": 10,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": []
+    },
+    {
+     "above": 20,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V"
+     ]
+    }
+   ],
+   "oohw1day": [
+    {
+     "above": 5,
+     "label": "Noticeable",
+     "impact": "Negligible",
+     "measures": []
+    },
+    {
+     "above": 15,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": [
+      "PN"
+     ]
+    },
+    {
+     "above": 25,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO"
+     ]
+    }
+   ],
+   "oohw1": [
+    {
+     "above": 5,
+     "label": "Noticeable",
+     "impact": "Negligible",
+     "measures": []
+    },
+    {
+     "above": 10,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": [
+      "PN"
+     ]
+    },
+    {
+     "above": 15,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": [
+      "PN",
+      "RP",
+      "DR"
+     ]
+    },
+    {
+     "above": 25,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO",
+      "RP",
+      "DR"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO",
+      "RP",
+      "DR"
+     ]
+    }
+   ],
+   "oohw2eve": [
+    {
+     "above": 5,
+     "label": "Noticeable",
+     "impact": "Negligible",
+     "measures": []
+    },
+    {
+     "above": 15,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO",
+      "RP",
+      "DR"
+     ]
+    },
+    {
+     "above": 25,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO",
+      "RP",
+      "DR"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RO",
+      "RP",
+      "DR",
+      "AA"
+     ]
+    }
+   ],
+   "oohw2": [
+    {
+     "above": 5,
+     "label": "Noticeable",
+     "impact": "Negligible",
+     "measures": []
+    },
+    {
+     "above": 15,
+     "label": "Clearly audible",
+     "impact": "Low",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RP",
+      "DR"
+     ]
+    },
+    {
+     "above": 25,
+     "label": "Moderately intrusive",
+     "impact": "Medium",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RP",
+      "DR"
+     ]
+    },
+    {
+     "above": null,
+     "label": "Highly intrusive",
+     "impact": "High",
+     "measures": [
+      "PN",
+      "V",
+      "SN",
+      "RP",
+      "DR",
+      "AA"
+     ]
+    }
+   ]
+  },
+  "highlyAffected": {
+   "level": 75,
+   "periods": [
+    "std"
+   ],
+   "label": "Highly noise affected (≥ 75 dBA)",
+   "measures": [
+    "PN",
+    "V",
+    "SN"
+   ]
+  }
+ },
  "rules": {
   "id": "tfnsw-cnvg-pti-4.6-defaults",
   "name": "TfNSW CNVG-PTI defaults (EMF-NV-GD-0060 v4.6, Mar 2026)",
@@ -2041,9 +2279,10 @@ const DATA = {
      ]
     }
    ],
-   "_note": "CNVG-PTI Table 9, by exceedance of the NML (dB, rounded to exceedanceDecimals). A band applies when the exceedance is above the previous band's limit and at or below its own 'above' value (null = no upper limit). Exceedance ≤ 0 is 'Below NML'. RP and DR do not apply in OOHW Period 1 day."
+   "_note": "CNVG-PTI Table 9, by exceedance of the NML (dB, rounded to exceedanceDecimals). With boundary 'upper' (the guideline's wording) a band applies above the previous band's limit and up to and including its own 'above' value; with 'lower' it includes its lower limit and stops just below 'above' (the estimator's convention). null = no upper limit. Exceedance ≤ 0 is 'Below NML'. RP and DR do not apply in OOHW Period 1 day."
   },
   "exceedanceDecimals": 0,
+  "boundary": "upper",
   "highlyAffected": {
    "level": 75,
    "periods": [
@@ -2209,7 +2448,7 @@ function libItem(id) { return LIBRARY.find(o => o.id === id) || LIBRARY.find(o =
 
 /* ================================ STATE ================================ */
 const state = {
-  sources: [], buildings: [], hoardings: [], ncas: [],
+  sources: [], buildings: [], hoardings: [], ncas: [], rulesSet: 'cnvg',
   sel: null, mode: 'select', draft: [],
   view: { cx: 0, cy: 0, scale: 3 }, mouse: null, lastEq: DEFAULT_EQ,
   origin: null,            // {type:'projected', x0, y0, zone, epsg}  (MGA / GDA)
@@ -2219,7 +2458,7 @@ const state = {
     defNca: { name: 'Outside NCAs', cat: DEFAULT_NCA_CAT, rbl: { day: null, evening: null, night: null } },
     floorH: 3, spacing: 10, offset: 1, display: 'both', results: null, sig: null, running: false
   },
-  settings: { method: 'tfnsw', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
+  settings: { method: 'tfnsw', combine: 'all', soft: 0, season: 'warm', period: 'std', barCap: 15, hr: 1.5, air: true, barriers: true, terrain: true, shade: true, cellPx: 5, opacity: 0.7, minDb: 35, newH: 9, newHo: 2.4 }
 };
 let nextId = 1, grid = null;
 
@@ -2635,7 +2874,23 @@ function addressOf(b) {
    exported, edited and re-imported, so project-specific strategies don't need
    a code change. Nothing here claims compliance with a particular edition. */
 const clone = o => JSON.parse(JSON.stringify(o));
+/* Overlay rule files ("extends") are deep-merged over their base; arrays replace. */
+function mergeRules(base, over) {
+  const out = clone(base);
+  for (const [k, v] of Object.entries(over)) {
+    if (k === 'extends') continue;
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k]) ? mergeRules(out[k], v) : clone(v);
+  }
+  return out;
+}
+const RULESETS = {
+  cnvg: { label: 'CNVG-PTI v4.6 Table 9 (guideline)', rules: DATA.rules },
+  estimator: { label: 'TfNSW estimator Step 4 (spreadsheet)', rules: mergeRules(DATA.rules, DATA['rules-estimator']) }
+};
 let RULES = clone(DATA.rules);
+function setRuleSet(key) {
+  RULES = clone(RULESETS[key].rules); state.rulesSet = key; state.rulesEdited = false;
+}
 
 function landUseRule(lu) { return RULES.landUses[lu] || RULES.landUses[RULES.osmLandUse.unknown]; }
 function landUseLabel(lu) { const L = RULES.landUses[lu]; return L ? L.label : lu; }
@@ -2680,7 +2935,8 @@ function classify(Leq, nml, period, lu) {
   let label = 'Below NML', impact = 'None', measures = [];
   if (exc > 0) {
     const set = RULES.bandSets[RULES.periods[period].bands] || [];
-    const band = set.find(b => b.above == null || exc <= b.above) || set[set.length - 1];
+    const lower = RULES.boundary === 'lower';   // 'lower': band includes its lower limit (estimator); 'upper': its upper limit (guideline)
+    const band = set.find(b => b.above == null || (lower ? exc < b.above : exc <= b.above)) || set[set.length - 1];
     if (band) { label = band.label; impact = band.impact || ''; measures = band.measures.slice(); }
   }
   const H = RULES.highlyAffected;
@@ -2753,7 +3009,7 @@ function categoryRank(label, period) {
   return k < 0 ? 0 : k + 1;
 }
 function categoryList(period) {
-  return ['Below NML'].concat((RULES.bandSets[RULES.periods[period].bands] || []).map(b => b.label));
+  return [...new Set(['Below NML'].concat((RULES.bandSets[RULES.periods[period].bands] || []).map(b => b.label)))];
 }
 
 /* Compact fingerprint of everything the assessment depends on, used to tell
@@ -2762,7 +3018,7 @@ function inputsSignature() {
   const S = state.settings, A = state.assess, r2 = v => Math.round(v * 100);
   let h = 5381;
   const add = v => { const s = String(v); for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; h = ((h * 33) ^ 124) >>> 0; };
-  [S.method, S.soft, S.season, S.period, S.barCap, S.air, S.barriers, S.terrain, A.floorH, A.spacing, A.offset, JSON.stringify(A.defNca), RULES.id, state.rulesEdited ? JSON.stringify(RULES).length : 0, state.terrain ? state.terrain.name : ''].forEach(add);
+  [S.method, S.soft, S.season, S.period, S.barCap, S.air, S.barriers, S.terrain, S.combine, A.floorH, A.spacing, A.offset, JSON.stringify(A.defNca), RULES.id, state.rulesEdited ? JSON.stringify(RULES).length : 0, state.terrain ? state.terrain.name : ''].forEach(add);
   for (const s of state.sources) [r2(s.x), r2(s.y), s.h, s.lw, s.on, s.pen, s.mit].forEach(add);
   for (const b of state.buildings) { [b.id, r2(b.h), r2(b.base), b.landUse, b.floors].forEach(add); for (const p of b.pts) { add(r2(p[0])); add(r2(p[1])); } }
   for (const ho of state.hoardings) { add(ho.h); for (const p of ho.pts) { add(r2(p[0])); add(r2(p[1])); } }
@@ -2777,7 +3033,7 @@ function assessStale() { const R = state.assess.results; return !!R && R.sig !==
    ground, air or screening losses) is already below the NML can't exceed it,
    so they are not calculated in full. */
 async function runAssessment() {
-  const A = state.assess, S = state.settings, period = S.period, B = state.buildings, srcs = state.sources;
+  const A = state.assess, S = state.settings, period = S.period, B = state.buildings, srcs = activeSources();
   if (A.running) return null;
   if (!srcs.length) { log('Add at least one source before running the assessment.', 'warn'); return null; }
   if (!B.length) { log('There are no buildings to assess – fetch, import or draw them first.', 'warn'); return null; }
@@ -2849,6 +3105,72 @@ async function runAssessment() {
   } finally {
     A.running = false; updateAssessButtons(); renderAssessPanel(); renderSelPanel(); requestRender();
   }
+}
+/* ===================== TfNSW ESTIMATOR PLANT COMBINATION =================== */
+/* Level of one estimator row (Step 2, column G): qty items of sound power
+   lw (already including any +5 dB special-audible correction), less 3 dB if
+   used intermittently and 5 dB if locally screened. */
+function estimatorRowLevel(lw, qty, intermittent, screened) {
+  if (!(qty > 0)) return 0;
+  return 10 * Math.log10(qty * Math.pow(10, lw / 10)) - (intermittent ? 3 : 0) - (screened ? 5 : 0);
+}
+/* The estimator's "realistic worst case" (Step 2, cell C14). rows: [{ G, qty }]
+   in sheet order. It sums the loudest one, two or three rows:
+   – loudest row has 3 or more items and is 5 dB or more above the next: that row only;
+   – loudest row has 2 items, or 3+ items within 5 dB of the next: the top two rows;
+   – otherwise, if the second row has 2 or more items: the top two rows;
+   – otherwise the top three rows.
+   As in the spreadsheet, unused rows count as 0 dB in the ranking and the sum
+   (adds well under 0.1 dB), and ties look up the first row with that level.
+   Returns { swl, n (rows summed), used (row indices) }. */
+function estimatorCombine(rows) {
+  if (!rows.length) return { swl: null, n: 0, used: [] };
+  const G = rows.map(r => r.G), ranked = G.map((g, i) => i).sort((a, b) => G[b] - G[a] || a - b);
+  const top = [0, 1, 2].map(k => (k < ranked.length ? G[ranked[k]] : 0));
+  const qtyOf = v => { const k = G.indexOf(v); return k >= 0 ? rows[k].qty : 0; };
+  const g18 = qtyOf(top[0]), g19 = qtyOf(top[1]), f18 = top[0] - top[1];
+  let n;
+  if (g18 >= 3 && f18 >= 5) n = 1;
+  else if (g18 === 2 || (g18 >= 3 && f18 < 5)) n = 2;
+  else if (g19 >= 2) n = 2;
+  else n = 3;
+  const swl = 10 * Math.log10(top.slice(0, n).reduce((a, v) => a + Math.pow(10, v / 10), 0));
+  return { swl, n, used: ranked.slice(0, n) };
+}
+
+/* Group placed sources into estimator rows: identical plant (same library item,
+   level and corrections) becomes one row with a quantity. */
+function sourceGroups(sources) {
+  const map = new Map();
+  for (const s of sources) {
+    const key = [s.eq, s.lw, s.on, s.pen, s.mit].join('|');
+    if (!map.has(key)) map.set(key, { key, items: [], lw: effectiveLw(s) });
+    map.get(key).items.push(s);
+  }
+  return [...map.values()].map(g => Object.assign(g, { qty: g.items.length, G: estimatorRowLevel(g.lw, g.items.length, false, false) }));
+}
+/* Sources that count in the prediction. 'all' (default, conservative): every
+   placed source. 'estimator': only the plant the TfNSW estimator's realistic
+   worst-case rule keeps (the loudest one to three rows). */
+let activeCache = { sig: '', list: null, excluded: [] };
+function activeSources() {
+  if (state.settings.combine !== 'estimator') return state.sources;
+  const sig = state.sources.map(s => [s.id, s.eq, s.lw, s.on, s.pen, s.mit].join(':')).join(',');
+  if (activeCache.sig === sig && activeCache.list) return activeCache.list;
+  const groups = sourceGroups(state.sources), c = estimatorCombine(groups);
+  const keep = new Set(); c.used.forEach(i => groups[i].items.forEach(s => keep.add(s)));
+  activeCache = { sig, list: state.sources.filter(s => keep.has(s)), excluded: state.sources.filter(s => !keep.has(s)) };
+  if (activeCache.excluded.length) log(`Plant combination (TfNSW estimator rule): ${c.n} loudest plant row(s) kept, total ${fmt(c.swl, 1)} dB(A); excluded: ${activeCache.excluded.map(s => s.name).join(', ')}.`, 'warn');
+  return activeCache.list;
+}
+function isExcluded(s) { return state.settings.combine === 'estimator' && !activeSources().includes(s); }
+/* The estimator's distance-based level (Step 3): total SWL, distance r (m),
+   whole-site screening (0, 5, 10 or 15 dB), soft-ground fraction, season
+   ('warm' Oct–Apr / 'cool' May–Sep) and night (true for Period 2 night air).
+   Same terms as the TfNSW method in contrib(), with a fixed screening value. */
+function estimatorLevel(swl, r, screening, soft, season, night) {
+  const air = airAlpha({ season, period: night ? 'p2night' : 'std' }) * r / 1000;
+  return swl - 20 * Math.log10(r) - 8 - air - screening - groundUnderScreening(soft * concaweGround(r), screening);
 }
 /* ===================== TIFF / GeoTIFF READER (local) ==================== */
 const TYPE_SIZE = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8, 16: 8, 17: 8, 18: 8 };
@@ -3349,7 +3671,7 @@ function resize() {
 /* ============================ GRID COMPUTE ============================= */
 function computeGrid(cellPx, quiet) {
   const t0 = performance.now();
-  const S = state.settings, B = state.buildings, srcs = state.sources;
+  const S = state.settings, B = state.buildings, srcs = activeSources();
   prep(srcs);
   const gw = Math.ceil(cssW / cellPx), gh = Math.ceil(cssH / cellPx);
   off.width = gw; off.height = gh;
@@ -3486,15 +3808,17 @@ function render() {
   }
 
   for (const s of state.sources) {
-    const [sx, sy] = w2s(s.x, s.y);
+    const [sx, sy] = w2s(s.x, s.y), excl = isExcluded(s);
     const sel = state.sel && state.sel.type === 'source' && state.sel.id === s.id;
+    ctx.save(); if (excl) ctx.globalAlpha = 0.45;
     ctx.beginPath(); ctx.arc(sx, sy, sel ? 9 : 7, 0, 7);
     ctx.fillStyle = '#111827'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = sel ? '#60a5fa' : '#fff'; ctx.stroke();
     ctx.beginPath(); ctx.arc(sx, sy, 3, 0, 7); ctx.fillStyle = '#ef4444'; ctx.fill();
     ctx.font = '600 11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    const label = `${s.name} · Lw ${fmt(effectiveLw(s), 0)}${overMax(s) != null ? ' ⚠' : ''}`, w = ctx.measureText(label).width;
+    const label = `${s.name} · Lw ${fmt(effectiveLw(s), 0)}${overMax(s) != null ? ' ⚠' : ''}${excl ? ' (not in worst case)' : ''}`, w = ctx.measureText(label).width;
     ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(sx + 11, sy - 8, w + 6, 16);
     ctx.fillStyle = '#111827'; ctx.fillText(label, sx + 14, sy);
+    ctx.restore();
   }
 
   const sb = niceStep(110 / v.scale), sbPx = sb * v.scale;
@@ -3525,9 +3849,9 @@ function updateProbe() {
     el.innerHTML = ph || `<p class="muted">Inside “${esc(hb.name)}” (base RL ${fmt(hb.base, 2)}, roof RL ${fmt(topOf(hb), 2)}) – grid receivers masked. Run the assessment for façade results.</p>`;
     $('hud').textContent = hud + ' · ' + (ph ? `${hb.name}: ${(state.assess.results.byBuilding.get(hb.id) || {}).worst}` : 'inside building'); return;
   }
-  prep(state.sources);
+  const srcsA = activeSources(); prep(srcsA);
   let e = 0, rows = '';
-  for (const s of state.sources) {
+  for (const s of srcsA) {
     const r = contrib(s, wx, wy, S, B, true, gr);
     e += Math.pow(10, r.Lp / 10);
     rows += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
@@ -3797,6 +4121,7 @@ $('setMethod').addEventListener('change', e => { state.settings.method = e.targe
 $('setPeriod').addEventListener('change', e => { state.settings.period = e.target.value; log(`Time period: ${PERIODS[e.target.value]}.`); requestCompute(false); });
 $('setSeason').addEventListener('change', e => { state.settings.season = e.target.value; log(`Season: ${e.target.value === 'warm' ? 'Oct–Apr' : 'May–Sep'} (air ${fmt(airAlpha(state.settings), 2)} dB/km).`); requestCompute(false); });
 bindNum($('setSoft'), 0, 100, v => { state.settings.soft = v / 100; });
+$('setCombine').addEventListener('change', e => { state.settings.combine = e.target.value; activeCache.sig = ''; log(`Plant combination: ${e.target.options[e.target.selectedIndex].text}.`); requestCompute(false); });
 bindNum($('setBarCap'), 5, 25, v => { state.settings.barCap = v; });
 bindNum($('setHr'), 0, 200, v => { state.settings.hr = v; });
 bindNum($('setNewH'), 0.5, 300, v => { state.settings.newH = v; });
@@ -3808,7 +4133,7 @@ function syncSettingsUI() {
   const S = state.settings;
   $('setBar').checked = S.barriers; $('setTerr').checked = S.terrain; $('setShade').checked = S.shade; $('setAir').checked = S.air;
   $('setMethod').value = S.method; $('setPeriod').value = S.period; $('setSeason').value = S.season;
-  $('setSoft').value = Math.round(S.soft * 100); $('setBarCap').value = S.barCap; onMethodChange();
+  $('setSoft').value = Math.round(S.soft * 100); $('setCombine').value = S.combine; $('setBarCap').value = S.barCap; onMethodChange();
   $('setHr').value = S.hr; $('setNewH').value = S.newH; $('setNewHo').value = S.newHo;
   $('setCell').value = String(S.cellPx); $('setMin').value = String(S.minDb); $('setOp').value = S.opacity; buildLegend();
 }
@@ -3894,6 +4219,9 @@ function syncAssessUI() {
   $('asRblD').value = r.day ?? ''; $('asRblE').value = r.evening ?? ''; $('asRblN').value = r.night ?? '';
   $('asFloorH').value = A.floorH; $('asSpacing').value = A.spacing; $('asOffset').value = A.offset; $('asDisplay').value = A.display;
   $('bulkTo').innerHTML = luOptions('residential');
+  $('rulesSet').innerHTML = Object.entries(RULESETS).map(([k, r]) => `<option value="${k}">${esc(r.label)}</option>`).join('') +
+    (state.rulesEdited ? `<option value="imported">Imported: ${esc(RULES.name || 'unnamed')}</option>` : '');
+  $('rulesSet').value = state.rulesEdited ? 'imported' : (state.rulesSet || 'cnvg');
   $('rulesInfo').innerHTML = `<b>${esc(RULES.name)}</b>${state.rulesEdited ? ' <span class="muted">(imported / edited)</span>' : ''}<br><span class="muted">${esc(RULES._note || '')}</span>`;
   refreshBulkSelects(); updateAssessButtons(); renderAssessPanel();
 }
@@ -3973,7 +4301,13 @@ readJSONFile($('fileRules'), (d, name) => {
   log(`Imported assessment rules “${d.name || name}”. Run the assessment again to apply them.`, 'pass');
   syncAssessUI(); renderSelPanel();
 });
-$('btnRulesReset').addEventListener('click', () => { RULES = clone(DATA.rules); state.rulesEdited = false; log('Assessment rules reset to the TfNSW CNVG-PTI defaults.'); syncAssessUI(); renderSelPanel(); });
+$('btnRulesReset').addEventListener('click', () => { setRuleSet('cnvg'); log('Assessment rules reset to the TfNSW CNVG-PTI defaults.'); syncAssessUI(); renderSelPanel(); });
+$('rulesSet').addEventListener('change', e => {
+  if (e.target.value === 'imported') return;
+  setRuleSet(e.target.value);
+  log(`Assessment rules: ${RULESETS[e.target.value].label}. Run the assessment again to apply them.`);
+  syncAssessUI(); renderSelPanel();
+});
 
 /* -------- NCA import (GeoJSON polygons) -------- */
 $('btnNcaImport').addEventListener('click', () => $('fileNca').click());
@@ -4064,10 +4398,10 @@ function probeBuildingHtml(b) {
   let html = `<p class="kv"><b>${esc(addressOf(b) || b.name)}</b> · ${esc(landUseLabel(luOf(b).lu))} · ${esc(ncaOf(b).name)}</p>` + floorTableHtml(b);
   const worst = R.receivers.filter(r => r.bId === b.id && r.Leq != null).sort((a, c) => c.Leq - a.Leq)[0];
   if (worst && worst.x != null) {
-    prep(state.sources);
+    const srcsA = activeSources(); prep(srcsA);
     const gr = ground(worst.x, worst.y);
     html += `<p class="kv">Worst point: floor ${worst.floorLabel}, ${coordText(worst.x, worst.y)}, RL ${fmt(worst.z, 1)}</p><table><tr><th>Source</th><th>L<sub>w</sub></th><th>d m</th><th>A<sub>div</sub></th><th>A<sub>atm</sub></th><th>A<sub>gr</sub></th><th>A<sub>bar</sub></th><th>L<sub>p</sub></th></tr>`;
-    for (const s of state.sources) {
+    for (const s of srcsA) {
       const r = contrib(s, worst.x, worst.y, state.settings, state.buildings, true, gr, worst.z);
       html += `<tr><td>${esc(s.name)}</td><td>${fmt(r.Lw)}</td><td>${fmt(r.d)}</td><td>${fmt(r.Adiv)}</td><td>${fmt(r.Aatm)}</td><td>${fmt(r.Agr)}</td><td>${fmt(r.Abar)}</td><td><b>${fmt(r.Lp)}</b></td></tr>`;
     }
@@ -5133,7 +5467,7 @@ $('btnSave').addEventListener('click', () => {
     hoardings: state.hoardings.map(h => ({ name: h.name, h: h.h, pts: h.pts })),
     ncas: state.ncas.map(n => ({ name: n.name, cat: n.cat, rbl: n.rbl, pts: n.pts })),
     assess: { defNca: A.defNca, floorH: A.floorH, spacing: A.spacing, offset: A.offset, display: A.display },
-    rules: state.rulesEdited ? RULES : undefined
+    rules: state.rulesEdited ? RULES : undefined, rulesSet: state.rulesEdited ? undefined : state.rulesSet
   };
   download('noise_scenario.json', JSON.stringify(data));
   log(`Saved scenario (${data.sources.length} sources, ${data.buildings.length} buildings, ${data.hoardings.length} hoardings, ${data.ncas.length} NCAs).`);
@@ -5159,7 +5493,7 @@ function sanitizeSettings(raw, cur) {
   const inR = (a, b) => v => typeof v === 'number' && isFinite(v) && v >= a && v <= b;
   const oneOf = (...vals) => v => vals.includes(v);
   const bool = v => typeof v === 'boolean';
-  pick('method', oneOf('tfnsw', 'iso')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
+  pick('method', oneOf('tfnsw', 'iso')); pick('combine', oneOf('all', 'estimator')); pick('season', oneOf('warm', 'cool')); pick('period', oneOf(...Object.keys(PERIODS)));
   pick('soft', inR(0, 1)); pick('barCap', inR(5, 25)); pick('hr', inR(0, 200));
   pick('air', bool); pick('barriers', bool); pick('terrain', bool); pick('shade', bool);
   pick('cellPx', oneOf(3, 5, 8)); pick('opacity', inR(0.2, 1)); pick('minDb', oneOf(30, 35, 40, 45, 50));
@@ -5189,6 +5523,7 @@ readJSONFile($('fileLoad'), (d, name) => {
   }
   const sh = p => [+p[0] + dx, +p[1] + dy];
   state.settings = sanitizeSettings(d.settings, state.settings);
+  if (!d.rules && RULESETS[d.rulesSet]) setRuleSet(d.rulesSet);
   if (d.rules) {
     try { RULES = validateRules(d.rules); state.rulesEdited = true; log(`Scenario carries its own assessment rules (“${RULES.name || 'unnamed'}”).`); }
     catch (e) { log(`Scenario rules ignored (${e.message}) – using the current rules.`, 'warn'); }
@@ -5434,7 +5769,7 @@ syncSettingsUI(); updateLibInfo(); syncAssessUI(); setMode('select'); loadDemo()
 if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize', resize);
 resize();
 requestAnimationFrame(() => zoomExtents());
-window.__noise = { _t: { crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings, nmlFor, classify, sleepCheck, landUseFromTags, luOf, floorsOf, addressOf, facadePoints, makeBuilding, makeNca, geomChanged, rules: () => RULES }, runAssessment, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
+window.__noise = { _t: { estimatorRowLevel, estimatorCombine, estimatorLevel, activeSources, setRuleSet, crsFromGeoKeys, fillHoles, mgaZoneToZone, effectiveLw, overMax, libItem, sanitizeSettings, nmlFor, classify, sleepCheck, landUseFromTags, luOf, floorsOf, addressOf, facadePoints, makeBuilding, makeNca, geomChanged, rules: () => RULES }, runAssessment, library: () => LIBRARY, selftest, LAZ, loadLidar, osmXmlToElements, state, ground, contrib, prep, ll2mga, mga2ll, importOsm, local2ll, ll2local };
 })();
 </script>
 </body>
